@@ -1,0 +1,53 @@
+function DropValue
+ load('/home_tmp/sasajima/DATA/MAT/tri_23','triC');
+ load('/home_tmp/sasajima/DATA/MAT/sita_23','sitaD');
+ %load('/home_tmp/sasajima/DATA/MAT/sRSxz_1','sR2Sxz');
+%{
+ load('/home/sasajima/DATA/MAT/sRSyz_1','sR2Syz');
+ load('/home/sasajima/DATA/MAT/dRSxz_1','dR2Sxz');
+ load('/home/sasajima/DATA/MAT/dRSyz_1','dR2Syz');
+ load('/home/sasajima/DATA/MAT/Slip_1','Slip');
+ load('/home/sasajima/DATA/MAT/define_1','define');
+ load('/home/sasajima/DATA/MAT/I1_R2Sxz_1','I1_R2Sxz');
+ load('/home/sasajima/DATA/MAT/I1_R2Syz_1','I1_R2Syz');
+ load('/home/sasajima/DATA/MAT/I1_Slip_1','I1_Slip');
+ load('/home/sasajima/DATA/MAT/I2_R2Sxz_1','I2_R2Sxz');
+ load('/home/sasajima/DATA/MAT/I2_R2Syz_1','I2_R2Syz');
+ load('/home/sasajima/DATA/MAT/I2_Slip_1','I2_Slip');
+%}
+sx=triC(:,1);
+sy=triC(:,2);
+%Slip(:,1)
+%Slip(:,2)
+%I1_R2Syz
+%I1_R2Syz
+%dR2Syz
+%sR2Syz
+%dR2Sxz
+%sR2Sxz
+%Slip(:,2)
+%I1_Slip(:,2)
+%I2_Slip(:,2)
+%sumSlip=Slip+I1_Slip+I2_Slip;
+whos
+GdR2Syz=sitaD(:,1)
+
+min_s=0;
+max_s=pi./4;
+index_max=GdR2Syz>max_s;
+index_min=GdR2Syz<min_s;
+index_nan=isnan(GdR2Syz);
+color_index=jet(128);
+RRR=fix((GdR2Syz-min_s)./((max_s-min_s)./128)+1);
+RRR(index_max)=128;
+RRR(index_min)=1;
+RRR(index_nan)=1;
+RR(:,1)=color_index(RRR,1);
+RR(:,2)=color_index(RRR,2);
+RR(:,3)=color_index(RRR,3);
+scatter(sx,sy,20,RR,'filled')
+%scatter(sx,sy,RSyz,'filled')
+%fclose(Fid2);
+%figure(15); quiver3(sx,sy,sz,Usumx,Usumy,Usumz,'r')
+%figure(16); quiver(sx,sy,Slip(:,1),Slip(:,2),'r'); grid on;
+end

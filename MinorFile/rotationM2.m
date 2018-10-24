@@ -1,0 +1,21 @@
+function rotationM2
+  sitaS=0.2;
+  sitaD=2.4;
+  c1=cos(sitaS);
+  c2=cos(sitaD);
+  s1=sin(sitaS);
+  s2=sin(sitaD);
+  Sxx=3;
+  Sxy=8;
+  Sxz=0;
+  Syy=4;
+  Syz=5;
+  Szz=9;
+  dSss=c1^2*Sxx+2*c1*s1*Sxy+s1^2*Syy;
+  dSsd=c2*(c1*s1*(Syy-Sxx)+(c1^2-s1^2)*Sxy)+s2*(c1*Sxz+s1*Syz);
+  dSsn=-s2.*(c1.*s1.*(Syy-Sxx)+(c1.^2-s1.^2).*Sxy)+c2.*(c1.*Sxz+s1.*Syz);
+  dSdd=c2^2*(s1^2*Sxx-2*s1*c1*Sxy+c1^2*Syy)+2*c2*s2*(c1*Syz-s1*Sxz)+s2^2*Szz;
+  dSdn=c2.*s2.*(Szz-s1.^2.*Sxx+2.*s1.*c1.*Sxy-c1.^2.*Syy)+(c2.^2-s2.^2).*(c1.*Syz-s1.*Sxz);
+  dSnn=s2^2*(s1^2*Sxx-2*s1*c1*Sxy+c1^2*Syy)-2*c2*s2*(c1*Syz-s1*Sxz)+c2^2*Szz;
+  T2=[dSss,dSsd,dSsn;dSsd,dSdd,dSdn;dSsn,dSdn,dSnn]
+end
