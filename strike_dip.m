@@ -1,4 +1,3 @@
-
 function[sitaS,sitaD,normVec]=strike_dip(trixyzC,trixyz3)
 %whos
 %Define strike and dip of fault%

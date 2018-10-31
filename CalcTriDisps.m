@@ -145,6 +145,8 @@ U.x(underIdx)                = U.x(underIdx) - slipVec(1);
 U.y(underIdx)                = U.y(underIdx) - slipVec(2);
 U.z(underIdx)                = U.z(underIdx) - slipVec(3);
 
+end
+
 
 function d = LinePlaneIntersect(x, y, z, sx, sy, sz)
 % Calculate the intersection of a line and a plane using a parametric
@@ -158,6 +160,7 @@ if denominator == 0;
 end
 t                               = numerator/denominator; % parametric curve parameter
 d                               = [sx sy sz]-([sx sy 0]-[sx sy sz])*t;
+end
 
 
 function [a b] = swap(a, b)
@@ -165,6 +168,7 @@ function [a b] = swap(a, b)
 temp                            = a;
 a                               = b;
 b                               = temp;
+end
 
 
 function [xp yp] = RotateXyVec(x, y, alpha)
@@ -174,6 +178,7 @@ y                             = y(:);
 alpha                         = pi/180*alpha;
 xp                            = cos(alpha).*x - sin(alpha).*y;
 yp                            = sin(alpha).*x + cos(alpha).*y;
+end
 
 
 function [v1 v2 v3] = adv(y1, y2, y3, a, beta, nu, B1, B2, B3)
@@ -292,3 +297,5 @@ v3B3              = v3InfB3 + v3CB3;
 v1                = B1.*v1B1 + B2.*v1B2 + B3.*v1B3;
 v2                = B1.*v2B1 + B2.*v2B2 + B3.*v2B3;
 v3                = B1.*v3B1 + B2.*v3B2 + B3.*v3B3;
+
+end

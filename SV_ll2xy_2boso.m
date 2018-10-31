@@ -106,5 +106,5 @@ Vlat=[PlateV(j,2);AftLAT];
   SVxyzdig=SVxy.*180./pi;
 
 end
-
+end
 
