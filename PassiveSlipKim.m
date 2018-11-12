@@ -720,7 +720,7 @@ scatter(sx,sy,20,RR,'filled')
 %figure(16); quiver(sx,sy,normVec(:,1),-normVec(:,2),'r');
 %grid on;
 end
-
+%====================================================
 %% I_CalcStrain.m
 function [A1_Ssn,A1_Sdn]=I_CalcStrain(Slip,sSsn,sSdn,dSsn,dSdn)
 n=size(Slip,1);
@@ -734,6 +734,86 @@ A1_S=sdn*slip;
 A1_Ssn=A1_S(1:n);
 A1_Sdn=A1_S(n+1:2*n);
 end
+%% I_CalcStrainF.m
+function [F_Ssn,F_Sdn]=I_CalcStrainF(F_Slip,sSsn,sSdn,dSsn,dSdn)
+
+n=size(F_Slip,1);
+FF_Slip=F_Slip(1:n,1:2);
+slip=reshape(FF_Slip,2*n,1);
+sdn=[sSsn dSsn; sSdn dSdn];
+F_S=sdn*slip;
+F_Ssn=F_S(1:n);
+F_Sdn=F_S(n+1:2*n);
+end
+
+%====================================================
+%% OutofAsperity01.m
+function [A1_Slip]=OutofAsperity01(A1_Ssn,A1_Sdn,Slip,sSsn,sSdn,dSsn,dSdn)
+index_out_asp=(Slip(:,1).^2+Slip(:,2).^2)==0;
+%O_sSsn=sSsn(~index_asp,~index_asp);
+%O_sSdn=sSdn(~index_asp,~index_asp);
+%O_dSsn=dSsn(~index_asp,~index_asp);
+%O_dSdn=dSdn(~index_asp,~index_asp);
+%O_Ssn=A_Ssn(~index_asp);
+%O_Sdn=A_Sdn(~index_asp);
+%
+k=sum(index_out_asp)
+d=[A1_Ssn(index_out_asp);A1_Sdn(index_out_asp)];
+G=[sSsn(index_out_asp,index_out_asp),dSsn(index_out_asp,index_out_asp);...
+   sSdn(index_out_asp,index_out_asp),dSdn(index_out_asp,index_out_asp)];
+m=G\d;
+A1_Slip=Slip;
+A1_Slip(index_out_asp,1:2)=-[m(1:k) m(k+1:end)];
+
+%{
+k=0;
+for i=1:n
+normSlip=norm(Slip(i,:));
+ if normSlip==0
+  k=k+1;
+  k_sSsn(k,:)=sSsn(i,:);
+  k_sSdn(k,:)=sSdn(i,:);
+  k_dSsn(k,:)=dSsn(i,:);
+  k_dSdn(k,:)=dSdn(i,:);
+  O_Ssn(k,1)=A_Ssn(i);
+  O_Sdn(k,1)=A_Sdn(i);
+ else
+ end
+end
+
+m=0;
+
+for j=1:n
+normSlip=norm(Slip(j,:));
+ if normSlip==0
+  m=m+1;
+  O_sSsn(:,m)=k_sSsn(:,j);
+  O_sSdn(:,m)=k_sSdn(:,j);
+  O_dSsn(:,m)=k_dSsn(:,j);
+  O_dSdn(:,m)=k_dSdn(:,j);
+ else
+ end
+end
+%}
+end
+
+%% OutofAsperity01.m
+function [FO_Ssn,FO_Sdn]=OutofAsperity11(F_Ssn,F_Sdn,Slip)
+n=length(Slip);
+k=0;
+for i=1:n
+normSlip=norm(Slip(i,:));
+ if normSlip==0
+  k=k+1;
+ 
+  FO_Ssn(k,1)=F_Ssn(i);
+  FO_Sdn(k,1)=F_Sdn(i);
+ else
+ end
+end
+end
+
+%====================================================
 %% SV_ll2xy_2boso.m
 function [SVxy]=SV_ll2xy_2boso(Vec,NARFA)
 %-------------------
@@ -2178,7 +2258,12 @@ end
 
 end
 %====================================================
-
+%% FSlip2xyll.m
+function [xyFSlip]=FSlip2xyll(F_Slip,sitaS)
+xyFSlip(:,1)=F_Slip(:,1).*cos(sitaS(:))+F_Slip(:,2).*sin(sitaS(:));
+xyFSlip(:,2)=-F_Slip(:,1).*sin(sitaS(:))+F_Slip(:,2).*cos(sitaS(:));
+end
+%====================================================
 %% copygroupCMT.m
 function [n]=groupCMT(NARFA,sitaD,sitaS,triC)
 
@@ -2498,6 +2583,126 @@ end
 
 end
 
+%====================================================
+%% defineslipQ.m
+function [Slip]=defineSlipQ(triC,sitaS)
+%A1=Rectangle asperity_1%
+%p=minimum X and max Y, q=max X and minimum Y%
+%y=+ wa south%
+
+%2011 Tohoku-oki%
+A1SV=1.8810;
+A1plon=143;
+A1plat=41;
+A1qlon=145;
+A1qlat=38;
+A1Slip=0.090;
+A1xSlip=-A1Slip.*sin(A1SV);
+A1ySlip=A1Slip.*cos(A1SV);
+
+n=size(triC,1);
+Slip=zeros(n,2);
+define=zeros(n,1);
+
+ for i=1:n
+  if triC(i,1)<A1plon,Slip(i,:)=[0,0];
+  elseif triC(i,1)>A1qlon,Slip(i,:)=[0,0];
+  elseif triC(i,2)<A1qlat,Slip(i,:)=[0,0];
+  elseif triC(i,2)>A1plat,Slip(i,:)=[0,0];
+  else
+   A1sSlip=cos(sitaS(i)).*A1xSlip-sin(sitaS(i)).*A1ySlip;
+   A1dSlip=sin(sitaS(i)).*A1xSlip+cos(sitaS(i)).*A1ySlip;
+   Slip(i,:)=[A1sSlip,A1dSlip];
+   define(i,1)=[1];
+  end
+ end
+%{
+%Hokkaido 500year%
+A2SV=;
+A2plon=145.0;
+A2plat=42.2;
+A2qlon=146.5;
+A2qlat=41.25;
+A2Slip=9.2;
+A2xSlip=-A2Slip.*sin(A2SV)
+A2ySlip=A2Slip.*cos(A2SV)
+
+n=size(triC,1);
+Slip=zeros(n,2);
+define=zeros(n,1);
+
+ for i=1:n
+  if     define(i,1)==1;
+  elseif triC(i,1)<A2plon,Slip(i,:)=[0,0];
+  elseif triC(i,1)>A2qlon,Slip(i,:)=[0,0];
+  elseif triC(i,2)<A2qlat,Slip(i,:)=[0,0];
+  elseif triC(i,2)>A2plat,Slip(i,:)=[0,0];
+  else
+   A2sSlip=cos(sitaS(i)).*A2xSlip-sin(sitaS(i)).*A2ySlip;
+   A2dSlip=sin(sitaS(i)).*A2xSlip+cos(sitaS(i)).*A2ySlip;
+   Slip(i,:)=[A2sSlip,A2dSlip];
+   define(i,1)=[1];
+  end
+ end
+
+%1896 Meiji Sanriku-oki%
+A3SV=;
+A3plon=143.7;
+A3plat=39.6;
+A3qlon=144.15;
+A3qlat=38.8;
+A3Slip=8.85;
+A3xSlip=-A3Slip.*sin(A3SV)
+A3ySlip=A3Slip.*cos(A3SV)
+
+n=size(triC,1);
+Slip=zeros(n,2);
+define=zeros(n,1);
+
+ for i=1:n
+  if     define(i,1)==1;
+  elseif triC(i,1)<A3plon,Slip(i,:)=[0,0];
+  elseif triC(i,1)>A3qlon,Slip(i,:)=[0,0];
+  elseif triC(i,2)<A3qlat,Slip(i,:)=[0,0];
+  elseif triC(i,2)>A3plat,Slip(i,:)=[0,0];
+  else
+   A3sSlip=cos(sitaS(i)).*A3xSlip-sin(sitaS(i)).*A3ySlip;
+   A3dSlip=sin(sitaS(i)).*A3xSlip+cos(sitaS(i)).*A3ySlip;
+   Slip(i,:)=[A3sSlip,A3dSlip];
+   define(i,1)=[1];
+  end
+ end
+
+%2003 Tokachi-oki%
+A4SV=;
+A4plon=143.65;
+A4plat=42.2;
+A4qlon=144.2;
+A4qlat=41.7;
+A4Slip=8.5;
+A4xSlip=-A4Slip.*sin(A3SV)
+A4ySlip=A4Slip.*cos(A3SV)
+
+n=size(triC,1);
+Slip=zeros(n,2);
+define=zeros(n,1);
+
+ for i=1:n
+  if     define(i,1)==1;
+  elseif triC(i,1)<A4plon,Slip(i,:)=[0,0];
+  elseif triC(i,1)>A4qlon,Slip(i,:)=[0,0];
+  elseif triC(i,2)<A4qlat,Slip(i,:)=[0,0];
+  elseif triC(i,2)>A4plat,Slip(i,:)=[0,0];
+  else
+   A4sSlip=cos(sitaS(i)).*A4xSlip-sin(sitaS(i)).*A4ySlip;
+   A4dSlip=sin(sitaS(i)).*A4xSlip+cos(sitaS(i)).*A4ySlip;
+   Slip(i,:)=[A4sSlip,A4dSlip];
+   define(i,1)=[1];
+  end
+ end 
+
+%}
+end
 %% defineSlipBoso.m
 function [Slip]=defineSlipBoso(triC,sitaS,llF,Velo,SVxy)
 %A1=Rectangle asperity_1%
@@ -3677,6 +3882,13 @@ xyz01=cell2mat(xyz01);
 xyz=xyz01;
 
 end
+%====================================================
+%% Slip2xyll.m
+function [xySlip]=Slip2xyll(Slip,sitaS)
+xySlip(:,1)=Slip(:,1).*cos(sitaS(:))+Slip(:,2).*sin(sitaS(:));
+xySlip(:,2)=-Slip(:,1).*sin(sitaS(:))+Slip(:,2).*cos(sitaS(:));
+end
+%====================================================
 %% smoothSV.m
 function smoothSV(circle)
 
@@ -3696,7 +3908,6 @@ end
 end
 
 %% strike_dip.m
-
 function[sitaS,sitaD,normVec]=strike_dip(trixyzC,trixyz3)
 %whos
 %Define strike and dip of fault%
@@ -3808,4 +4019,3 @@ FSlipll(:,1)=SNS(:,1);
 FSlipll(:,2)=SEW(:,1);
 
 end
-
