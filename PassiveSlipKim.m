@@ -7,7 +7,9 @@ function PassiveSlipKim
 save('/home_tmp/sasajima/DATA/PassiveSlip/PAC_test/tri','triC','tri3','tri','sll');
 load('/home_tmp/sasajima/DATA/PassiveSlip/PAC_test/tri','triC','tri3','tri','sll');
 
-[trixyzC,trixyz3,sxyz]=trill2trixyz(triC,tri3,sll);
+ALON0=142.5;
+ALAT0=38.3;
+[trixyzC,trixyz3,sxyz]=trill2trixyz(triC,tri3,sll,ALAT0,ALON0);
 save('/home_tmp/sasajima/DATA/PassiveSlip/PAC_test/trixyz','trixyzC','trixyz3','sxyz');
 load('/home_tmp/sasajima/DATA/PassiveSlip/PAC_test/trixyz','trixyzC','trixyz3','sxyz');
 
@@ -1401,139 +1403,30 @@ save('/home_tmp/sasajima/DATA/MAT/dSdn_Qalld1','dSdn');
 %}
 end
 %% Sasa_ll2xyz.m
-function [trixyzC,trixyz3,sxyz]=trill2trixyz(triC,tri3,sll)
-%-------------------
-%  PLTXY TRANSFORMS (ALAT,ALONG) TO (X,Y)
-%  WHEN ICORD.NE.0  PLTXY MAKES NO CHANGE IN
-%  TRANSFORMATION BETWEEN (X,Y) AND (ALAT,ALONG).
-%-------------------
-A=6.378160e3;
-E2=6.6944541e-3;
-E12=6.7395719e-3;
-D=5.72958e1;
-RD=1.0/D;
-ALON0=142.5;
-ALAT0=38.3;
-nn=length(triC);
+function [trixyzC,trixyz3,sxyz]=trill2trixyz(triC,tri3,sll,ALAT0,ALON0)
+% Convert triC, tri3, and sll from LonLat to local XY cordinate.
+% Original coded by Sasajima.
+% Modified by H. Kimura in 2018/11/13.
 
-trixyz3=zeros(nn,3,3);
+nn=size(triC,1);
+% mm=size( sll,1);
+% trixyz3=zeros(nn,3,3);
+% trixyzC=zeros(nn,3);
 
-mm=length(sll);
+%*** Convert of sll
+[sxyz(:,2),sxyz(:,1)]=PLTXY(sll(:,1),sll(:,2),ALAT0,ALON0);
 
-for i=1:mm
-    ALON=sll(i,1);
-    ALAT=sll(i,2);
-    
-    RLAT = RD.*ALAT;
-    SLAT = sin(RLAT);
-    CLAT = cos(RLAT);
-    V2   = 1.0 + E12.*CLAT.^2;
-    AL   = ALON-ALON0;
-    PH1  = ALAT + (V2.*AL.^2.*SLAT.*CLAT)./(2.0*D);
-    RPH1 = PH1.*RD;
-    RPH2 = (PH1 + ALAT0).*0.5.*RD;
-    R    = A.*(1.0-E2)./sqrt((1.0-E2.*sin(RPH2).^2).^3);
-    AN   = A./sqrt(1.0-E2.*sin(RPH1).^2);
-    C1   = D./R;
-    C2   = D./AN;
-    Y    = (PH1-ALAT0)./C1;
-    X    = (AL.*CLAT)./C2+(AL.^3.*CLAT.*cos(2.0.*RLAT))./(6.0.*C2.*D.^2);
-    sxyz(i,1:2)=[X,Y];
-end
+%*** Convert of tri3
+tri3lon=[tri3(:,1);tri3(:,4);tri3(:,7)];
+tri3lat=[tri3(:,2);tri3(:,5);tri3(:,8)];
+tri3dep=[tri3(:,3);tri3(:,6);tri3(:,9)];
+[tmpxyz3(:,2),tmpxyz3(:,1)]=PLTXY(tri3lat,tri3lon,ALAT0,ALON0);
+tmpxyz3(:,3)=1e3.*tri3dep;
+trixyz3=[tmpxyz3(1:nn,:) tmpxyz3(1+nn:2*nn,:) tmpxyz3(1+2*nn:3*nn,:)];
 
-for i=1:nn
-    ALON=tri3(i,1,1);
-    ALAT=tri3(i,2,1);
-    
-    RLAT = RD.*ALAT;
-    SLAT = sin(RLAT);
-    CLAT = cos(RLAT);
-    V2   = 1.0 + E12.*CLAT.^2;
-    AL   = ALON-ALON0;
-    PH1  = ALAT + (V2.*AL.^2.*SLAT.*CLAT)./(2.0*D);
-    RPH1 = PH1.*RD;
-    RPH2 = (PH1 + ALAT0).*0.5.*RD;
-    R    = A.*(1.0-E2)./sqrt((1.0-E2.*sin(RPH2).^2).^3);
-    AN   = A./sqrt(1.0-E2.*sin(RPH1).^2);
-    C1   = D./R;
-    C2   = D./AN;
-    Y    = (PH1-ALAT0)./C1;
-    X    = (AL.*CLAT)./C2+(AL.^3.*CLAT.*cos(2.0.*RLAT))./(6.0.*C2.*D.^2);
-    trixyz3(i,1,1)=[X*1000];
-    trixyz3(i,2,1)=[-Y*1000];
-    trixyz3(i,3,1)=[tri3(i,3,1)*1000];
-end
-
-for i=1:nn
-    ALON=tri3(i,1,2);
-    ALAT=tri3(i,2,2);
-    
-    RLAT = RD.*ALAT;
-    SLAT = sin(RLAT);
-    CLAT = cos(RLAT);
-    V2   = 1.0 + E12.*CLAT.^2;
-    AL   = ALON-ALON0;
-    PH1  = ALAT + (V2.*AL.^2.*SLAT.*CLAT)./(2.0*D);
-    RPH1 = PH1.*RD;
-    RPH2 = (PH1 + ALAT0).*0.5.*RD;
-    R    = A.*(1.0-E2)./sqrt((1.0-E2.*sin(RPH2).^2).^3);
-    AN   = A./sqrt(1.0-E2.*sin(RPH1).^2);
-    C1   = D./R;
-    C2   = D./AN;
-    Y    = (PH1-ALAT0)./C1;
-    X    = (AL.*CLAT)./C2+(AL.^3.*CLAT.*cos(2.0.*RLAT))./(6.0.*C2.*D.^2);
-    trixyz3(i,1,2)=[X*1000];
-    trixyz3(i,2,2)=[-Y*1000];
-    trixyz3(i,3,2)=[tri3(i,3,2)*1000];
-end
-
-for i=1:nn
-    ALON=tri3(i,1,3);
-    ALAT=tri3(i,2,3);
-    
-    RLAT = RD.*ALAT;
-    SLAT = sin(RLAT);
-    CLAT = cos(RLAT);
-    V2   = 1.0 + E12.*CLAT.^2;
-    AL   = ALON-ALON0;
-    PH1  = ALAT + (V2.*AL.^2.*SLAT.*CLAT)./(2.0*D);
-    RPH1 = PH1.*RD;
-    RPH2 = (PH1 + ALAT0).*0.5.*RD;
-    R    = A.*(1.0-E2)./sqrt((1.0-E2.*sin(RPH2).^2).^3);
-    AN   = A./sqrt(1.0-E2.*sin(RPH1).^2);
-    C1   = D./R;
-    C2   = D./AN;
-    Y    = (PH1-ALAT0)./C1;
-    X    = (AL.*CLAT)./C2+(AL.^3.*CLAT.*cos(2.0.*RLAT))./(6.0.*C2.*D.^2);
-    trixyz3(i,1,3)=[X*1000];
-    trixyz3(i,2,3)=[-Y*1000];
-    trixyz3(i,3,3)=[tri3(i,3,3)*1000];
-end
-
-trixyzC=zeros(nn,3);
-
-for i=1:nn
-    ALON=triC(i,1);
-    ALAT=triC(i,2);
-    
-    RLAT = RD.*ALAT;
-    SLAT = sin(RLAT);
-    CLAT = cos(RLAT);
-    V2   = 1.0 + E12.*CLAT.^2;
-    AL   = ALON-ALON0;
-    PH1  = ALAT + (V2.*AL.^2.*SLAT.*CLAT)./(2.0*D);
-    RPH1 = PH1.*RD;
-    RPH2 = (PH1 + ALAT0).*0.5.*RD;
-    R    = A.*(1.0-E2)./sqrt((1.0-E2.*sin(RPH2).^2).^3);
-    AN   = A./sqrt(1.0-E2.*sin(RPH1).^2);
-    C1   = D./R;
-    C2   = D./AN;
-    Y    = (PH1-ALAT0)./C1;
-    X    = (AL.*CLAT)./C2+(AL.^3.*CLAT.*cos(2.0.*RLAT))./(6.0.*C2.*D.^2);
-    trixyzC(i,1)=[X*1000];
-    trixyzC(i,2)=[-Y*1000];
-    trixyzC(i,3)=[triC(i,3)*1000];
-end
+%*** Convert of triC
+[trixyzC(:,2),trixyzC(:,1)]=PLTXY(triC(:,2),triC(:,1),ALAT0,ALON0);
+trixyzC(:,3)=1e3.*triC(:,3);
 
 end
 %====================================================
@@ -3555,15 +3448,15 @@ for n=1:ntri
     else
         nn=nn+1;
         triC(nn,1:3)=[glon,glat,gdep];
-        tri3(nn,1,1)=lon1;
-        tri3(nn,1,2)=lon2;
-        tri3(nn,1,3)=lon3;
-        tri3(nn,2,1)=lat1;
-        tri3(nn,2,2)=lat2;
-        tri3(nn,2,3)=lat3;
-        tri3(nn,3,1)=dep1;
-        tri3(nn,3,2)=dep2;
-        tri3(nn,3,3)=dep3;
+        tri3(nn,1)=lon1;
+        tri3(nn,2)=lat1;
+        tri3(nn,3)=dep1;
+        tri3(nn,4)=lon2;
+        tri3(nn,5)=lat2;
+        tri3(nn,6)=dep2;
+        tri3(nn,7)=lon3;
+        tri3(nn,8)=lat3;
+        tri3(nn,9)=dep3;
     end
     
 end
@@ -3997,4 +3890,32 @@ end
 FSlipll(:,1)=SNS(:,1);
 FSlipll(:,2)=SEW(:,1);
 
+end
+%% PLTXY
+%====================================================
+function [X,Y]=PLTXY(ALAT,ALON,ALAT0,ALON0)
+%-------------------
+%  PLTXY TRANSFORMS (ALAT,ALONG) TO (X,Y)
+%  WHEN ICORD.NE.0  PLTXY MAKES NO CHANGE IN 
+%  TRANSFORMATION BETWEEN (X,Y) AND (ALAT,ALONG).
+%-------------------
+A=6.378160e3;
+E2=6.6944541e-3;
+E12=6.7395719e-3;
+D=5.72958e1;
+RD=1.0/D;
+RLAT = RD.*ALAT;
+SLAT = sin(RLAT);
+CLAT = cos(RLAT);
+V2   = 1.0 + E12.*CLAT.^2;
+AL   = ALON-ALON0;
+PH1  = ALAT + (V2.*AL.^2.*SLAT.*CLAT)./(2.0*D);
+RPH1 = PH1.*RD;
+RPH2 = (PH1 + ALAT0).*0.5.*RD;
+R    = A.*(1.0-E2)./sqrt((1.0-E2.*sin(RPH2).^2).^3);
+AN   = A./sqrt(1.0-E2.*sin(RPH1).^2);
+C1   = D./R;
+C2   = D./AN;
+Y    = (PH1-ALAT0)./C1;
+X    = (AL.*CLAT)./C2+(AL.^3.*CLAT.*cos(2.0.*RLAT))./(6.0.*C2.*D.^2);
 end
