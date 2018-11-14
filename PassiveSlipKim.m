@@ -13,13 +13,9 @@ ALAT0=38.3;
 save('/home_tmp/sasajima/DATA/PassiveSlip/PAC_test/trixyz','trixyzC','trixyz3','sxyz');
 load('/home_tmp/sasajima/DATA/PassiveSlip/PAC_test/trixyz','trixyzC','trixyz3','sxyz');
 
-Gtrixyz3=trixyz3;
-
 [sitaS,sitaD,normVec]=strike_dip(trixyzC,trixyz3);
 save('/home_tmp/sasajima/DATA/PassiveSlip/PAC_test/sita','sitaS','sitaD','normVec');
 load('/home_tmp/sasajima/DATA/PassiveSlip/PAC_test/sita','sitaS','sitaD','normVec');
-
-trixyz3=Gtrixyz3;
 
 n=size(sitaS,1);
 
@@ -3024,18 +3020,18 @@ sx=xyz(:,1);
 sy=xyz(:,2);
 sz=zeros(m,1);
 
-rootname='/home_tmp/sasajima/DATA/GreenF/PAC2test/'
+rootname='/home_tmp/sasajima/DATA/GreenF/PAC2test/';
 dU='dU';
 extension='.dat';
 
 for i=1:n%numbers of fault%
     
-    di=i
+    di=i;
     w=num2str(i);
     
-    x=[trixyz3(i,1,1),trixyz3(i,1,2),trixyz3(i,1,3)];
-    y=[trixyz3(i,2,1),trixyz3(i,2,2),trixyz3(i,2,3)];
-    z=[trixyz3(i,3,1),trixyz3(i,3,2),trixyz3(i,3,3)];
+    x=[trixyz3(i,1),trixyz3(i,4),trixyz3(i,7)];
+    y=[trixyz3(i,2),trixyz3(i,5),trixyz3(i,8)];
+    z=[trixyz3(i,3),trixyz3(i,6),trixyz3(i,9)];
     
     [U] = CalcTriDisps(sx, sy, sz, x, y, z, pr, ss, ts, ds);
     dUxyz(:,1)=U.x;
@@ -3077,19 +3073,19 @@ s1=sin(sitaS);
 c2=cos(sitaD);
 s2=sin(sitaD);
 
-rootname='/home_tmp/sasajima/DATA/GreenF/PACtest2PACtest/'
+rootname='/home_tmp/sasajima/DATA/GreenF/PACtest2PACtest/';
 dds='dSsn/dSsn';
 ddn='dSdn/dSdn';
 extension='.dat';
 
 for i=1:n%numbers of fault%
     
-    di=i
+    di=i;
     w=num2str(i);
     
-    x=[trixyz3(i,1,1),trixyz3(i,1,2),trixyz3(i,1,3)];
-    y=[trixyz3(i,2,1),trixyz3(i,2,2),trixyz3(i,2,3)];
-    z=[trixyz3(i,3,1),trixyz3(i,3,2),trixyz3(i,3,3)];
+    x=[trixyz3(i,1),trixyz3(i,4),trixyz3(i,7)];
+    y=[trixyz3(i,2),trixyz3(i,5),trixyz3(i,8)];
+    z=[trixyz3(i,3),trixyz3(i,6),trixyz3(i,9)];
     
     %[U] = CalcTriDisps(sx, sy, sz, x, y, z, pr, ss, ts, ds);
     %dUxyz(:,i,1)=U.x;
@@ -3138,18 +3134,18 @@ sx=xyz(:,1);
 sy=xyz(:,2);
 sz=zeros(m,1);
 
-rootname='/home_tmp/sasajima/DATA/GreenF/PAC2test/'
+rootname='/home_tmp/sasajima/DATA/GreenF/PAC2test/';
 sU='sU';
 extension='.dat';
 
 for i=1:n%numbers of fault%
     
-    si=i
+    si=i;
     w=num2str(i);
     
-    x=[trixyz3(i,1,1),trixyz3(i,1,2),trixyz3(i,1,3)];
-    y=[trixyz3(i,2,1),trixyz3(i,2,2),trixyz3(i,2,3)];
-    z=[trixyz3(i,3,1),trixyz3(i,3,2),trixyz3(i,3,3)];
+    x=[trixyz3(i,1),trixyz3(i,4),trixyz3(i,7)];
+    y=[trixyz3(i,2),trixyz3(i,5),trixyz3(i,8)];
+    z=[trixyz3(i,3),trixyz3(i,6),trixyz3(i,9)];
     
     [U] = CalcTriDisps(sx, sy, sz, x, y, z, pr, ss, ts, ds);
     sUxyz(:,1)=U.x;
@@ -3192,19 +3188,19 @@ c2=cos(sitaD);
 s2=sin(sitaD);
 
 
-rootname='/home_tmp/sasajima/DATA/GreenF/PACtest2PACtest/'
+rootname='/home_tmp/sasajima/DATA/GreenF/PACtest2PACtest/';
 ssn='sSsn/sSsn';
 sdn='sSdn/sSdn';
 extension='.dat';
 
 for i=1:n%numbers of fault%
     
-    si=i
+    si=i;
     w=num2str(i);
     
-    x=[trixyz3(i,1,1),trixyz3(i,1,2),trixyz3(i,1,3)];
-    y=[trixyz3(i,2,1),trixyz3(i,2,2),trixyz3(i,2,3)];
-    z=[trixyz3(i,3,1),trixyz3(i,3,2),trixyz3(i,3,3)];
+    x=[trixyz3(i,1),trixyz3(i,4),trixyz3(i,7)];
+    y=[trixyz3(i,2),trixyz3(i,5),trixyz3(i,8)];
+    z=[trixyz3(i,3),trixyz3(i,6),trixyz3(i,9)];
     
     %[U] = CalcTriDisps(sx, sy, sz, x, y, z, pr, ss, ts, ds);
     %sUxyz(:,i,1)=U.x;
