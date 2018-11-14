@@ -3102,7 +3102,8 @@ for i=1:n%numbers of fault%
     
     %dSss(:,i)=c1^2*Sxx+2*c1*s1*Sxy+s1^2*Syy;
     %dSsd(:,i)=c2*(c1*s1*(Syy-Sxx)+(c1^2-s1^2)*Sxy)+s2*(c1*Sxz+s1*Syz);
-    dSsn(:,i)=-s2(i).*(c1(i).*s1(i).*(Syy(:,1)-Sxx(:,1))+((c1(i)).^2-(s1(i)).^2).*Sxy(:,1))+c2(i).*(c1(i).*Sxz(:,1)+s1(i).*Syz(:,1));
+    dSsn(:,i)=-s2(i).*(c1(i).*s1(i).*(Syy(:,1)-Sxx(:,1))+(c1(i).^2-s1(i).^2).*Sxy(:,1))...
+             + c2(i).*(c1(i).*Sxz(:,1)+s1(i).*Syz(:,1));
     %dSdd(:,i)=c2^2*(s1^2*Sxx-2*s1*c1*Sxy+c1^2*Syy)+2*c2*s2*(c1*Syz-s1*Sxz)+s2^2*Szz;
     dSdn(:,i)=c2(i).*s2(i).*(Szz(:,1)-(s1(i)).^2.*Sxx(:,1)+2.*s1(i).*c1(i).*Sxy(:,1)-(c1(i)).^2.*Syy(:,1))+((c2(i)).^2-(s2(i)).^2).*(c1(i).*Syz(:,1)-s1(i).*Sxz(:,1));
     %dSnn(:,i)=s2^2*(s1^2*Sxx-2*s1*c1*Sxy+c1^2*Syy)-2*c2*s2*(c1*Syz-s1*Sxz)+c2^2*Szz;
@@ -3777,7 +3778,6 @@ end
 
 %% strike_dip.m
 function[sitaS,sitaD,normVec]=strike_dip(trixyzC,trixyz3)
-%whos
 %Define strike and dip of fault%
 n=size(trixyzC,1);
 ca=zeros(n,3);
@@ -3786,8 +3786,6 @@ InormVec=zeros(n,3);
 normVec=zeros(n,3);
 strikeVec=zeros(n,3);
 dipVec=zeros(n,3);
-RsitaS=zeros(n,1);
-Rdip=zeros(n,1);
 sitaS=zeros(n,1);
 sitaD=zeros(n,1);
 
@@ -3798,27 +3796,16 @@ for i=1:n
     normVec(i,:)              = InormVec(i,:)./(sqrt((InormVec(i,1)).^2+(InormVec(i,2)).^2+(InormVec(i,3).^2)));
     if (normVec(i,3) < 0) % Enforce clockwise circulation
         normVec(i,:)               = -normVec(i,:);
-        % [x(2) x(3)]               = swap(x(2), x(3));%???
-        % [y(2) y(3)]               = swap(y(2), y(3));%???
-        % [z(2) z(3)]               = swap(z(2), z(3));%???
     end
     strikeVec(i,:)              = [-sin(atan2(normVec(i,2),normVec(i,1))),cos(atan2(normVec(i,2),normVec(i,1))),0];%direct to left hand of who toward dip direction
     dipVec(i,:)                 = cross(normVec(i,:), strikeVec(i,:),2);
-    
     %if normVec(1)==0 and normVec(2)==0
     % strikeVec=[1 0 0];
     % dipVec   =[0 1 0];
     % normVec  =[0 0 1];
     %end
-    
-    RsitaS(i)=atan2(strikeVec(i,2),strikeVec(i,1)); %from x-axis to y-axis rotation [rad]%
-    %RsitaSY=2.5*pi-RsitaS; %from y-axis clockwise[rad]%
-    %sitaSY=RsitaSY*180/pi;
-    sitaS(i)=RsitaS(i); %from x-axis to y-axis rotation [raad]
-    
-    Rdip(i)=asin(dipVec(i,3));
-    %dip=Rdip*180/pi;
-    sitaD(i)=Rdip(i);
+    sitaS(i)=atan2(strikeVec(i,2),strikeVec(i,1)); %from x-axis to y-axis rotation [rad]%
+    sitaD(i)=asin(dipVec(i,3));
 end
 end
 %====================================================
