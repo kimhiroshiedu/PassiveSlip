@@ -3796,8 +3796,8 @@ sitaS=zeros(n,1);
 sitaD=zeros(n,1);
 
 for i=1:n
-    ca(i,:)=[trixyz3(i,1,1)-trixyz3(i,1,3),trixyz3(i,2,1)-trixyz3(i,2,3),trixyz3(i,3,1)-trixyz3(i,3,3)];
-    cb(i,:)=[trixyz3(i,1,2)-trixyz3(i,1,3),trixyz3(i,2,2)-trixyz3(i,2,3),trixyz3(i,3,2)-trixyz3(i,3,3)];
+    ca(i,:)=[trixyz3(i,1)-trixyz3(i,7),trixyz3(i,2)-trixyz3(i,8),trixyz3(i,3)-trixyz3(i,9)];
+    cb(i,:)=[trixyz3(i,1)-trixyz3(i,4),trixyz3(i,2)-trixyz3(i,5),trixyz3(i,3)-trixyz3(i,6)];
     InormVec(i,:)              = cross(ca(i,:),cb(i,:),2);% direct to deeper %
     normVec(i,:)              = InormVec(i,:)./(sqrt((InormVec(i,1)).^2+(InormVec(i,2)).^2+(InormVec(i,3).^2)));
     if (normVec(i,3) < 0) % Enforce clockwise circulation
