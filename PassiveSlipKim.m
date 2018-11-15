@@ -3003,6 +3003,157 @@ for i=1:n;
     
 end
 end
+%% make Green's function of displacement
+function[gu]=makeGreenDisp(xyz,trixyz3)
+% This function make Green's function of displacement (gu).
+% Input
+%  xyz     : site location.
+%  trixyz3 : trimesh coordianate.
+% Output
+%  gu.st   : surface displacement due to strike slip on a fault.
+%  gu.dp   : surface displacement due to dip slip on a fault.
+%  gu.ts   : surface displacement due to tensile slip on a fault.
+%  *Each matrix (gu.*) contain 3 x NOBS by NFLT elements.
+
+pr  =0.25; % Poisson's ratio
+nobs=size(xyz,1);
+nflt=size(trixyz3,1);
+sx  =xyz(:,1);
+sy  =xyz(:,2);
+sz  =zeros(nobs,1);
+
+for n=1:nflt
+    trix=[trixyz3(n,1),trixyz3(n,4),trixyz3(n,7)];
+    triy=[trixyz3(n,2),trixyz3(n,5),trixyz3(n,8)];
+    triz=[trixyz3(n,3),trixyz3(n,6),trixyz3(n,9)];
+%     [U] = CalcTriDisps(sx, sy, sz, x, y, z, pr, ss, ts, ds);
+    [U] = CalcTriDisps(sx, sy, sz, trix, triy, triz, pr, 1, 0, 0); % Strike
+    gu.st(1:3:3*nobs,n)= U.x;
+    gu.st(2:3:3*nobs,n)= U.y;
+    gu.st(3:3:3*nobs,n)=-U.z;
+    [U] = CalcTriDisps(sx, sy, sz, trix, triy, triz, pr, 0, 1, 0); % Tensile
+    gu.ts(1:3:3*nobs,n)= U.x;
+    gu.ts(2:3:3*nobs,n)= U.y;
+    gu.ts(3:3:3*nobs,n)=-U.z;
+    [U] = CalcTriDisps(sx, sy, sz, trix, triy, triz, pr, 0, 0, 1); % Dip
+    gu.dp(1:3:3*nobs,n)= U.x;
+    gu.dp(2:3:3*nobs,n)= U.y;
+    gu.dp(3:3:3*nobs,n)=-U.z;
+end
+
+end
+%% make Green's function of strain
+function[gs]=makeGreenStrain(trixyzC,trixyz3,sitaS,sitaD,normVec)
+% This function make Green's function of strain (gs).
+% Input
+%  trixyzC : center of trimesh.
+%  trixyz3 : trimesh coordianate.
+%  sitaS   : angle of fault strike from X-axis.
+%  sitaD   : angle of fault dip from XY-plane.
+%  normVec : normalized normal vectors of faults.
+% Output
+%  gs.st   : strain due to strike slip on a fault.
+%  gs.dp   : strain due to dip slip on a fault.
+%  gs.ts   : strain due to tensile slip on a fault.
+%  *Each matrix (gs.*) contain 6 x NFLT by NFLT elements.
+pr  =0.25; % Poisson's ratio
+nobs=size(xyz,1);
+nflt=size(trixyz3,1);
+sx  =xyz(:,1);
+sy  =xyz(:,2);
+sz  =zeros(nobs,1);
+
+for n=1:nflt
+    trix=[trixyz3(n,1),trixyz3(n,4),trixyz3(n,7)];
+    triy=[trixyz3(n,2),trixyz3(n,5),trixyz3(n,8)];
+    triz=[trixyz3(n,3),trixyz3(n,6),trixyz3(n,9)];
+%     [U] = CalcTriDisps(sx, sy, sz, x, y, z, pr, ss, ts, ds);
+    [S] = CalcTriDisps(sx, sy, sz, trix, triy, triz, pr, 1, 0, 0); % Strike
+    gs.st(1:3:3*nobs,n)= S.x;
+    gs.st(2:3:3*nobs,n)= S.y;
+    gs.st(3:3:3*nobs,n)=-S.z;
+    [S] = CalcTriDisps(sx, sy, sz, trix, triy, triz, pr, 0, 1, 0); % Tensile
+    gs.ts(1:3:3*nobs,n)= S.x;
+    gs.ts(2:3:3*nobs,n)= S.y;
+    gs.ts(3:3:3*nobs,n)=-S.z;
+    [S] = CalcTriDisps(sx, sy, sz, trix, triy, triz, pr, 0, 0, 1); % Dip
+    gs.dp(1:3:3*nobs,n)= S.x;
+    gs.dp(2:3:3*nobs,n)= S.y;
+    gs.dp(3:3:3*nobs,n)=-S.z;
+end
+
+
+
+
+
+
+
+
+
+
+
+%change the value%
+pr=0.25;
+ss= 0;
+ds= 1;
+ts= 0;
+%==================
+
+n=length(trixyzC);
+
+sx=trixyzC(:,1)+normVec(:,1);
+sy=trixyzC(:,2)+normVec(:,2);
+sz=trixyzC(:,3)+normVec(:,3);
+c1=cos(sitaS);
+s1=sin(sitaS);
+c2=cos(sitaD);
+s2=sin(sitaD);
+
+rootname='/home_tmp/sasajima/DATA/GreenF/PACtest2PACtest/';
+dds='dSsn/dSsn';
+ddn='dSdn/dSdn';
+extension='.dat';
+
+for i=1:n%numbers of fault%
+    
+    di=i;
+    w=num2str(i);
+    
+    x=[trixyz3(i,1),trixyz3(i,4),trixyz3(i,7)];
+    y=[trixyz3(i,2),trixyz3(i,5),trixyz3(i,8)];
+    z=[trixyz3(i,3),trixyz3(i,6),trixyz3(i,9)];
+    
+    %[U] = CalcTriDisps(sx, sy, sz, x, y, z, pr, ss, ts, ds);
+    %dUxyz(:,i,1)=U.x;
+    %dUxyz(:,i,2)=U.y;
+    %dUxyz(:,i,3)=-U.z;
+    
+    [S] = CalcTriStrains(sx, sy, sz, x, y, z, pr, ss, ts, ds);
+    Sxx(:,1)=S.xx;
+    Sxy(:,1)=S.xy;
+    Sxz(:,1)=S.xz;
+    Syy(:,1)=S.yy;
+    Syz(:,1)=S.yz;
+    Szz(:,1)=S.zz;
+    
+    %dSss(:,i)=c1^2*Sxx+2*c1*s1*Sxy+s1^2*Syy;
+    %dSsd(:,i)=c2*(c1*s1*(Syy-Sxx)+(c1^2-s1^2)*Sxy)+s2*(c1*Sxz+s1*Syz);
+    dSsn(:,i)=-s2(i).*(c1(i).*s1(i).*(Syy(:,1)-Sxx(:,1))+(c1(i).^2-s1(i).^2).*Sxy(:,1))...
+             + c2(i).*(c1(i).*Sxz(:,1)+s1(i).*Syz(:,1));
+    %dSdd(:,i)=c2^2*(s1^2*Sxx-2*s1*c1*Sxy+c1^2*Syy)+2*c2*s2*(c1*Syz-s1*Sxz)+s2^2*Szz;
+    dSdn(:,i)=c2(i).*s2(i).*(Szz(:,1)-(s1(i)).^2.*Sxx(:,1)+2.*s1(i).*c1(i).*Sxy(:,1)-(c1(i)).^2.*Syy(:,1))+((c2(i)).^2-(s2(i)).^2).*(c1(i).*Syz(:,1)-s1(i).*Sxz(:,1));
+    %dSnn(:,i)=s2^2*(s1^2*Sxx-2*s1*c1*Sxy+c1^2*Syy)-2*c2*s2*(c1*Syz-s1*Sxz)+c2^2*Szz;
+    
+    filename1= [rootname,dds,w,extension];
+    filename2= [rootname,ddn,w,extension];
+    
+    dSsni(:,1)=dSsn(:,1);
+    dSdni(:,1)=dSdn(:,1);
+    
+    save(filename1,'dSsni','-v7.3');
+    save(filename2,'dSdni','-v7.3');
+end
+end
 %% makeG_d_O.m
 function[di]=makeG_d_O(xyz,trixyz3)
 
