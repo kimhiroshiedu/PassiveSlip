@@ -100,30 +100,6 @@ sumF0Ssn=sum(absFO_Ssn,1);
 sumF0Sdn=sum(absFO_Sdn,1);
 
 end
-%% AnormaryVecCalc.m
-function [AnormaryVecxy]=AnormaryVecCalc(vnorm,SVxy,xyFSlip)
-
-n=length(vnorm);
-
-xyplateV(:,1)=vnorm(:,1).*sin(SVxy(:,1));%x-component of Velocity [m/y]
-xyplateV(:,2)=vnorm(:,1).*cos(SVxy(:,1));%y-component of Velocity [m/y]
-xyCreep(:,1:2)=xyFSlip(:,1:2)+xyplateV(:,1:2);%[m/y]
-
-for i=1:n
-    XinstSVxy(i,1)=atan2(xyCreep(i,2),xyCreep(i,1));%countour clock wise from X [radian]
-    instSVxy(i,1)=2.*pi-XinstSVxy(i,1)+pi.*0.5;%clock wise from Y [radian]
-    
-    if instSVxy(i,1)>=(2.*pi)
-        instSVxy(i,1)=instSVxy(i,1)-2.*pi;
-    else
-        continue
-    end
-    
-end
-
-AnormaryVecxy(:,1)=(SVxy(:,1)-instSVxy(:,1)).*180./pi;%[digree]
-
-end
 
 %% CalcTriDisps.m
 function [U] = CalcTriDisps(sx, sy, sz, x, y, z, pr, ss, ts, ds)
@@ -620,7 +596,7 @@ index_out_asp=(Slip(:,1).^2+Slip(:,2).^2)==0;
 %O_Ssn=A_Ssn(~index_asp);
 %O_Sdn=A_Sdn(~index_asp);
 %
-k=sum(index_out_asp)
+k=sum(index_out_asp);
 d=[A1_Ssn(index_out_asp);A1_Sdn(index_out_asp)];
 G=[sSsn(index_out_asp,index_out_asp),dSsn(index_out_asp,index_out_asp);...
    sSdn(index_out_asp,index_out_asp),dSdn(index_out_asp,index_out_asp)];
@@ -676,117 +652,6 @@ end
 end
 
 %====================================================
-%% SV_ll2xy_boso.m
-function [SVxy]=SV_ll2xy_boso(Vec)
-%-------------------
-%  PLTXY TRANSFORMS (ALAT,ALONG) TO (X,Y)
-%  WHEN ICORD.NE.0  PLTXY MAKES NO CHANGE IN
-%  TRANSFORMATION BETWEEN (X,Y) AND (ALAT,ALONG).
-%-------------------
-%constant%
-A=6.378160e3;
-E2=6.6944541e-3;
-E12=6.7395719e-3;
-D=5.72958e1;
-RD=1.0/D;
-R=6371;
-%Change Value%
-ALON0=142.5;
-ALAT0=38.3;
-
-whos
-
-PlateV(:,1:3)=Vec(:,1:3);%velocity of oceanic plate clock wise from North (lon,lat,degree)%
-
-n=length(Vec);
-
-dLAT=0.1./180.*pi;
-
-for j=1:n
-    
-    %calculation%
-    RPV(j,1)=PlateV(j,3)/180*pi;
-    
-    if cos(RPV(j,1))>=0 %NS component of plateV is N;
-        
-        AftLAT=Vec(j,2)+dLAT.*180./pi;%digree
-        
-        if sin(RPV(j,1))>=0 %EW component of plateV is E;
-            
-            radVec(j,1)=Vec(j,3)./180.*pi;%[radian]
-            dPSY=sin(dLAT).*cos(radVec(j,1));%[radian]
-            dDISTANCE=2.*R.*sin(dPSY./2);%linear distance[km]
-            appaR=R.*sin(pi./2-AftLAT);%[km]
-            dLON=asin(dDISTANCE./appaR);%[radian]
-            
-        else %EW component of plateV is W;
-            radVec(j,1)=(360-Vec(j,3))./180.*pi;%radian
-            dPSY=sin(dLAT).*cos(radVec(j,1));%radian
-            dDISTANCE=2.*R.*sin(dPSY./2);%linear distance[km]
-            appaR=R.*sin(pi./2-AftLAT);%[km]
-            dLON=asin(dDISTANCE./appaR).*(-1);%[radian]
-            
-        end
-        
-        AftLON=Vec(j,1)+dLON.*180./pi;%[digree]
-        
-    else %NS component of plateV is S;
-        
-        AftLAT=Vec(j,2)-dLAT.*180./pi;%digree
-        
-        if sin(PRV(j,1))>=0 %EW component of plateV is E;
-            
-            radVec(j,1)=(180-Vec(j,3))./180.*pi;%[radian]
-            dPSY=sin(dLAT).*cos(radVec(j,1));%[radian]
-            dDISTANCE=2.*R.*sin(dPSY./2);%linear distance[km]
-            appaR=R.*sin(pi./2-AftLAT);%[km]
-            dLON=asin(dDISTANCE./appaR);%[radian]
-            
-        else %EW component of plateV is W;
-            radVec(j,1)=(Vec(j,3)-180)./180.*pi;%radian
-            dPSY=sin(dLAT).*cos(radVec(j,1));%radian
-            dDISTANCE=2.*R.*sin(dPSY./2);%linear distance[km]
-            appaR=R.*sin(pi./2-AftLAT);%[km]
-            dLON=asin(dDISTANCE./appaR).*(-1);%[radian]
-            
-        end
-        
-        AftLON=Vec(j,1)+dLON.*180./pi;%digree
-        
-    end
-    
-    %lon-lat to xyz-sphere-coordinate to xy-coordinate
-    Vlon=[PlateV(j,1);AftLON];
-    Vlat=[PlateV(j,2);AftLAT];
-    
-    for i=1:2;
-        ALON=Vlon(i);
-        ALAT=Vlat(i);
-        
-        RLAT = RD.*ALAT;
-        SLAT = sin(RLAT);
-        CLAT = cos(RLAT);
-        V2   = 1.0 + E12.*CLAT.^2;
-        AL   = ALON-ALON0;
-        PH1  = ALAT + (V2.*AL.^2.*SLAT.*CLAT)./(2.0*D);
-        RPH1 = PH1.*RD;
-        RPH2 = (PH1 + ALAT0).*0.5.*RD;
-        R    = A.*(1.0-E2)./sqrt((1.0-E2.*sin(RPH2).^2).^3);
-        AN   = A./sqrt(1.0-E2.*sin(RPH1).^2);
-        C1   = D./R;
-        C2   = D./AN;
-        Y    = (PH1-ALAT0)./C1;
-        X    = (AL.*CLAT)./C2+(AL.^3.*CLAT.*cos(2.0.*RLAT))./(6.0.*C2.*D.^2);
-        
-        VX(i)=X;
-        VY(i)=Y;
-    end
-    SVxy(j,1)=atan2(VY(2)-VY(1),VX(2)-VX(1));%counter clock wise from Y-axis (radian)%
-    SVxyzdig=SVxy.*180./pi;
-    
-end
-end
-
 %% SasaEular2Velo.m
 function [vnorm,v,NARFA]=SasaEular2Velo(ll)
 
@@ -827,7 +692,7 @@ n=length(ll);
 v=zeros(n,2);
 vnorm=zeros(n,1);
 
-for i=1:n;
+for i=1:n
     cCB(1,1)=cos(CB(i,1));
     sCB(1,1)=sin(CB(i,1));
     cRMD(1,1)=cos(RMD(i,1));
@@ -846,7 +711,7 @@ for i=1:n;
     
     dltdiglon(1,1)=diglonP(1,1)-diglonX(i,1);%[digree]
     
-    if dltdiglon>0;
+    if dltdiglon>0
         NARFA(i,3)=0.5.*pi-ARFA(1,1);%countour? clock wise from North [radian]
     else
         NARFA(i,3)=0.5.*pi+ARFA(1,1);%countour? clock wise from North[radian]
@@ -899,123 +764,6 @@ xyFSlip(:,1)=F_Slip(:,1).*cos(sitaS(:))+F_Slip(:,2).*sin(sitaS(:));
 xyFSlip(:,2)=-F_Slip(:,1).*sin(sitaS(:))+F_Slip(:,2).*cos(sitaS(:));
 end
 %====================================================
-%% copygroupCMT.m
-function [n]=groupCMT(NARFA,sitaD,sitaS,triC)
-
-
-Fid0=fopen('/home/sasajima/Dropbox/yellow/PACdepth201312.txt','r');
-dep_main=textscan(Fid0,'%f %f %f');
-fclose(Fid0);
-dep_main=cell2mat(dep_main);
-
-E=TriScatteredInterp(dep_main(:,1),dep_main(:,2),dep_main(:,3),'linear');%depth of interplate -km
-F=TriScatteredInterp(triC(:,1),triC(:,2),sitaS(:,1),'linear');
-G=TriScatteredInterp(triC(:,1),triC(:,2),sitaD(:,1),'linear');
-H=TriScatteredInterp(triC(:,1),triC(:,2),NARFA(:,3),'linear');
-
-Fid1=fopen('/home/sasajima/Dropbox/yellow/NEall.txt','r');
-tmeca=textscan(Fid1,'%f %f %f %f %f %f %f %f %f %f %f %f %f');
-fclose(Fid1);
-meca=cell2mat(tmeca);
-
-Fid00=fopen('/home/sasajima/Dropbox/yellow/NEallDate.txt','r');
-
-Fid2=fopen('/home_tmp/sasajima/DATA/JPmecaALL/NEPAC_thrust97_11Mw9.txt','w');
-Fid3=fopen('/home_tmp/sasajima/DATA/JPmecaALL/NEhang97_11Mw9.txt','w');
-Fid4=fopen('/home_tmp/sasajima/DATA/JPmecaALL/NEPAC_intra_upp97_11Mw9.txt','w');
-Fid5=fopen('/home_tmp/sasajima/DATA/JPmecaALL/NEPAC_intra_bot97_11Mw9.txt','w');
-
-Fid7=fopen('/home_tmp/sasajima/DATA/JPmecaALL/NEPAC_thrust11Mw9_140215.txt','w');
-Fid8=fopen('/home_tmp/sasajima/DATA/JPmecaALL/NEhang11Mw9_140215.txt','w');
-Fid9=fopen('/home_tmp/sasajima/DATA/JPmecaALL/NEPAC_intra_upp11Mw9_140215.txt','w');
-Fid10=fopen('/home_tmp/sasajima/DATA/JPmecaALL/NEPAC_intra_bot11Mw9_140215.txt','w');
-
-n=size(meca,1);
-tt=0;
-RD=0;
-
-for i=1:n
-    i
-    whos
-    tline=fgetl(Fid00);
-    tt=tt+1;
-    
-    RD=RD+1;
-    serialTime(1,1)=datenum(tline(1:16),'yyyy/mm/dd,HH:MM');
-    
-    d311='2011 03 11 14:46:00';
-    t311=datenum(d311,'yyyy mm dd HH:MM:SS');
-    
-    lon=meca(i,1);
-    lat=meca(i,2);
-    focaldep=meca(i,6);
-    focalstrike=meca(i,7);
-    focaldip=meca(i,8);
-    focalSV=meca(i,4)+90;
-    
-    thrustdep=-E(lon,lat);
-    thruststrike=F(lon,lat);
-    thrustdip=G(lon,lat);
-    thrustSV=H(lon,lat)*180/pi;
-    
-    if serialTime(1,1)<t311;
-        
-        if (focaldep>(thrustdep-10))&&(focaldep<(thrustdep+10))&&(focalstrike>(thruststrike-45))&&(focalstrike<(thruststrike+45))&&(focaldip>(thrustdip-12.5))&&(focaldip<(thrustdip+12.5))&&(focalSV>(thrustSV-22.5))&&(focalSV<(thrustSV+22.5));
-            
-            fprintf(Fid2,'%10.4f %9.4f %5.0f %5.0f %5.0f %5.0f %5.0f %5.0f %5.2f %4.0f %2.0f %2.0f\n',meca(i,1),meca(i,2),meca(i,3),meca(i,4),meca(i,5),meca(i,6),meca(i,7),meca(i,8),meca(i,9),meca(i,10),meca(i,11),meca(i,12),meca(i,13));
-            
-        elseif (focaldep<thrustdep);
-            
-            fprintf(Fid3,'%10.4f %9.4f %5.0f %5.0f %5.0f %5.0f %5.0f %5.0f %5.2f %4.0f %2.0f %2.0f\n',meca(i,1),meca(i,2),meca(i,3),meca(i,4),meca(i,5),meca(i,6),meca(i,7),meca(i,8),meca(i,9),meca(i,10),meca(i,11),meca(i,12),meca(i,13));
-            
-        elseif (focaldep>thrustdep)&&(focaldep<thrustdep+25);
-            
-            fprintf(Fid4,'%10.4f %9.4f %5.0f %5.0f %5.0f %5.0f %5.0f %5.0f %5.2f %4.0f %2.0f %2.0f\n',meca(i,1),meca(i,2),meca(i,3),meca(i,4),meca(i,5),meca(i,6),meca(i,7),meca(i,8),meca(i,9),meca(i,10),meca(i,11),meca(i,12),meca(i,13));
-            
-        else
-            
-            fprintf(Fid5,'%10.4f %9.4f %5.0f %5.0f %5.0f %5.0f %5.0f %5.0f %5.2f %4.0f %2.0f %2.0f\n',meca(i,1),meca(i,2),meca(i,3),meca(i,4),meca(i,5),meca(i,6),meca(i,7),meca(i,8),meca(i,9),meca(i,10),meca(i,11),meca(i,12),meca(i,13));
-            
-        end
-        
-        
-        
-    else
-        
-        if (focaldep>(thrustdep-10))&&(focaldep<(thrustdep+10))&&(focalstrike>(thruststrike-45))&&(focalstrike<(thruststrike+45))&&(focaldip>(thrustdip-12.5))&&(focaldip<(thrustdip+12.5))&&(focalSV>(thrustSV-22.5))&&(focalSV<(thrustSV+22.5));
-            
-            fprintf(Fid7,'%10.4f %9.4f %5.0f %5.0f %5.0f %5.0f %5.0f %5.0f %5.2f %4.0f %2.0f %2.0f\n',meca(i,1),meca(i,2),meca(i,3),meca(i,4),meca(i,5),meca(i,6),meca(i,7),meca(i,8),meca(i,9),meca(i,10),meca(i,11),meca(i,12),meca(i,13));
-            
-        elseif (focaldep<thrustdep);
-            
-            fprintf(Fid8,'%10.4f %9.4f %5.0f %5.0f %5.0f %5.0f %5.0f %5.0f %5.2f %4.0f %2.0f %2.0f\n',meca(i,1),meca(i,2),meca(i,3),meca(i,4),meca(i,5),meca(i,6),meca(i,7),meca(i,8),meca(i,9),meca(i,10),meca(i,11),meca(i,12),meca(i,13));
-            
-        elseif (focaldep>thrustdep)&&(focaldep<thrustdep+25);
-            
-            fprintf(Fid9,'%10.4f %9.4f %5.0f %5.0f %5.0f %5.0f %5.0f %5.0f %5.2f %4.0f %2.0f %2.0f\n',meca(i,1),meca(i,2),meca(i,3),meca(i,4),meca(i,5),meca(i,6),meca(i,7),meca(i,8),meca(i,9),meca(i,10),meca(i,11),meca(i,12),meca(i,13));
-            
-        else
-            
-            fprintf(Fid10,'%10.4f %9.4f %5.0f %5.0f %5.0f %5.0f %5.0f %5.0f %5.2f %4.0f %2.0f %2.0f\n',meca(i,1),meca(i,2),meca(i,3),meca(i,4),meca(i,5),meca(i,6),meca(i,7),meca(i,8),meca(i,9),meca(i,10),meca(i,11),meca(i,12),meca(i,13));
-            
-        end
-        
-    end
-    
-    fclose(Fid2);
-    fclose(Fid3);
-    fclose(Fid4);
-    fclose(Fid5);
-    fclose(Fid7);
-    fclose(Fid8);
-    fclose(Fid9);
-    fclose(Fid10);
-    fclose(Fid00);
-    
-end
-end
-
-%====================================================
 %% defineslipQ.m
 function [Slip]=defineSlipQ(triC,sitaS)
 %A1=Rectangle asperity_1%
@@ -1045,7 +793,7 @@ define=zeros(n,1);
    A1sSlip=cos(sitaS(i)).*A1xSlip-sin(sitaS(i)).*A1ySlip;
    A1dSlip=sin(sitaS(i)).*A1xSlip+cos(sitaS(i)).*A1ySlip;
    Slip(i,:)=[A1sSlip,A1dSlip];
-   define(i,1)=[1];
+   define(i,1)=1;
   end
  end
 %{
@@ -1225,10 +973,7 @@ extension='.dat';
 
 n=length(trixyzC);
 
-for i=1:n;
-    
-    loatMAT=i
-    
+for i=1:n
     w=num2str(i);
     
     filename1= [rootname,ss,w,extension];
@@ -1245,7 +990,6 @@ for i=1:n;
     sSdn(:,i)=sSdni(:,1);
     dSsn(:,i)=dSsni(:,1);
     dSdn(:,i)=dSdni(:,1);
-    
 end
 end
 %% loadMAT2.m
@@ -1259,10 +1003,7 @@ extension='.dat';
 m=size(xyz,1);
 n=size(trixyz3,1);
 
-for i=1:n;
-    
-    loadMAT=i
-    
+for i=1:n
     w=num2str(i);
     
     filename1= [rootname,sU,w,extension];
@@ -1273,7 +1014,6 @@ for i=1:n;
     
     sUxyz(:,i,1:3)=sSsni(:,1:3);
     dUxyz(:,i,1:3)=dSdni(:,1);
-    
 end
 end
 %% make Green's function of displacement
@@ -1745,11 +1485,8 @@ alal=size(mall,1);
 
 
 s=0;
-
-for bl=1:blbl;
-    
+for bl=1:blbl
     Blue=inpolygon(mblack(bl,1),mblack(bl,2),PACblue(:,1),PACblue(:,2));
-    
     if Blue==0
     else
         s=s+1;
@@ -1757,8 +1494,6 @@ for bl=1:blbl;
         slat(s,1)=mblack(bl,2);
     end
 end
-
-s
 
 %{
 
@@ -1841,38 +1576,20 @@ ntri=length(tri);
 E=TriScatteredInterp(dep_main(:,1),dep_main(:,2),dep_main(:,3),'natural');
 F=TriScatteredInterp(dep_sub(:,1),dep_sub(:,2),dep_sub(:,3),'natural');
 
-%tri3=zeros(ntri,3,3);
-%triC=zeros(ntri,3);
+tri3=zeros(ntri,3,3);
+triC=zeros(ntri,3);
 nn=0;
 for n=1:ntri
-    
     lon1=slon(tri(n,1));
     lat1=slat(tri(n,1));
     dep1=-F(lon1,lat1)-E(lon1,lat1);
-    
     lon2=slon(tri(n,2));
     lat2=slat(tri(n,2));
     dep2=-F(lon2,lat2)-E(lon2,lat2);
-    
     lon3=slon(tri(n,3));
     lat3=slat(tri(n,3));
     dep3=-F(lon3,lat3)-E(lon3,lat3);
-    %{
-   if dep1<0.1
-     dep1=0;
-   else
-   end
-  
-   if dep2<0.1
-     dep2=0;
-   else
-   end
 
-   if dep3<0.1
-     dep3=0;
-   else
-   end
-    %}
     glon=(lon1+lon2+lon3)/3;
     glat=(lat1+lat2+lat3)/3;
     gdep=(dep1+dep2+dep3)/3;
@@ -1894,33 +1611,18 @@ for n=1:ntri
         tri3(nn,8)=lat3;
         tri3(nn,9)=dep3;
     end
-    
 end
+tri3(nn+1:ntri,:)=[];
+triC(nn+1:ntri,:)=[];
 
 Fid6=fopen('/home_tmp/sasajima/DATA/PAC_tri3.txt','w');
-
-for w=1:nn;
-    for u=1:3;
+for w=1:nn
+    for u=1:3
         fprintf(Fid6,'%10.4f %9.4f %10.4f\n',tri3(w,1,u),tri3(w,2,u),tri3(w,3,u));
     end
 end
-
 fclose(Fid6);
 
-%fprintf(Fid7,'%5d %11.5f %11.5f %11.5f\n',n,gx,gy,gdep);
-%fprintf(Fid8,'%5d %11.5f %11.5f %11.5f\n',n,sx1,sy1,sz1,sx2,sy2,sz2,sx3,sy3,sz3);
-%if ID==1
-%  nn=nn+1;
-%  s.tri(nn,:)=tri(n,:);
-%end
-%whos
-
-%whos
-%figure(47);
-%plot(bound(:,1),bound(:,2),'r')
-%hold on
-%fclose(Fid);
-%fclose(Fid2);
 end
 %% make_trill.m
 %====================================================
@@ -1994,13 +1696,9 @@ fclose(Fid11);
 mall=cell2mat(mall);
 alal=size(mall,1);
 
-
 s=0;
-
-for r=1:rr;
-    
+for r=1:rr
     Red=inpolygon(mred(r,1),mred(r,2),PACred(:,1),PACred(:,2));
-    
     if Red==0
     else
         s=s+1;
@@ -2009,14 +1707,11 @@ for r=1:rr;
     end
 end
 
-sred=s
+sred=s;
 
-
-for b=1:bb;
-    
+for b=1:bb
     Blue=inpolygon(mblue(b,1),mblue(b,2),PACblue(:,1),PACblue(:,2));
     BRed=inpolygon(mblue(b,1),mblue(b,2),PACred(:,1),PACred(:,2));
-    
     if (Blue==1)&&(BRed==0)
         s=s+1;
         slon(s,1)=mblue(b,1);
@@ -2025,13 +1720,11 @@ for b=1:bb;
     end
 end
 
-sblue=s-sred
+sblue=s-sred;
 
-for g=1:gg;
-    
+for g=1:gg
     Green=inpolygon(mgreen(g,1),mgreen(g,2),PACgreen(:,1),PACgreen(:,2));
     GBlue=inpolygon(mgreen(g,1),mgreen(g,2),PACblue(:,1),PACblue(:,2));
-    
     if (Green==1)&&(GBlue==0)
         s=s+1;
         slon(s,1)=mgreen(g,1);
@@ -2040,13 +1733,11 @@ for g=1:gg;
     end
 end
 
-sgreen=s-sred-sblue
+sgreen=s-sred-sblue;
 
-for bl=1:blbl;
-    
+for bl=1:blbl
     Black=inpolygon(mblack(bl,1),mblack(bl,2),PACblack(:,1),PACblack(:,2));
     BlGreen=inpolygon(mblack(bl,1),mnlack(bl,2),PACgreen(:,1),PACgreen(:,2));
-    
     if (Black==1)&&(BlGreen==0)
         s=s+1;
         slon(s,1)=mblack(bl,1);
@@ -2055,14 +1746,12 @@ for bl=1:blbl;
     end
 end
 
-sblack=s-sred-sblue-sgreen
+sblack=s-sred-sblue-sgreen;
 
 
-for al=1:alal;
-    
+for al=1:alal
     All=inpolygon(mall(al,1),mall(al,2),bound(:,1),bound(:,2));
     AlBlack=inpolygon(mall(al,1),mall(al,2),PACblack(:,1),PACblack(:,2));
-    
     if (All==1)&&(AlBlack==0)
         s=s+1;
         slon(s,1)=mall(al,1);
@@ -2071,14 +1760,12 @@ for al=1:alal;
     end
 end
 
-soutblack=s-sred-sblue-sgreen-sblack
-sall=s
+soutblack=s-sred-sblue-sgreen-sblack;
+sall=s;
 pause
 
 sll(:,1:2)=[slon(:,1),slat(:,1)];
 
-%ll=[s.lon,s.lat];
-%plot(s.lon,s.lat,'.')
 %====================================================
 tri = delaunay(slon,slat);
 %====================================================
@@ -2089,38 +1776,20 @@ ntri=length(tri);
 E=TriScatteredInterp(dep_main(:,1),dep_main(:,2),dep_main(:,3),'natural');%depth of interplate -km
 F=TriScatteredInterp(dep_sub(:,1),dep_sub(:,2),dep_sub(:,3),'natural');%depth of seafloor -km
 
-%tri3=zeros(ntri,3,3);
-%triC=zeros(ntri,3);
+tri3=zeros(ntri,3,3);
+triC=zeros(ntri,3);
 nn=0;
 for n=1:ntri
-    
     lon1=slon(tri(n,1));
     lat1=slat(tri(n,1));
     dep1=-F(lon1,lat1)-E(lon1,lat1);%+km
-    
     lon2=slon(tri(n,2));
     lat2=slat(tri(n,2));
     dep2=-F(lon2,lat2)-E(lon2,lat2);
-    
     lon3=slon(tri(n,3));
     lat3=slat(tri(n,3));
     dep3=-F(lon3,lat3)-E(lon3,lat3);
-    %{
-   if dep1<0.1
-     dep1=0;
-   else
-   end
-  
-   if dep2<0.1
-     dep2=0;
-   else
-   end
 
-   if dep3<0.1
-     dep3=0;
-   else
-   end
-    %}
     glon=(lon1+lon2+lon3)/3;
     glat=(lat1+lat2+lat3)/3;
     gdep=(dep1+dep2+dep3)/3;
@@ -2142,33 +1811,18 @@ for n=1:ntri
         tri3(nn,3,2)=dep2;
         tri3(nn,3,3)=dep3;
     end
-    
 end
+tri3(nn+1:ntri,:)=[];
+triC(nn+1:ntri,:)=[];
 
 Fid6=fopen('/home_tmp/sasajima/DATA/PAC_tri3.txt','w');
-
-for w=1:nn;
-    for u=1:3;
+for w=1:nn
+    for u=1:3
         fprintf(Fid6,'%10.4f %9.4f %10.4f\n',tri3(w,1,u),tri3(w,2,u),tri3(w,3,u));
     end
 end
-
 fclose(Fid6);
 
-%fprintf(Fid7,'%5d %11.5f %11.5f %11.5f\n',n,gx,gy,gdep);
-%fprintf(Fid8,'%5d %11.5f %11.5f %11.5f\n',n,sx1,sy1,sz1,sx2,sy2,sz2,sx3,sy3,sz3);
-%if ID==1
-%  nn=nn+1;
-%  s.tri(nn,:)=tri(n,:);
-%end
-%whos
-
-%whos
-%figure(47);
-%plot(bound(:,1),bound(:,2),'r')
-%hold on
-%fclose(Fid);
-%fclose(Fid2);
 end
 %% makexyz.m
 function  [xyz]=makexyz
