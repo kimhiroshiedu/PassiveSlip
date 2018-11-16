@@ -17,8 +17,6 @@ load('/home_tmp/sasajima/DATA/PassiveSlip/PAC_test/trixyz','trixyzC','trixyz3','
 save('/home_tmp/sasajima/DATA/PassiveSlip/PAC_test/sita','sitaS','sitaD','normVec');
 load('/home_tmp/sasajima/DATA/PassiveSlip/PAC_test/sita','sitaS','sitaD','normVec');
 
-n=size(sitaS,1);
-
 % figure(31); quiver(trixyzC(:,1),-trixyzC(:,2),sitaS,sitaD,1,'b')
 
 [si]=makeG_s_Q(trixyzC,trixyz3,sitaS,sitaD,normVec);
@@ -33,10 +31,6 @@ load('/home_tmp/sasajima/DATA/PassiveSlip/PAC_test/xyz','xyz');
 
 [sUxyz,dUxyz]=loadMAT2(xyz);
 [sSsn,sSdn,dSsn,dSdn]=loadMAT(trixyzC);
-
-zeroV=zeros(n,1);
-whos
-figure(22); quiver(trixyzC(:,1),-trixyzC(:,2),dSdn(:,1155),zeroV(:,1),5,'b')
 
 [Slip]=defineSlipQ(triC,sitaS);
 save('/home_tmp/sasajima/DATA/MAT/sdSlip_Q1','Slip');
@@ -73,7 +67,7 @@ Fid=fopen('./QxySlip11.dat','w');
 n=size(Slip,1);
 
 for i=1:n
-fprintf(Fid, '%11.3f %11.3f %9.5f %9.5f\n',trixyzC(i,1), trixyzC(i,2), xyFSlip(i,1), xyFSlip(i,2));
+    fprintf(Fid, '%11.3f %11.3f %9.5f %9.5f\n',trixyzC(i,1), trixyzC(i,2), xyFSlip(i,1), xyFSlip(i,2));
 end
 fclose(Fid);
 
@@ -993,7 +987,7 @@ for i=1:n
 end
 end
 %% loadMAT2.m
-function [sUxyz,dUxyz]=loadMAT2(xyz,trixyz3);
+function [sUxyz,dUxyz]=loadMAT2(xyz,trixyz3)
 
 rootname='/home_tmp/sasajima/DATA/GreenF/PAC2test/';
 sU='sU';
@@ -1839,9 +1833,7 @@ geonet=cell2mat(geonet);
 Fid2=fopen('/home_tmp/sasajima/DATA/xyz01.dat','r');
 xyz01=textscan(Fid2,'%f %f');
 fclose(Fid2);
-xyz01=cell2mat(xyz01);
-
-xyz=xyz01;
+xyz=cell2mat(xyz01);
 
 end
 %====================================================
