@@ -1099,22 +1099,22 @@ for n=1:nflt
     gs.dp(5:6:6*nflt,n)=S.yz;
     gs.dp(6:6:6*nflt,n)=S.zz;
 end
-
+[gs]=trans_xyz2strdip(gs,sitaS,sitaD);
 end
 %% Transform tensor from xyz to strike-dip
-function[gsf]=trans_xyz2strdip(gsx,sitaS,sitaD)
+function [gs]=trans_xyz2strdip(gs,sitaS,sitaD)
 % This function transforms a strain tensor from xyz to fault strike-dip.
 % 
 % Output
-% gsf.ss : strain of strike direction on the fault due to strike slip.
-% gsf.sd : strain of dip direction on the fault due to strike slip.
-% gsf.st : strain of tensile direction on the fault due to strike slip.
-% gsf.ds : strain of strike direction on the fault due to dip slip.
-% gsf.dd : strain of dip direction on the fault due to dip slip.
-% gsf.dt : strain of tensile direction on the fault due to dip slip.
-% gsf.ts : strain of strike direction on the fault due to tensile slip.
-% gsf.td : strain of dip direction on the fault due to tensile slip.
-% gsf.tt : strain of tensile direction on the fault due to tensile slip.
+% gs.stst : strain of strike direction on the fault due to strike slip.
+% gs.stdp : strain of dip direction on the fault due to strike slip.
+% gs.stts : strain of tensile direction on the fault due to strike slip.
+% gs.dpst : strain of strike direction on the fault due to dip slip.
+% gs.dpdp : strain of dip direction on the fault due to dip slip.
+% gs.dpts : strain of tensile direction on the fault due to dip slip.
+% gs.tsst : strain of strike direction on the fault due to tensile slip.
+% gs.tsdp : strain of dip direction on the fault due to tensile slip.
+% gs.tsts : strain of tensile direction on the fault due to tensile slip.
 % 
 % Note that strain of strike direction on the fault corresponds to ezx',
 % strain of dip direction on the fault corresponds to ezy', and
@@ -1129,22 +1129,22 @@ s1=repmat(sin(sitaS)',1,size(sitaS,2));
 c2=repmat(cos(sitaD)',1,size(sitaD,2));
 s2=repmat(sin(sitaD)',1,size(sitaD,2));
 
-[sst,sdp,sts]=calctrans(gsx.st,c1,s1,c2,s2); % response to strike slip
-gsf.ss=sst;
-gsf.sd=sdp;
-gsf.st=sts;
-[sst,sdp,sts]=calctrans(gsx.ts,c1,s1,c2,s2); % response to tensile slip
-gsf.ts=sst;
-gsf.td=sdp;
-gsf.tt=sts;
-[sst,sdp,sts]=calctrans(gsx.dp,c1,s1,c2,s2); % response to dip slip
-gsf.ds=sst;
-gsf.dd=sdp;
-gsf.dt=sts;
+[sst,sdp,sts]=calctrans(gs.st,c1,s1,c2,s2); % response to strike slip
+gs.stst=sst;
+gs.stdp=sdp;
+gs.stts=sts;
+[sst,sdp,sts]=calctrans(gs.ts,c1,s1,c2,s2); % response to tensile slip
+gs.tsst=sst;
+gs.tsdp=sdp;
+gs.tsts=sts;
+[sst,sdp,sts]=calctrans(gs.dp,c1,s1,c2,s2); % response to dip slip
+gs.dpst=sst;
+gs.dpdp=sdp;
+gs.dpts=sts;
 
 end
 %%
-function[sst,sdp,sts]=calctrans(sxyz,c1,s1,c2,s2)
+function [sst,sdp,sts]=calctrans(sxyz,c1,s1,c2,s2)
 % E_stdp = Tx * Tz * E_xyz * Tz' * Tx'
 % <->
 % |exx' exy' exz'| |1   0  0| | c1 s1 0| |exx exy exz| | c1 s1 0|T |1   0  0|T
