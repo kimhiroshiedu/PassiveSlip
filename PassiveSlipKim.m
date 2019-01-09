@@ -32,8 +32,8 @@ load('/home_tmp/sasajima/DATA/PassiveSlip/PAC_test/xyz','xyz');
 [gu]=makeGreenDisp(xyz,trixyz3);
 [gs]=makeGreenStrain(trixyzC,trixyz3,sitaS,sitaD,normVec);
 
-[sUxyz,dUxyz]=loadMAT2(xyz);
-[sSsn,sSdn,dSsn,dSdn]=loadMAT(trixyzC);
+% [sUxyz,dUxyz]=loadMAT2(xyz);
+% [sSsn,sSdn,dSsn,dSdn]=loadMAT(trixyzC);
 
 [Slip]=defineSlipQ(triC,sitaS);
 save('/home_tmp/sasajima/DATA/MAT/sdSlip_Q1','Slip');
@@ -781,18 +781,18 @@ n=size(triC,1);
 Slip=zeros(n,2);
 define=zeros(n,1);
 
- for i=1:n
+for i=1:n
   if triC(i,1)<A1plon,Slip(i,:)=[0,0];
   elseif triC(i,1)>A1qlon,Slip(i,:)=[0,0];
   elseif triC(i,2)<A1qlat,Slip(i,:)=[0,0];
   elseif triC(i,2)>A1plat,Slip(i,:)=[0,0];
   else
-   A1sSlip=cos(sitaS(i)).*A1xSlip-sin(sitaS(i)).*A1ySlip;
-   A1dSlip=sin(sitaS(i)).*A1xSlip+cos(sitaS(i)).*A1ySlip;
-   Slip(i,:)=[A1sSlip,A1dSlip];
-   define(i,1)=1;
+    A1sSlip=cos(sitaS(i)).*A1xSlip-sin(sitaS(i)).*A1ySlip;
+    A1dSlip=sin(sitaS(i)).*A1xSlip+cos(sitaS(i)).*A1ySlip;
+    Slip(i,:)=[A1sSlip,A1dSlip];
+    define(i,1)=1;
   end
- end
+end
 %{
 %Hokkaido 500year%
 A2SV=;
@@ -1569,56 +1569,53 @@ sll(:,1:2)=[slon(:,1),slat(:,1)];
 tri = delaunay(slon,slat);
 %====================================================
 ntri=length(tri);
-%nn=0;
-%Fid=fopen('/home/sasajima/DATA/XYtriC.dat','w');
-%Fid2=fopen('/home/sasajima/DATA/XYtri3.dat','w');
-E=TriScatteredInterp(dep_main(:,1),dep_main(:,2),dep_main(:,3),'natural');
-F=TriScatteredInterp(dep_sub(:,1),dep_sub(:,2),dep_sub(:,3),'natural');
+E=scatteredInterpolant(dep_main(:,1),dep_main(:,2),dep_main(:,3),'natural');
+F=scatteredInterpolant(dep_sub(:,1),dep_sub(:,2),dep_sub(:,3),'natural');
 
 tri3=zeros(ntri,3,3);
 triC=zeros(ntri,3);
 nn=0;
 for n=1:ntri
-    lon1=slon(tri(n,1));
-    lat1=slat(tri(n,1));
-    dep1=-F(lon1,lat1)-E(lon1,lat1);
-    lon2=slon(tri(n,2));
-    lat2=slat(tri(n,2));
-    dep2=-F(lon2,lat2)-E(lon2,lat2);
-    lon3=slon(tri(n,3));
-    lat3=slat(tri(n,3));
-    dep3=-F(lon3,lat3)-E(lon3,lat3);
-
-    glon=(lon1+lon2+lon3)/3;
-    glat=(lat1+lat2+lat3)/3;
-    gdep=(dep1+dep2+dep3)/3;
-    
-    IN=inpolygon(glon,glat,bound(:,1),bound(:,2));
-    
-    if gdep==0
-    elseif IN==0
-    else
-        nn=nn+1;
-        triC(nn,1:3)=[glon,glat,gdep];
-        tri3(nn,1)=lon1;
-        tri3(nn,2)=lat1;
-        tri3(nn,3)=dep1;
-        tri3(nn,4)=lon2;
-        tri3(nn,5)=lat2;
-        tri3(nn,6)=dep2;
-        tri3(nn,7)=lon3;
-        tri3(nn,8)=lat3;
-        tri3(nn,9)=dep3;
-    end
+  lon1=slon(tri(n,1));
+  lat1=slat(tri(n,1));
+  dep1=-F(lon1,lat1)-E(lon1,lat1);
+  lon2=slon(tri(n,2));
+  lat2=slat(tri(n,2));
+  dep2=-F(lon2,lat2)-E(lon2,lat2);
+  lon3=slon(tri(n,3));
+  lat3=slat(tri(n,3));
+  dep3=-F(lon3,lat3)-E(lon3,lat3);
+  
+  glon=(lon1+lon2+lon3)/3;
+  glat=(lat1+lat2+lat3)/3;
+  gdep=(dep1+dep2+dep3)/3;
+  
+  IN=inpolygon(glon,glat,bound(:,1),bound(:,2));
+  
+  if gdep==0
+  elseif IN==0
+  else
+    nn=nn+1;
+    triC(nn,1:3)=[glon,glat,gdep];
+    tri3(nn,1)=lon1;
+    tri3(nn,2)=lat1;
+    tri3(nn,3)=dep1;
+    tri3(nn,4)=lon2;
+    tri3(nn,5)=lat2;
+    tri3(nn,6)=dep2;
+    tri3(nn,7)=lon3;
+    tri3(nn,8)=lat3;
+    tri3(nn,9)=dep3;
+  end
 end
 tri3(nn+1:ntri,:)=[];
 triC(nn+1:ntri,:)=[];
 
 Fid6=fopen('/home_tmp/sasajima/DATA/PAC_tri3.txt','w');
 for w=1:nn
-    for u=1:3
-        fprintf(Fid6,'%10.4f %9.4f %10.4f\n',tri3(w,1,u),tri3(w,2,u),tri3(w,3,u));
-    end
+  for u=1:3
+    fprintf(Fid6,'%10.4f %9.4f %10.4f\n',tri3(w,1,u),tri3(w,2,u),tri3(w,3,u));
+  end
 end
 fclose(Fid6);
 
@@ -1769,47 +1766,44 @@ sll(:,1:2)=[slon(:,1),slat(:,1)];
 tri = delaunay(slon,slat);
 %====================================================
 ntri=length(tri);
-%nn=0;
-%Fid=fopen('/home/sasajima/DATA/XYtriC.dat','w');
-%Fid2=fopen('/home/sasajima/DATA/XYtri3.dat','w');
-E=TriScatteredInterp(dep_main(:,1),dep_main(:,2),dep_main(:,3),'natural');%depth of interplate -km
-F=TriScatteredInterp(dep_sub(:,1),dep_sub(:,2),dep_sub(:,3),'natural');%depth of seafloor -km
+E=scatteredInterpolant(dep_main(:,1),dep_main(:,2),dep_main(:,3),'natural');%depth of interplate -km
+F=scatteredInterpolant(dep_sub(:,1),dep_sub(:,2),dep_sub(:,3),'natural');%depth of seafloor -km
 
 tri3=zeros(ntri,3,3);
 triC=zeros(ntri,3);
 nn=0;
 for n=1:ntri
-    lon1=slon(tri(n,1));
-    lat1=slat(tri(n,1));
-    dep1=-F(lon1,lat1)-E(lon1,lat1);%+km
-    lon2=slon(tri(n,2));
-    lat2=slat(tri(n,2));
-    dep2=-F(lon2,lat2)-E(lon2,lat2);
-    lon3=slon(tri(n,3));
-    lat3=slat(tri(n,3));
-    dep3=-F(lon3,lat3)-E(lon3,lat3);
-
-    glon=(lon1+lon2+lon3)/3;
-    glat=(lat1+lat2+lat3)/3;
-    gdep=(dep1+dep2+dep3)/3;
-    
-    IN=inpolygon(glon,glat,bound(:,1),bound(:,2));
-    
-    if gdep==0
-    elseif IN==0
-    else
-        nn=nn+1;
-        triC(nn,1:3)=[glon,glat,gdep];
-        tri3(nn,1,1)=lon1;
-        tri3(nn,1,2)=lon2;
-        tri3(nn,1,3)=lon3;
-        tri3(nn,2,1)=lat1;
-        tri3(nn,2,2)=lat2;
-        tri3(nn,2,3)=lat3;
-        tri3(nn,3,1)=dep1;
-        tri3(nn,3,2)=dep2;
-        tri3(nn,3,3)=dep3;
-    end
+  lon1=slon(tri(n,1));
+  lat1=slat(tri(n,1));
+  dep1=-F(lon1,lat1)-E(lon1,lat1);%+km
+  lon2=slon(tri(n,2));
+  lat2=slat(tri(n,2));
+  dep2=-F(lon2,lat2)-E(lon2,lat2);
+  lon3=slon(tri(n,3));
+  lat3=slat(tri(n,3));
+  dep3=-F(lon3,lat3)-E(lon3,lat3);
+  
+  glon=(lon1+lon2+lon3)/3;
+  glat=(lat1+lat2+lat3)/3;
+  gdep=(dep1+dep2+dep3)/3;
+  
+  IN=inpolygon(glon,glat,bound(:,1),bound(:,2));
+  
+  if gdep==0
+  elseif IN==0
+  else
+    nn=nn+1;
+    triC(nn,1:3)=[glon,glat,gdep];
+    tri3(nn,1,1)=lon1;
+    tri3(nn,1,2)=lon2;
+    tri3(nn,1,3)=lon3;
+    tri3(nn,2,1)=lat1;
+    tri3(nn,2,2)=lat2;
+    tri3(nn,2,3)=lat3;
+    tri3(nn,3,1)=dep1;
+    tri3(nn,3,2)=dep2;
+    tri3(nn,3,3)=dep3;
+  end
 end
 tri3(nn+1:ntri,:)=[];
 triC(nn+1:ntri,:)=[];
