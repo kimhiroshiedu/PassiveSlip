@@ -4,28 +4,17 @@ function PassiveSlipKim
 % Combined by Hiroshi Kimura 2018/11/12
 
 [triC,tri3,tri,sll]=make_test_trill;
-save('/home_tmp/sasajima/DATA/PassiveSlip/PAC_test/tri','triC','tri3','tri','sll');
-load('/home_tmp/sasajima/DATA/PassiveSlip/PAC_test/tri','triC','tri3','tri','sll');
 
 ALON0=142.5;
 ALAT0=38.3;
 [trixyzC,trixyz3,sxyz]=trill2trixyz(triC,tri3,sll,ALAT0,ALON0);
-save('/home_tmp/sasajima/DATA/PassiveSlip/PAC_test/trixyz','trixyzC','trixyz3','sxyz');
-load('/home_tmp/sasajima/DATA/PassiveSlip/PAC_test/trixyz','trixyzC','trixyz3','sxyz');
 
 [sitaS,sitaD,normVec]=strike_dip(trixyzC,trixyz3);
-save('/home_tmp/sasajima/DATA/PassiveSlip/PAC_test/sita','sitaS','sitaD','normVec');
-load('/home_tmp/sasajima/DATA/PassiveSlip/PAC_test/sita','sitaS','sitaD','normVec');
-
-% figure(31); quiver(trixyzC(:,1),-trixyzC(:,2),sitaS,sitaD,1,'b')
 
 [xyz]=makexyz;
-save('/home_tmp/sasajima/DATA/PassiveSlip/PAC_test/xyz','xyz');
-load('/home_tmp/sasajima/DATA/PassiveSlip/PAC_test/xyz','xyz');
 
 % [si]=makeG_s_Q(trixyzC,trixyz3,sitaS,sitaD,normVec);
 % [di]=makeG_d_Q(trixyzC,trixyz3,sitaS,sitaD,normVec);
-
 % [si]=makeG_s_O(xyz,trixyz3);
 % [di]=makeG_d_O(xyz,trixyz3);
 
@@ -36,12 +25,8 @@ load('/home_tmp/sasajima/DATA/PassiveSlip/PAC_test/xyz','xyz');
 % [sSsn,sSdn,dSsn,dSdn]=loadMAT(trixyzC);
 
 [Slip]=defineSlipQ(triC,sitaS);
-save('/home_tmp/sasajima/DATA/MAT/sdSlip_Q1','Slip');
-load('/home_tmp/sasajima/DATA/MAT/sdSlip_Q1','Slip');
 
 [xySlip]=Slip2xyll(Slip,sitaS);
-save('/home_tmp/sasajima/DATA/MAT/xySlip_Q1','xySlip');
-load('/home_tmp/sasajima/DATA/MAT/xySlip_Q1','xySlip');
 figure(103); quiver(triC(:,1),triC(:,2),xySlip(:,1),-xySlip(:,2),'b')
 figure(101); quiver(trixyzC(:,1),-trixyzC(:,2),xySlip(:,1),-xySlip(:,2),'g')
 
@@ -54,17 +39,11 @@ ll(:,1:2)=triC(:,1:2);
 %}
 
 [A_Ssn,A_Sdn]=I_CalcStrain(Slip,sSsn,sSdn,dSsn,dSdn);
-save('/home_tmp/sasajima/DATA/MAT/A_Ssn_2','A_Ssn','A_Sdn');
-load('/home_tmp/sasajima/DATA/MAT/A_Sdn_2','A_Ssn','A_Sdn');
 figure(201); quiver(trixyzC(:,1),-trixyzC(:,2),A_Ssn,A_Sdn,5,'b')
 
 [F_Slip]=OutofAsperity01(A_Ssn,A_Sdn,Slip,sSsn,sSdn,dSsn,dSdn);
-save('/home_tmp/sasajima/DATA/MAT/FSlip','F_Slip');
-load('/home_tmp/sasajima/DATA/MAT/FSlip','F_Slip');
 
 [xyFSlip]=FSlip2xyll(F_Slip,sitaS);
-save('/home_tmp/sasajima/DATA/MAT/xyFSlip_Q1','xyFSlip');
-load('/home_tmp/sasajima/DATA/MAT/xyFSlip_Q1','xyFSlip');
 
 Fid=fopen('./QxySlip11.dat','w');
 n=size(Slip,1);
@@ -79,8 +58,6 @@ hold on
 triplot(tri,1000.*sxyz(:,1),1000.*sxyz(:,2));
 
 [F_Ssn,F_Sdn]=I_CalcStrainF(F_Slip,sSsn,sSdn,dSsn,dSdn);
-save('/home_tmp/sasajima/DATA/MAT/FStrain','F_Ssn','F_Sdn');
-load('/home_tmp/sasajima/DATA/MAT/FStrain','F_Ssn','F_Sdn');
 figure(401); quiver(trixyzC(:,1),-trixyzC(:,2),F_Ssn,F_Sdn,5,'b')
 
 absO_Ssn=abs(O_Ssn);
@@ -89,8 +66,6 @@ sumAOSsn=sum(absO_Ssn,1);
 sumAOSdn=sum(absO_Sdn,1);
 
 [FO_Ssn,FO_Sdn]=OutofAsperity11(F_Ssn,F_Sdn,Slip);
-save('/home_tmp/sasajima/DATA/MAT/FOStrain','FO_Ssn','FO_Sdn');
-load('/home_tmp/sasajima/DATA/MAT/FOStrain','FO_Ssn','FO_Sdn');
 absFO_Ssn=abs(FO_Ssn);
 absFO_Sdn=abs(FO_Sdn);
 sumF0Ssn=sum(absFO_Ssn,1);
@@ -763,24 +738,44 @@ end
 %====================================================
 %% defineslipQ.m
 function [Slip]=defineSlipQ(triC,sitaS)
-%A1=Rectangle asperity_1%
-%p=minimum X and max Y, q=max X and minimum Y%
-%y=+ wa south%
+% A1=Rectangle asperity_1%
+% p=minimum X and max Y, q=max X and minimum Y%
+% y=+ wa south%
 
-%2011 Tohoku-oki%
+% 2011 Tohoku-oki
 A1SV=1.8810;
 A1plon=143;
 A1plat=41;
 A1qlon=145;
 A1qlat=38;
 A1Slip=0.090;
+% %Hokkaido 500year
+% A1SV=1.8810;  % unknown
+% A1plon=145.0;
+% A1plat=42.2;
+% A1qlon=146.5;
+% A1qlat=41.25;
+% A1Slip=9.2;
+% %1896 Meiji Sanriku-oki
+% A1SV=1.8810;  % unknown
+% A1plon=143.7;
+% A1plat=39.6;
+% A1qlon=144.15;
+% A1qlat=38.8;
+% A1Slip=8.85;
+% %2003 Tokachi-oki
+% A1SV=1.8810;  % unknown
+% A1plon=143.65;
+% A1plat=42.2;
+% A1qlon=144.2;
+% A1qlat=41.7;
+% A1Slip=8.5;
 A1xSlip=-A1Slip.*sin(A1SV);
 A1ySlip=A1Slip.*cos(A1SV);
 
 n=size(triC,1);
 Slip=zeros(n,2);
 define=zeros(n,1);
-
 for i=1:n
   if triC(i,1)<A1plon,Slip(i,:)=[0,0];
   elseif triC(i,1)>A1qlon,Slip(i,:)=[0,0];
@@ -793,92 +788,7 @@ for i=1:n
     define(i,1)=1;
   end
 end
-%{
-%Hokkaido 500year%
-A2SV=;
-A2plon=145.0;
-A2plat=42.2;
-A2qlon=146.5;
-A2qlat=41.25;
-A2Slip=9.2;
-A2xSlip=-A2Slip.*sin(A2SV)
-A2ySlip=A2Slip.*cos(A2SV)
 
-n=size(triC,1);
-Slip=zeros(n,2);
-define=zeros(n,1);
-
- for i=1:n
-  if     define(i,1)==1;
-  elseif triC(i,1)<A2plon,Slip(i,:)=[0,0];
-  elseif triC(i,1)>A2qlon,Slip(i,:)=[0,0];
-  elseif triC(i,2)<A2qlat,Slip(i,:)=[0,0];
-  elseif triC(i,2)>A2plat,Slip(i,:)=[0,0];
-  else
-   A2sSlip=cos(sitaS(i)).*A2xSlip-sin(sitaS(i)).*A2ySlip;
-   A2dSlip=sin(sitaS(i)).*A2xSlip+cos(sitaS(i)).*A2ySlip;
-   Slip(i,:)=[A2sSlip,A2dSlip];
-   define(i,1)=[1];
-  end
- end
-
-%1896 Meiji Sanriku-oki%
-A3SV=;
-A3plon=143.7;
-A3plat=39.6;
-A3qlon=144.15;
-A3qlat=38.8;
-A3Slip=8.85;
-A3xSlip=-A3Slip.*sin(A3SV)
-A3ySlip=A3Slip.*cos(A3SV)
-
-n=size(triC,1);
-Slip=zeros(n,2);
-define=zeros(n,1);
-
- for i=1:n
-  if     define(i,1)==1;
-  elseif triC(i,1)<A3plon,Slip(i,:)=[0,0];
-  elseif triC(i,1)>A3qlon,Slip(i,:)=[0,0];
-  elseif triC(i,2)<A3qlat,Slip(i,:)=[0,0];
-  elseif triC(i,2)>A3plat,Slip(i,:)=[0,0];
-  else
-   A3sSlip=cos(sitaS(i)).*A3xSlip-sin(sitaS(i)).*A3ySlip;
-   A3dSlip=sin(sitaS(i)).*A3xSlip+cos(sitaS(i)).*A3ySlip;
-   Slip(i,:)=[A3sSlip,A3dSlip];
-   define(i,1)=[1];
-  end
- end
-
-%2003 Tokachi-oki%
-A4SV=;
-A4plon=143.65;
-A4plat=42.2;
-A4qlon=144.2;
-A4qlat=41.7;
-A4Slip=8.5;
-A4xSlip=-A4Slip.*sin(A3SV)
-A4ySlip=A4Slip.*cos(A3SV)
-
-n=size(triC,1);
-Slip=zeros(n,2);
-define=zeros(n,1);
-
- for i=1:n
-  if     define(i,1)==1;
-  elseif triC(i,1)<A4plon,Slip(i,:)=[0,0];
-  elseif triC(i,1)>A4qlon,Slip(i,:)=[0,0];
-  elseif triC(i,2)<A4qlat,Slip(i,:)=[0,0];
-  elseif triC(i,2)>A4plat,Slip(i,:)=[0,0];
-  else
-   A4sSlip=cos(sitaS(i)).*A4xSlip-sin(sitaS(i)).*A4ySlip;
-   A4dSlip=sin(sitaS(i)).*A4xSlip+cos(sitaS(i)).*A4ySlip;
-   Slip(i,:)=[A4sSlip,A4dSlip];
-   define(i,1)=[1];
-  end
- end 
-
-%}
 end
 
 %==============================================================
@@ -1616,203 +1526,6 @@ for w=1:nn
   for u=1:3
     fprintf(Fid6,'%10.4f %9.4f %10.4f\n',tri3(w,1,u),tri3(w,2,u),tri3(w,3,u));
   end
-end
-fclose(Fid6);
-
-end
-%% make_trill.m
-%====================================================
-function [triC,tri3,tri,sll]=make_trill
-%by Ryohei Sasajima 2013/12/23
-%====================================================
-%====================================================
-Fid0=fopen('/home/sasajima/Dropbox/yellow/PACdepth201312.txt','r');
-dep_main=textscan(Fid0,'%f %f %f');
-fclose(Fid0);
-dep_main=cell2mat(dep_main);
-%====================================================
-Fid00=fopen('/home/sasajima/Dropbox/yellow/depth0_1402.txt','r');
-dep_sub=textscan(Fid00,'%f %f %f');
-fclose(Fid00);
-dep_sub=cell2mat(dep_sub);
-%===================================================
-%====================================================
-Fid1=fopen('/home/sasajima/Dropbox/yellow/PAC_all.txt','r');
-bound=textscan(Fid1,'%f %f');
-fclose(Fid1);
-bound=cell2mat(bound);
-
-Fid2=fopen('/home/sasajima/Dropbox/yellow/PAC_blue.txt','r');
-PACblue=textscan(Fid2,'%f %f');
-fclose(Fid2);
-PACblue=cell2mat(PACblue);
-
-Fid3=fopen('/home/sasajima/Dropbox/yellow/PAC_green.txt','r');
-PACgreen=textscan(Fid3,'%f %f');
-fclose(Fid3);
-PACgreen=cell2mat(PACgreen);
-
-Fid4=fopen('/home_tmp/sasajima/DATA/blue.dat','r');
-mblue=textscan(Fid4,'%f %f');
-fclose(Fid4);
-mblue=cell2mat(mblue);
-bb=size(mblue,1);
-
-Fid5=fopen('/home_tmp/sasajima/DATA/green.dat','r');
-mgreen=textscan(Fid5,'%f %f');
-fclose(Fid5);
-mgreen=cell2mat(mgreen);
-gg=size(mgreen,1);
-
-Fid7=fopen('/home/sasajima/Dropbox/yellow/PAC_red.txt','r');
-PACred=textscan(Fid7,'%f %f');
-fclose(Fid7);
-PACred=cell2mat(PACred);
-
-Fid8=fopen('/home/sasajima/Dropbox/yellow/PAC_black.txt','r');
-PACblack=textscan(Fid8,'%f %f');
-fclose(Fid8);
-PACblack=cell2mat(PACblack);
-
-Fid9=fopen('/home_tmp/sasajima/DATA/red.dat','r');
-mred=textscan(Fid9,'%f %f');
-fclose(Fid9);
-mred=cell2mat(mred);
-rr=size(mred,1);
-
-Fid10=fopen('/home_tmp/sasajima/DATA/black.dat','r');
-mblack=textscan(Fid10,'%f %f');
-fclose(Fid10);
-mblack=cell2mat(mblack);
-blbl=size(mblack,1);
-
-Fid11=fopen('/home_tmp/sasajima/DATA/m_all.dat','r');
-mall=textscan(Fid11,'%f %f');
-fclose(Fid11);
-mall=cell2mat(mall);
-alal=size(mall,1);
-
-s=0;
-for r=1:rr
-    Red=inpolygon(mred(r,1),mred(r,2),PACred(:,1),PACred(:,2));
-    if Red==0
-    else
-        s=s+1;
-        slon(s,1)=mred(r,1);
-        slat(s,1)=mred(r,2);
-    end
-end
-
-sred=s;
-
-for b=1:bb
-    Blue=inpolygon(mblue(b,1),mblue(b,2),PACblue(:,1),PACblue(:,2));
-    BRed=inpolygon(mblue(b,1),mblue(b,2),PACred(:,1),PACred(:,2));
-    if (Blue==1)&&(BRed==0)
-        s=s+1;
-        slon(s,1)=mblue(b,1);
-        slat(s,1)=mblue(b,2);
-    else
-    end
-end
-
-sblue=s-sred;
-
-for g=1:gg
-    Green=inpolygon(mgreen(g,1),mgreen(g,2),PACgreen(:,1),PACgreen(:,2));
-    GBlue=inpolygon(mgreen(g,1),mgreen(g,2),PACblue(:,1),PACblue(:,2));
-    if (Green==1)&&(GBlue==0)
-        s=s+1;
-        slon(s,1)=mgreen(g,1);
-        slat(s,1)=mgreen(g,2);
-    else
-    end
-end
-
-sgreen=s-sred-sblue;
-
-for bl=1:blbl
-    Black=inpolygon(mblack(bl,1),mblack(bl,2),PACblack(:,1),PACblack(:,2));
-    BlGreen=inpolygon(mblack(bl,1),mnlack(bl,2),PACgreen(:,1),PACgreen(:,2));
-    if (Black==1)&&(BlGreen==0)
-        s=s+1;
-        slon(s,1)=mblack(bl,1);
-        slat(s,1)=mblack(bl,2);
-    else
-    end
-end
-
-sblack=s-sred-sblue-sgreen;
-
-
-for al=1:alal
-    All=inpolygon(mall(al,1),mall(al,2),bound(:,1),bound(:,2));
-    AlBlack=inpolygon(mall(al,1),mall(al,2),PACblack(:,1),PACblack(:,2));
-    if (All==1)&&(AlBlack==0)
-        s=s+1;
-        slon(s,1)=mall(al,1);
-        slat(s,1)=mall(al,2);
-    else
-    end
-end
-
-soutblack=s-sred-sblue-sgreen-sblack;
-sall=s;
-pause
-
-sll(:,1:2)=[slon(:,1),slat(:,1)];
-
-%====================================================
-tri = delaunay(slon,slat);
-%====================================================
-ntri=length(tri);
-E=scatteredInterpolant(dep_main(:,1),dep_main(:,2),dep_main(:,3),'natural');%depth of interplate -km
-F=scatteredInterpolant(dep_sub(:,1),dep_sub(:,2),dep_sub(:,3),'natural');%depth of seafloor -km
-
-tri3=zeros(ntri,3,3);
-triC=zeros(ntri,3);
-nn=0;
-for n=1:ntri
-  lon1=slon(tri(n,1));
-  lat1=slat(tri(n,1));
-  dep1=-F(lon1,lat1)-E(lon1,lat1);%+km
-  lon2=slon(tri(n,2));
-  lat2=slat(tri(n,2));
-  dep2=-F(lon2,lat2)-E(lon2,lat2);
-  lon3=slon(tri(n,3));
-  lat3=slat(tri(n,3));
-  dep3=-F(lon3,lat3)-E(lon3,lat3);
-  
-  glon=(lon1+lon2+lon3)/3;
-  glat=(lat1+lat2+lat3)/3;
-  gdep=(dep1+dep2+dep3)/3;
-  
-  IN=inpolygon(glon,glat,bound(:,1),bound(:,2));
-  
-  if gdep==0
-  elseif IN==0
-  else
-    nn=nn+1;
-    triC(nn,1:3)=[glon,glat,gdep];
-    tri3(nn,1,1)=lon1;
-    tri3(nn,1,2)=lon2;
-    tri3(nn,1,3)=lon3;
-    tri3(nn,2,1)=lat1;
-    tri3(nn,2,2)=lat2;
-    tri3(nn,2,3)=lat3;
-    tri3(nn,3,1)=dep1;
-    tri3(nn,3,2)=dep2;
-    tri3(nn,3,3)=dep3;
-  end
-end
-tri3(nn+1:ntri,:)=[];
-triC(nn+1:ntri,:)=[];
-
-Fid6=fopen('/home_tmp/sasajima/DATA/PAC_tri3.txt','w');
-for w=1:nn
-    for u=1:3
-        fprintf(Fid6,'%10.4f %9.4f %10.4f\n',tri3(w,1,u),tri3(w,2,u),tri3(w,3,u));
-    end
 end
 fclose(Fid6);
 
