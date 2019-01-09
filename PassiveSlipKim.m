@@ -19,15 +19,18 @@ load('/home_tmp/sasajima/DATA/PassiveSlip/PAC_test/sita','sitaS','sitaD','normVe
 
 % figure(31); quiver(trixyzC(:,1),-trixyzC(:,2),sitaS,sitaD,1,'b')
 
-[si]=makeG_s_Q(trixyzC,trixyz3,sitaS,sitaD,normVec);
-[di]=makeG_d_Q(trixyzC,trixyz3,sitaS,sitaD,normVec);
-
 [xyz]=makexyz;
 save('/home_tmp/sasajima/DATA/PassiveSlip/PAC_test/xyz','xyz');
 load('/home_tmp/sasajima/DATA/PassiveSlip/PAC_test/xyz','xyz');
 
-[si]=makeG_s_O(xyz,trixyz3);
-[di]=makeG_d_O(xyz,trixyz3);
+% [si]=makeG_s_Q(trixyzC,trixyz3,sitaS,sitaD,normVec);
+% [di]=makeG_d_Q(trixyzC,trixyz3,sitaS,sitaD,normVec);
+
+% [si]=makeG_s_O(xyz,trixyz3);
+% [di]=makeG_d_O(xyz,trixyz3);
+
+[gu]=makeGreenDisp(xyz,trixyz3);
+[gs]=makeGreenStrain(trixyzC,trixyz3,sitaS,sitaD,normVec);
 
 [sUxyz,dUxyz]=loadMAT2(xyz);
 [sSsn,sSdn,dSsn,dSdn]=loadMAT(trixyzC);
@@ -1011,7 +1014,7 @@ for i=1:n
 end
 end
 %% make Green's function of displacement
-function[gu]=makeGreenDisp(xyz,trixyz3)
+function [gu]=makeGreenDisp(xyz,trixyz3)
 % This function make Green's function of displacement (gu).
 % Input
 %  xyz     : site location.
@@ -1050,7 +1053,7 @@ end
 
 end
 %% make Green's function of strain
-function[gs]=makeGreenStrain(trixyzC,trixyz3,sitaS,sitaD,normVec)
+function [gs]=makeGreenStrain(trixyzC,trixyz3,sitaS,sitaD,normVec)
 % This function make Green's function of strain (gs).
 % Input
 %  trixyzC : center of trimesh.
@@ -1102,19 +1105,6 @@ end
 function[gsf]=trans_xyz2strdip(gsx,sitaS,sitaD)
 % This function transforms a strain tensor from xyz to fault strike-dip.
 % 
-% E_stdp = Tx * Tz * E_xyz * Tz' * Tx'
-% <->
-% | exx' exy' exz' |   | 1   0  0 |   |  c1 s1 0 |   | exx exy exz |   |  c1 s1 0 |T  | 1   0  0 |T
-% | eyx' eyy' eyz' | = | 0  c2 s2 | * | -s1 c1 0 | * | eyx eyy eyz | * | -s1 c1 0 | * | 0  c2 s2 |
-% | ezx' ezy' ezz' |   | 0 -s2 c2 |   |   0  0 1 |   | ezx ezy ezz |   |   0  0 1 |   | 0 -s2 c2 |
-% where 
-% c1 : cos(strike)
-% s1 : sin(strike)
-% c2 : cos(dip)
-% s2 : sin(dip)
-% Note strike is the counter clock wise angle from x-axis, dip is angle
-% from xy-plane. "T" indicates the transpose of matrix.
-% 
 % Output
 % gsf.ss : strain of strike direction on the fault due to strike slip.
 % gsf.sd : strain of dip direction on the fault due to strike slip.
@@ -1155,6 +1145,19 @@ gsf.dt=sts;
 end
 %%
 function[sst,sdp,sts]=calctrans(sxyz,c1,s1,c2,s2)
+% E_stdp = Tx * Tz * E_xyz * Tz' * Tx'
+% <->
+% |exx' exy' exz'| |1   0  0| | c1 s1 0| |exx exy exz| | c1 s1 0|T |1   0  0|T
+% |eyx' eyy' eyz'|=|0  c2 s2|*|-s1 c1 0|*|eyx eyy eyz|*|-s1 c1 0| *|0  c2 s2|
+% |ezx' ezy' ezz'| |0 -s2 c2| |  0  0 1| |ezx ezy ezz| |  0  0 1|  |0 -s2 c2|
+% where 
+% c1 : cos(strike)
+% s1 : sin(strike)
+% c2 : cos(dip)
+% s2 : sin(dip)
+% Note strike is the counter clock wise angle from x-axis, dip is angle
+% from xy-plane. "T" indicates the transpose of matrix.
+
 c1_2 = c1.^2;
 c2_2 = c2.^2;
 s1_2 = s1.^2;
