@@ -827,27 +827,6 @@ A1plat=41;
 A1qlon=145;
 A1qlat=38;
 A1Slip=0.090;
-% %Hokkaido 500year
-% A1SV=1.8810;  % unknown
-% A1plon=145.0;
-% A1plat=42.2;
-% A1qlon=146.5;
-% A1qlat=41.25;
-% A1Slip=9.2;
-% %1896 Meiji Sanriku-oki
-% A1SV=1.8810;  % unknown
-% A1plon=143.7;
-% A1plat=39.6;
-% A1qlon=144.15;
-% A1qlat=38.8;
-% A1Slip=8.85;
-% %2003 Tokachi-oki
-% A1SV=1.8810;  % unknown
-% A1plon=143.65;
-% A1plat=42.2;
-% A1qlon=144.2;
-% A1qlat=41.7;
-% A1Slip=8.5;
 A1xSlip=-A1Slip.*sin(A1SV);
 A1ySlip=A1Slip.*cos(A1SV);
 
