@@ -788,7 +788,86 @@ for i=1:n
 end
 
 end
+%====================================================
+%% Make patches of locked asperity
+function [Slip]=MakeSlipPatch(triC,sitaS)
+% Read file of locked patch definition
+fid=fopen(prm.patch,'r');
+np = 0;
+nf = 0;
+while 1
+  tline = fgetl(fid);
+  if ~ischar(tline)
+    break
+  end
+  nf  = nf + 1;
+  tmp = strsplit(tline);
+  tmp = str2double(tmp);
+  if isnan(tmp)
+    np = np + 1;
+    nf = 0;
+  else
+    Slip.patch(np+1).lon(nf) = tmp(1);
+    Slip.patch(np+1).lat(nf) = tmp(2);
+  end
+end
+fclose(fid);
 
+% Generate locked patch
+
+
+% A1=Rectangle asperity_1%
+% p=minimum X and max Y, q=max X and minimum Y%
+% y=+ wa south%
+
+% 2011 Tohoku-oki
+A1SV=1.8810;
+A1plon=143;
+A1plat=41;
+A1qlon=145;
+A1qlat=38;
+A1Slip=0.090;
+% %Hokkaido 500year
+% A1SV=1.8810;  % unknown
+% A1plon=145.0;
+% A1plat=42.2;
+% A1qlon=146.5;
+% A1qlat=41.25;
+% A1Slip=9.2;
+% %1896 Meiji Sanriku-oki
+% A1SV=1.8810;  % unknown
+% A1plon=143.7;
+% A1plat=39.6;
+% A1qlon=144.15;
+% A1qlat=38.8;
+% A1Slip=8.85;
+% %2003 Tokachi-oki
+% A1SV=1.8810;  % unknown
+% A1plon=143.65;
+% A1plat=42.2;
+% A1qlon=144.2;
+% A1qlat=41.7;
+% A1Slip=8.5;
+A1xSlip=-A1Slip.*sin(A1SV);
+A1ySlip=A1Slip.*cos(A1SV);
+
+n=size(triC,1);
+Slip=zeros(n,2);
+define=zeros(n,1);
+for i=1:n
+  if triC(i,1)<A1plon,Slip(i,:)=[0,0];
+  elseif triC(i,1)>A1qlon,Slip(i,:)=[0,0];
+  elseif triC(i,2)<A1qlat,Slip(i,:)=[0,0];
+  elseif triC(i,2)>A1plat,Slip(i,:)=[0,0];
+  else
+    A1sSlip=cos(sitaS(i)).*A1xSlip-sin(sitaS(i)).*A1ySlip;
+    A1dSlip=sin(sitaS(i)).*A1xSlip+cos(sitaS(i)).*A1ySlip;
+    Slip(i,:)=[A1sSlip,A1dSlip];
+    define(i,1)=1;
+  end
+end
+
+end
 %% make Green's function of displacement
 function [Gu]=makeGreenDisp(xyz,trixyz3)
 % This function make Green's function of displacement (Gu).
