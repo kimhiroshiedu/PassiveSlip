@@ -2,6 +2,7 @@
 function PassiveSlipKim
 % Coded by Ryohei Sasajima final 2013/12/23
 % Combined by Hiroshi Kimura 2018/11/12
+prm.obsfile='synthetic_site.txt';
 
 [triC,tri3,tri,sll]=make_test_trill;
 
@@ -11,9 +12,10 @@ ALAT0=38.3;
 
 [sitaS,sitaD,normVec]=strike_dip(trixyzC,trixyz3);
 
-[xyz]=makexyz;
+% [xyz]=makexyz;
+[obs]=ReadObs(prm);
 
-[Gu]=makeGreenDisp(xyz,trixyz3);
+[Gu]=makeGreenDisp(obs,trixyz3);
 [Gs]=makeGreenStrain(trixyzC,trixyz3,sitaS,sitaD,normVec);
 sUxyz=Gu.st;
 dUxyz=Gu.dp;
@@ -69,6 +71,15 @@ absFO_Sdn=abs(FO_Sdn);
 sumF0Ssn=sum(absFO_Ssn,1);
 sumF0Sdn=sum(absFO_Sdn,1);
 
+end
+
+%% Read Observation file
+function [obs] = ReadObs(prm)
+fid = fopen(prm.obsfile,'r');
+tmp = fscanf(fid,'%f %f %f\n',[3 Inf]);
+obs.x = tmp(1,:);
+obs.y = tmp(2,:);
+obs.z = tmp(3,:);
 end
 
 %% CalcTriDisps.m
@@ -848,7 +859,7 @@ end
 
 end
 %% make Green's function of displacement
-function [Gu]=makeGreenDisp(xyz,trixyz3)
+function [Gu]=makeGreenDisp(obs,trixyz3)
 % This function make Green's function of displacement (Gu).
 % Input
 %  xyz     : site location.
@@ -860,11 +871,15 @@ function [Gu]=makeGreenDisp(xyz,trixyz3)
 %  *Each matrix (Gu.*) contain 3 x NOBS by NFLT elements.
 
 pr  =0.25; % Poisson's ratio
-nobs=size(xyz,1);
+nobs=size(obs.x,2);
+% nobs=size(xyz,1);
 nflt=size(trixyz3,1);
-sx  =xyz(:,1);
-sy  =xyz(:,2);
-sz  =zeros(nobs,1);
+sx  =obs.x';
+sy  =obs.y';
+sz  =obs.z';
+% sx  =xyz(:,1);
+% sy  =xyz(:,2);
+% sz  =zeros(nobs,1);
 
 for n=1:nflt
     trix=[trixyz3(n,1),trixyz3(n,4),trixyz3(n,7)];
