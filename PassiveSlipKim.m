@@ -110,6 +110,26 @@ function [tri] = MakeInterfaceTri(prm)
 load(prm.interface)
 tri=mesh;
 [tri.lat,tri.lon] = XYTPL(tri.lat,tri.lon,prm.ALAT0,prm.ALON0);
+
+fid = fopen(prm.interface,'r');
+nf=0;
+blon=zeros(1,3);
+blat=zeros(1,3);
+bdep=zeros(1,3);
+while 1
+  nf = nf+1;
+  tmp = fscanf(fid,'%f %f %f \n', [3 3]);
+  tline = fgetl(fid); if ~ischar(tline); break; end
+  blon(nf,:) = tmp(1,:);  % Lon
+  blat(nf,:) = tmp(2,:);  % Lat
+  bdep(nf,:) = tmp(3,:);  % Hight
+  tline = fgetl(fid); if ~ischar(tline); break; end
+end
+
+
+
+
+
 end
 
 %% CalcTriDisps.m
@@ -889,7 +909,7 @@ end
 
 end
 %% make Green's function of displacement
-function [Gu]=makeGreenDisp(obs,trixyz3)
+function [Gu]=makeGreenDisp(obs,trixyz3,tri)
 % This function make Green's function of displacement (Gu).
 % Input
 %  xyz     : site location.
