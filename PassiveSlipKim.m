@@ -2,7 +2,14 @@
 function PassiveSlipKim
 % Coded by Ryohei Sasajima final 2013/12/23
 % Combined by Hiroshi Kimura 2018/11/12
-prm.obsfile='synthetic_site.txt';
+%--- test
+prm.obsfile = 'OBSDATA/synthetic_site.txt';
+prm.patchfile = 'PATCH/synthetic_locked_patch.txt';
+prm.interface = 'INTERFACE/synthetic_mesh.mat';
+prm.epole = 'PARAMETER/euler_pole_test.txt';
+prm.alon0 = 0;
+prm.alat0 = 0;
+%--
 
 [triC,tri3,tri,sll]=make_test_trill;
 
@@ -13,10 +20,12 @@ ALAT0=38.3;
 [sitaS,sitaD,normVec]=strike_dip(trixyzC,trixyz3);
 
 % [xyz]=makexyz;
-[obs]=ReadObs(prm);
+[obs] = ReadObs(prm);
+[eul] = ReadEulerPole(prm);
+[tri] = MakeInterfaceTri(prm);
 
-[Gu]=makeGreenDisp(obs,trixyz3);
-[Gs]=makeGreenStrain(trixyzC,trixyz3,sitaS,sitaD,normVec);
+[Gu] = makeGreenDisp(obs,trixyz3);
+[Gs] = makeGreenStrain(trixyzC,trixyz3,sitaS,sitaD,normVec);
 sUxyz=Gu.st;
 dUxyz=Gu.dp;
 sSsn=Gs.stst;
@@ -75,11 +84,32 @@ end
 
 %% Read Observation file
 function [obs] = ReadObs(prm)
+% test version coded by H.Kimura 2019/1/24
 fid = fopen(prm.obsfile,'r');
 tmp = fscanf(fid,'%f %f %f\n',[3 Inf]);
 obs.x = tmp(1,:);
 obs.y = tmp(2,:);
 obs.z = tmp(3,:);
+[obs.lat,obs.lon] = XYTPL(obs.x,obs.y,prm.ALAT0,prm.ALON0);
+end
+
+%% Read Euler Pole file
+function [eul] = ReadEulerPole(prm)
+% test version coded by H.Kimura 2019/1/24
+fid = fopen(prm.epole,'r');
+tmp = fscanf(fid,'%i $f %f %f \n',[4 Inf]);
+eul.flag = tmp(1,:);
+eul.lon  = tmp(2,:);
+eul.lat  = tmp(3,:);
+eul.rot  = 1e-6.*deg2rad(tmp(4,:));
+end
+
+%% Make Trimesh of plate interface
+function [tri] = MakeInterfaceTri(prm)
+% test version coded by H.Kimura 2019/1/24
+load(prm.interface)
+tri=mesh;
+[tri.lat,tri.lon] = XYTPL(tri.lat,tri.lon,prm.ALAT0,prm.ALON0);
 end
 
 %% CalcTriDisps.m
@@ -1326,4 +1356,30 @@ C1   = D./R;
 C2   = D./AN;
 Y    = (PH1-ALAT0)./C1;
 X    = (AL.*CLAT)./C2+(AL.^3.*CLAT.*cos(2.0.*RLAT))./(6.0.*C2.*D.^2);
+end
+%% XYTPL
+%====================================================
+function [LAT,LON]=XYTPL(X,Y,ALAT0,ALON0)
+%-------------------------------------------------------------------------
+%  PLTXY TRANSFORMS (X,Y) TO (ALAT,ALONG)
+%  TRANSFORMATION  BETWEEN (X,Y) AND (ALAT,ALONG).
+%-------------------------------------------------------------------------
+A=6.378160e3;
+E2=6.6944541e-3;
+E12=6.7395719e-3;
+D=5.72958e1;
+RD=1.0/D;
+RLATO = ALAT0.*RD;
+SLATO = sin(RLATO);
+R     = A.*(1-E2)./sqrt((1-E2.*SLATO.^2).^3);
+AN    = A./sqrt(1.0-E2.*SLATO.^2);
+V2    = 1 + E12.*cos(RLATO).^2;
+C1    = D./R;
+C2    = D./AN;
+PH1   = ALAT0+C1.*Y;
+RPH1  = PH1.*RD;
+TPHI1 = tan(RPH1);
+CPHI1 = cos(RPH1);
+LAT   = PH1-(C2.*X).^2.*V2.*TPHI1./(2.*D);
+LON   = ALON0+C2.*X./CPHI1-(C2.*X).^3.*(1.0+2.*TPHI1.^2)./(6.*D.^2.*CPHI1);
 end
