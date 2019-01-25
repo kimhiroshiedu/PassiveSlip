@@ -20,6 +20,7 @@ ALAT0=38.3;
 [sitaS,sitaD,normVec]=strike_dip(trixyzC,trixyz3);
 
 % [xyz]=makexyz;
+% [prm] = ReadParameter(prm);
 [obs] = ReadObs(prm);
 [eul] = ReadEulerPole(prm);
 [tri] = MakeInterfaceTri(prm);
@@ -82,6 +83,11 @@ sumF0Sdn=sum(absFO_Sdn,1);
 
 end
 
+%% Read Parameter configuration file
+function [prm] = ReadParameter(prm)
+% test version coded by H.Kimura 2019/1/25
+end
+
 %% Read Observation file
 function [obs] = ReadObs(prm)
 % test version coded by H.Kimura 2019/1/24
@@ -101,21 +107,24 @@ tmp = fscanf(fid,'%i $f %f %f \n',[4 Inf]);
 eul.flag = tmp(1,:);
 eul.lon  = tmp(2,:);
 eul.lat  = tmp(3,:);
-eul.rot  = 1e-6.*deg2rad(tmp(4,:));
+eul.rot  = tmp(4,:);
+eul.wx = 1e-6.*deg2rad(eul.rot) .* cos(deg2rad(eul.lat)) .* cos(deg2rad(eul.lon));
+eul.wx = 1e-6.*deg2rad(eul.rot) .* cos(deg2rad(eul.lat)) .* sin(deg2rad(eul.lon));
+eul.wx = 1e-6.*deg2rad(eul.rot) .* sin(deg2rad(eul.lat));
 end
 
 %% Make Trimesh of plate interface
 function [tri] = MakeInterfaceTri(prm)
 % test version coded by H.Kimura 2019/1/24
 load(prm.interface)
-tri=mesh;
+tri = mesh;
 [tri.lat,tri.lon] = XYTPL(tri.lat,tri.lon,prm.ALAT0,prm.ALON0);
 
 fid = fopen(prm.interface,'r');
-nf=0;
-blon=zeros(1,3);
-blat=zeros(1,3);
-bdep=zeros(1,3);
+nf = 0;
+blon = zeros(1,3);
+blat = zeros(1,3);
+bdep = zeros(1,3);
 while 1
   nf = nf+1;
   tmp = fscanf(fid,'%f %f %f \n', [3 3]);
