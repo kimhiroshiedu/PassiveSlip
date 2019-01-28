@@ -3,6 +3,7 @@ function PassiveSlipKim
 % Coded by Ryohei Sasajima final 2013/12/23
 % Combined by Hiroshi Kimura 2018/11/12
 %--- test
+prm.input = 'PARAMETER/parameter_test.txt';
 prm.obsfile = 'OBSDATA/synthetic_site.txt';
 prm.patchfile = 'PATCH/synthetic_locked_patch.txt';
 prm.interface = 'INTERFACE/synthetic_mesh.mat';
@@ -20,7 +21,7 @@ ALAT0=38.3;
 [sitaS,sitaD,normVec]=strike_dip(trixyzC,trixyz3);
 
 % [xyz]=makexyz;
-% [prm] = ReadParameter(prm);
+[prm] = ReadParameters(prm);
 [obs] = ReadObs(prm);
 [eul] = ReadEulerPole(prm);
 [tri] = MakeInterfaceTri(prm);
@@ -84,8 +85,64 @@ sumF0Sdn=sum(absFO_Sdn,1);
 end
 
 %% Read Parameter configuration file
-function [prm] = ReadParameter(prm)
-% test version coded by H.Kimura 2019/1/25
+function [prm] = ReadParameters(prm)
+% MCMC Inversion for Geodetic 
+% Coded    by Takeo Ito 2011/11/08 (ver 1.0)
+% Modified by Takeo Ito 2012/10/26 (ver 1.1)
+% Modified by Takeo Ito 2015/11/11 (ver 1.2)
+% Modified by Takeo Ito 2016/07/06 (ver 1.3)
+% Modified by Hiroshi Kimura 2018/04/06 (ver 1.4)
+% Modified by Hiroshi Kimura 2019/01/28 (ver 2.0)
+%
+fid = fopen(prm.input,'r');
+fileobs            = fscanf(fid,'%s \n',[1,1]); [~] = fgetl(fid);
+dirblock           = fscanf(fid,'%s \n',[1,1]); [~] = fgetl(fid);
+dirblock_interface = fscanf(fid,'%s \n',[1,1]); [~] = fgetl(fid);
+filepole           = fscanf(fid,'%s \n',[1,1]); [~] = fgetl(fid);
+filerigb           = fscanf(fid,'%s \n',[1,1]); [~] = fgetl(fid);
+fileinternal       = fscanf(fid,'%s \n',[1,1]); [~] = fgetl(fid);
+dirresult          = fscanf(fid,'%s \n',[1,1]); [~] = fgetl(fid);
+prm.home_d = pwd;
+prm.fileobs            = fullfile(prm.home_d,fileobs);
+prm.dirblock           = fullfile(prm.home_d,dirblock);
+prm.dirblock_interface = fullfile(prm.home_d,dirblock_interface);
+prm.filepole           = fullfile(prm.home_d,filepole);
+prm.filerigb           = fullfile(prm.home_d,filerigb);
+prm.fileinternal       = fullfile(prm.home_d,fileinternal);
+prm.dirresult          = fullfile(prm.home_d,dirresult);
+%
+prm.gpu = fscanf(fid,'%d \n',[1,1]); [~] = fgetl(fid);
+prm.itr = fscanf(fid,'%d \n',[1,1]); [~] = fgetl(fid);
+prm.thr = fscanf(fid,'%d \n',[1,1]); [~] = fgetl(fid);
+prm.cha = fscanf(fid,'%d \n',[1,1]); [~] = fgetl(fid);
+prm.kep = fscanf(fid,'%d \n',[1,1]); [~] = fgetl(fid);
+prm.rwd = fscanf(fid,'%f \n',[1,1]);
+fclose(fid);
+%====================================================
+tmp = load(input.optfile);
+prm.num    = size(tmp,1);
+prm.optb1  = tmp(:,1);
+prm.optb2  = tmp(:,2);
+prm.optint = tmp(:,3);
+%====================================================
+fprintf('==================\nINPUT PARAMETERS\n==================\n') 
+fprintf('HOME_D                    : %s \n',prm.home_d) 
+fprintf('FileOBS                   : %s \n',prm.fileobs) 
+fprintf('DIRBlock                  : %s \n',prm.dirblock)
+fprintf('DIRBlock_Interface        : %s \n',prm.dirblock_interface) 
+fprintf('File fixed epole          : %s \n',prm.filepole) 
+fprintf('File Rigid boundary       : %s \n',prm.filerigb) 
+fprintf('File Internal deformation : %s \n',prm.fileinternal) 
+fprintf('DIRResult                 : %s \n',prm.dirresult) 
+fprintf('GPUdev (CPU:99)           : %i \n',prm.gpu) 
+fprintf('ITR(Max_Nitr)             : %i \n',prm.itr) 
+fprintf('ITR(Threshold_Nitr)       : %i \n',prm.thr) 
+fprintf('CHA(Chain)                : %i \n',prm.cha) 
+fprintf('KEP(KEEP)                 : %i \n',prm.kep) 
+fprintf('RWD(Walk_dis)             : %4.2f \n',prm.rwd) 
+fprintf('==================\n') 
+%====================================================
+disp('PASS READ_PARAMETERS')
 end
 
 %% Read Observation file
