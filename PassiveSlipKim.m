@@ -198,6 +198,215 @@ end
 
 end
 
+%% Read block boundary data
+function [blk,obs]=ReadBlockBound(folder,obs)
+ext = '*.txt';
+file = dir([folder,'/',ext]);
+[nblock,~] = size(file);
+blk(1).nblock = nblock;
+for nb = 1:blk(1).nblock
+  tmp = load(fullfile(folder,file(nb).name));
+  blk(nb).name = file(nb).name;
+  blk(nb).lon  = tmp(:,1);
+  blk(nb).lat  = tmp(:,2);
+end
+fprintf('READ BLOCK FILES : %4i \n',blk(1).nblock)
+for nb1 = 1:blk(1).nblock
+  for nb2 = nb1+1:blk(1).nblock
+    blk(1).bound(nb1,nb2).lat = [];
+    blk(1).bound(nb1,nb2).lon = [];
+    lca = inpolygon(blk(nb1).lon,blk(nb1).lat,blk(nb2).lon,blk(nb2).lat);
+    ca  = find(lca);
+    if ~isempty(ca) && sum(lca)~=1
+      if and(lca(1),lca(end))
+        ca0 = find(lca~=true,1,'last')+1:length(lca)-1;
+        ca1 = 1:find(lca~=true,1,'first')-1;
+        ca  = [ca0 ca1];
+      end
+      blk(1).bound(nb1,nb2).lat  = blk(nb1).lat(ca);
+      blk(1).bound(nb1,nb2).lon  = blk(nb1).lon(ca);
+      blk(1).bound(nb1,nb2).bxyz = conv2ell(blk(1).bound(nb1,nb2).lat,blk(1).bound(nb1,nb2).lon,zeros(size(blk(1).bound(nb1,nb2).lon)));
+    end
+  end
+end
+%
+for n = 1:blk(1).nblock
+  ind = inpolygon(obs(1).alon,obs(1).alat,blk(n).lon,blk(n).lat);
+  obs(1).ablk(ind) = n;
+  obs(n).nblk = sum(ind);
+  obs(n).lat  = obs(1).alat(ind);
+  obs(n).lon  = obs(1).alon(ind);
+  obs(n).hig  = obs(1).ahig(ind);
+  obs(n).eve  = obs(1).evec(ind);
+  obs(n).nve  = obs(1).nvec(ind);
+  obs(n).hve  = obs(1).hvec(ind);
+  obs(n).eer  = obs(1).eerr(ind);
+  obs(n).ner  = obs(1).nerr(ind);
+  obs(n).her  = obs(1).herr(ind);
+  obs(n).wgt  = obs(1).weight(ind);
+  obs(n).oxyz = conv2ell(obs(n).lat,obs(n).lon,obs(n).hig);
+  obs(n).vne  = reshape([obs(1).evec(ind); obs(1).nvec(ind)],obs(n).nblk.*2,1);
+  obs(n).ver  = reshape([obs(1).eerr(ind); obs(1).nerr(ind)],obs(n).nblk.*2,1);
+  obs(n).vww  = reshape([obs(1).weight(ind)./(obs(1).eerr(ind).^2); obs(1).weight(ind)./(obs(1).nerr(ind).^2)],obs(n).nblk.*2,1);
+end
+end
+
+%% Read Plate interface
+function [blk] = ReadBlockInterface(blk,prm)
+% Coded by Takeo Ito 2016/12/21 (ver 1.0)
+%
+int_tri       =   50;
+dep_limit     = -100;
+dep_limit_low =  -20;
+dirblk        = prm.dirblock_interface;
+blk(1).nb = 0;
+for nb1 = 1:blk(1).nblock
+  for nb2 = nb1+1:blk(1).nblock
+    blk(1).bound(nb1,nb2).type = 1;
+    pre_tri_f = fullfile(dirblk,['trib_',num2str(nb1),'_',num2str(nb2),'.txt']); 
+    fid = fopen(pre_tri_f,'r');
+    if fid >= 0
+      fprintf('block interface: %2i  %2i \n',nb1,nb2)
+      fprintf('read interface tri boudary file : %s \n',pre_tri_f)
+      nf   = 0;
+      blon = zeros(1,3);
+      blat = zeros(1,3);
+      bdep = zeros(1,3);
+      while 1
+        nf    = nf+1;
+        loc_f = fscanf(fid,'%f %f %f \n', [3 3]);
+        tline = fgetl(fid); if ~ischar(tline); break; end
+        blon(nf,:) = loc_f(1,:);  % lon
+        blat(nf,:) = loc_f(2,:);  % lat
+        bdep(nf,:) = loc_f(3,:);  % hight
+        tline = fgetl(fid); if ~ischar(tline); break; end
+      end
+      fclose(fid);
+      bo_tri_f = fullfile(dirblk,['tribo_',num2str(nb1),'_',num2str(nb2),'.txt']); 
+      fid = fopen(bo_tri_f,'r');
+      if fid >= 0
+        bound_blk = textscan(fid,'%f%f'); fclose(fid);
+        bound_blk = cell2mat(bound_blk);
+        bslon = mean(blon,2);
+        bslat = mean(blat,2);
+        id = inpolygon(bslon,bslat,bound_blk(:,1),bound_blk(:,2));
+        blon = blon(id,:);
+        blat = blat(id,:);
+        bdep = bdep(id,:);
+      end
+      blk(1).bound(nb1,nb2).blon = blon;  % lon
+      blk(1).bound(nb1,nb2).blat = blat;  % lat
+      blk(1).bound(nb1,nb2).bdep = bdep;  % hight
+    else
+      sub_f = fullfile(dirblk,['b_',num2str(nb1),'_',num2str(nb2),'.txt']);
+      fid   = fopen(sub_f,'r');
+      if fid >= 0
+        fprintf('block interface: %2i  %2i \n',nb1,nb2)
+        fprintf('read interface boudary shape file : %s \n',sub_f)
+        dep_blk = textscan(fid,'%f%f%f'); fclose(fid);
+        dep_blk = cell2mat(dep_blk);
+        f    = scatteredinterpolant(dep_blk(:,1),dep_blk(:,2),dep_blk(:,3));
+        bo_f = fullfile(dirblk,['bo_',num2str(nb1),'_',num2str(nb2),'.txt']);
+        fid  = fopen(bo_f,'r');
+        if fid >= 0
+          fprintf('read interface boudary definition file : %s \n',bo_f)
+          bound_blk = textscan(fid,'%f%f'); fclose(fid);     
+          bound_blk = cell2mat(bound_blk);
+        else
+          idb       = boundary(dep_blk(:,1),dep_blk(:,2));
+          bound_blk = dep_blk(idb,:);
+        end
+        inb = intersect(find(prm.optb1==nb1),find(prm.optb2==nb2));
+        if isempty(inb)
+          int_bo = int_tri;
+        else
+          int_bo = prm.optint(inb);
+        end
+        [p,bstri] = mesh2d_uni(bound_blk,int_bo,bound_blk);
+        bslon = p(:,1);
+        bslat = p(:,2);
+        bsdep = f(bslon,bslat);
+       else
+        bstri = [];
+        leng  = length(blk(1).bound(nb1,nb2).lon);
+        if leng~=0
+          bslon = [blk(1).bound(nb1,nb2).lon; blk(1).bound(nb1,nb2).lon(1); (blk(1).bound(nb1,nb2).lon(1:leng-1)+blk(1).bound(nb1,nb2).lon(2:leng))./2;blk(1).bound(nb1,nb2).lon(leng)];
+          bslat = [blk(1).bound(nb1,nb2).lat; blk(1).bound(nb1,nb2).lat(1); (blk(1).bound(nb1,nb2).lat(1:leng-1)+blk(1).bound(nb1,nb2).lat(2:leng))./2;blk(1).bound(nb1,nb2).lat(leng)];
+          bsdep = [zeros(leng,1)            ; dep_limit_low.*ones(leng+1,1)];
+          bstri(1:leng-1     ,1:3) = [1     :leng-1;      2:leng    ; leng+2:2*leng]';
+          bstri(leng:2*leng-1,1:3) = [leng+1:2*leng; leng+2:2*leng+1;      1:  leng]';
+          fprintf('block interface: %2i  %2i auto set %4i \n',nb1,nb2,(leng-1)*2+1)
+          blk(1).bound(nb1,nb2).type = 5;
+        else
+          blk(1).bound(nb1,nb2).blon = [];
+          blk(1).bound(nb1,nb2).blat = [];
+          blk(1).bound(nb1,nb2).bdep = [];          
+        end
+      end
+      if ~isempty(bstri)
+        blk(1).bound(nb1,nb2).blon = [bslon(bstri(:,1)), bslon(bstri(:,2)), bslon(bstri(:,3))];
+        blk(1).bound(nb1,nb2).blat = [bslat(bstri(:,1)), bslat(bstri(:,2)), bslat(bstri(:,3))];
+        blk(1).bound(nb1,nb2).bdep = [bsdep(bstri(:,1)), bsdep(bstri(:,2)), bsdep(bstri(:,3))];
+%
+        out_tri_f = fullfile(prm.dirblock,['trib_',num2str(nb1),'_',num2str(nb2),'.out']);
+        nlen      = length(blk(1).bound(nb1,nb2).blat(:,1));
+        fid_out   = fopen(out_tri_f,'w+');
+        fprintf(fid_out,'%10.5f %9.5f %9.3f \n%10.5f %9.5f %9.3f \n%10.5f %9.5f %9.3f \n%10.5f %9.5f %9.3f \n> \n',...
+        reshape([blk(1).bound(nb1,nb2).blon(:,1), blk(1).bound(nb1,nb2).blat(:,1), blk(1).bound(nb1,nb2).bdep(:,1),...
+                 blk(1).bound(nb1,nb2).blon(:,2), blk(1).bound(nb1,nb2).blat(:,2), blk(1).bound(nb1,nb2).bdep(:,2),...
+                 blk(1).bound(nb1,nb2).blon(:,3), blk(1).bound(nb1,nb2).blat(:,3), blk(1).bound(nb1,nb2).bdep(:,3),...
+                 blk(1).bound(nb1,nb2).blon(:,1), blk(1).bound(nb1,nb2).blat(:,1), blk(1).bound(nb1,nb2).bdep(:,1)]',4*nlen,3));
+        fclose(fid_out);
+      end
+    end
+    blk(1).nb = blk(1).nb+size(blk(1).bound(nb1,nb2).blon,1);
+  end
+end
+end
+
+%% Read Euler Pole file
+function [POL,PRM] = READ_EULER_POLES(BLK,PRM)
+% Fix euler poles at the block which has no observation site.
+% BLID  : Block ID that includes fix POLE
+% OMEGA : unit is deg/Myr
+POL.ID=false;
+POL.FLAG=0;
+POL.BLID=0;
+POL.FIXw=zeros(3*BLK(1).NBlock,1);
+if exist(PRM.FilePole,'file')~=2; return; end
+% 
+POL.FIXflag=1;
+FID=fopen(PRM.FilePole,'r');
+TMP=fscanf(FID,'%d %d %f %f %f\n',[5,Inf]);
+POL.ID=zeros(1,BLK(1).NBlock);
+FIXw=zeros(BLK(1).NBlock,3);
+POL.FLAG =TMP(1,:);
+POL.BLID =TMP(2,:);
+POL.LAT  =TMP(3,:);
+POL.LON  =TMP(4,:);
+POL.OMEGA=TMP(5,:);
+POL.FLAG =logical(POL.FLAG);   % use or not
+POL.BLID =POL.BLID(POL.FLAG) ;
+POL.LAT  =POL.LAT(POL.FLAG)  ;
+POL.LON  =POL.LON(POL.FLAG)  ;
+POL.OMEGA=POL.OMEGA(POL.FLAG);
+POL.LAT  =deg2rad(POL.LAT)        ;
+POL.LON  =deg2rad(POL.LON)        ;
+POL.OMEGA=deg2rad(POL.OMEGA.*1e-6);
+POL.wx=POL.OMEGA.*cos(POL.LAT).*cos(POL.LON);
+POL.wy=POL.OMEGA.*cos(POL.LAT).*sin(POL.LON);
+POL.wz=POL.OMEGA.*sin(POL.LAT)              ;
+POL.ID(POL.BLID)=true;
+FIXw(POL.BLID,1)=POL.wx;
+FIXw(POL.BLID,2)=POL.wy;
+FIXw(POL.BLID,3)=POL.wz;
+POL.ID=logical(reshape(repmat(POL.ID,3,1),3*BLK(1).NBlock,1));
+POL.FIXw=reshape(FIXw',3*BLK(1).NBlock,1);
+% 
+PRM.APRIORIPOLE=TMP';
+% 
+end
+
 %% CalcTriDisps.m
 function [U] = CalcTriDisps(sx, sy, sz, x, y, z, pr, ss, ts, ds)
 % CalcTriDisps.m
@@ -1468,4 +1677,40 @@ TPHI1 = tan(RPH1);
 CPHI1 = cos(RPH1);
 LAT   = PH1-(C2.*X).^2.*V2.*TPHI1./(2.*D);
 LON   = ALON0+C2.*X./CPHI1-(C2.*X).^3.*(1.0+2.*TPHI1.^2)./(6.*D.^2.*CPHI1);
+end
+
+%% CONVERT TO XYZ FROM ELL
+function [x,y,z]=ell2xyz(lat,lon,h)
+% ELL2XYZ  Converts ellipsoidal coordinates to cartesian. Vectorized.
+% GRS80
+% CODE BY T.ITO 2006/12/13     ver0.1
+% BUG FIX  BY T.ITO 2015/11/13 ver0.2
+% 
+a=6378137.0; % m
+f=1./298.257222101;
+e2=1-(1-f)^2;
+%
+rad=pi/180;
+lat=lat.*rad;
+lon=lon.*rad;
+clat=cos(lat);
+clon=cos(lon);
+slat=sin(lat);
+slon=sin(lon);
+%
+v=a./sqrt(1-e2.*slat.*slat);
+x=(v+h).*clat.*clon;
+y=(v+h).*clat.*slon;
+z=(v.*(1-e2)+h).*slat;
+end
+
+%% CONVERT TO XYZ FROM ELL AT SURFACE
+function [OOxyz]=conv2ell(Olat,Olon,Ohig)
+Olat=Olat(:);
+Olon=Olon(:);
+Ohig=Ohig(:);
+deg2rad=pi/180;
+[Oxyz(:,1),Oxyz(:,2),Oxyz(:,3)]=ell2xyz(Olat,Olon,Ohig);
+Oxyz = Oxyz*1e3;
+OOxyz=[Oxyz sin(Olat*deg2rad) sin(Olon*deg2rad) cos(Olat*deg2rad) cos(Olon*deg2rad)];
 end
