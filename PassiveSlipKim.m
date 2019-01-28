@@ -20,6 +20,7 @@ ALAT0=38.3;
 [obs]     = ReadObs(prm);
 [blk,obs] = ReadBlockBound(prm,obs);
 [blk]     = ReadBlockInterface(blk,prm);
+[blk]     = ReadLockedPatch(blk,prm);
 [eul,prm] = ReadEulerPoles(blk,prm);
 [blk,prm] = ReadRigidBound(blk,prm);
 
