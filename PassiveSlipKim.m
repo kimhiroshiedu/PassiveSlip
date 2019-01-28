@@ -1169,6 +1169,184 @@ for i=1:n
 end
 
 end
+
+%% MAKE GREEN FUNCTION
+function tri = GreenTri(blk,obs)
+% Coded by Takeo Ito 2017/01/02 (ver 1.1)
+% Modified by Hiroshi Kimura 2019/01/28
+pr = 0.25;
+nd = size(obs(1).alat,2);
+%
+alat = mean(obs(1).alat(:));
+alon = mean(obs(1).alon(:));
+[obsx,obsy] = PLTXY(obs(1).alat,obs(1).alon,alat,alon);
+obsz = -1e-3.*obs(1).ahig;
+%
+tri(1).obsdis= [];
+tri(1).nb    = 0;
+tri(1).cf    = ones(3*blk(1).nb,1);
+tri(1).inv   = zeros(3*blk(1).nb,1);
+for nb1 = 1:blk(1).nblock
+  [blk(nb1).localx,blk(nb1).localy] = PLTXY(blk(nb1).lat,blk(nb1).lon,alat,alon);
+  for nb2 = nb1+1:blk(1).nblock
+    nf = size(blk(1).bound(nb1,nb2).blon,1);
+    tri(1).bound(nb1,nb2).clat = [];
+    tri(1).bound(nb1,nb2).clon = [];
+    tri(1).bound(nb1,nb2).cdep = [];
+    if nf ~= 0
+      tri(1).bound(nb1,nb2).gstr = zeros(3*nd,nf);
+      tri(1).bound(nb1,nb2).gdip = zeros(3*nd,nf);
+      tri(1).bound(nb1,nb2).gtns = zeros(3*nd,nf);
+%
+      fprintf('==================\n Block %2i : Block %2i \n Number of TRI sub-faults : %4i \n',nb1,nb2,nf)
+%
+      blk(1).bound(nb1,nb2).flag1 = 0;
+      for ii = 1:size(blk(1).rgpair,1)
+        rgpairid = ismember([nb1 nb2],blk(1).rgpair(ii,2:3));
+        ispair   = sum(rgpairid);
+        if ispair == 2
+          if max(blk(1).rgpair(ii,2:3)) == blk(1).rgpair(ii,1)
+            blk(1).bound(nb1,nb2).flag1 = 1;
+          else
+            blk(1).bound(nb1,nb2).flag1 = 2;
+          end
+          break
+        end
+      end
+
+      for n = 1:nf
+        [trix,triy] = PLTXY(blk(1).BOUND(nb1,nb2).blat(n,:),blk(1).BOUND(nb1,nb2).blon(n,:),alat,alon);
+        triz        = -1.*blk(1).bound(nb1,nb2).bdep(n,:);
+        f_loc           = [trix;triy;triz];
+        [f,da,nv,st,dp] = EstFaultTri(f_loc);
+        nv(3) = -nv(3);
+        dp(3) = -dp(3);
+        tri(1).bound(nb1,nb2).clat(n)   = mean(blk(1).bound(nb1,nb2).blat(n,:));
+        tri(1).bound(nb1,nb2).clon(n)   = mean(blk(1).bound(nb1,nb2).blon(n,:));
+        tri(1).bound(nb1,nb2).cdep(n)   = mean(blk(1).bound(nb1,nb2).bdep(n,:)); % up is plus
+        tri(1).bound(nb1,nb2).da(n)     = da;
+        tri(1).bound(nb1,nb2).nv(n,:)   = nv;
+        tri(1).bound(nb1,nb2).st(n,:)   = st;
+        tri(1).bound(nb1,nb2).dp(n,:)   = dp;
+        tri(1).bound(nb1,nb2).oxyz(n,:) = conv2ell(tri(1).bound(nb1,nb2).clat(n),tri(1).bound(nb1,nb2).clon(n),1e3.*tri(1).bound(nb1,nb2).cdep(n));
+        u = CalcTriDisps(obsx,obsy,obsz,trix,triy,triz,pr,1,0,0);
+        tri(1).bound(nb1,nb2).gstr(1:3:3*nd,n) =  u.x; %E
+        tri(1).bound(nb1,nb2).gstr(2:3:3*nd,n) =  u.y; %N
+        tri(1).bound(nb1,nb2).gstr(3:3:3*nd,n) = -u.z; %D
+        u = CalcTriDisps(obsx,obsy,obsz,trix,triy,triz,pr,0,1,0);
+        tri(1).bound(nb1,nb2).gtns(1:3:3*nd,n) =  u.x; %E
+        tri(1).bound(nb1,nb2).gtns(2:3:3*nd,n) =  u.y; %N
+        tri(1).bound(nb1,nb2).gtns(3:3:3*nd,n) = -u.z; %D 
+        u = CalcTriDisps(obsx,obsy,obsz,trix,triy,triz,pr,0,0,1);
+        tri(1).bound(nb1,nb2).gdip(1:3:3*nd,n) =  u.x; %E
+        tri(1).bound(nb1,nb2).gdip(2:3:3*nd,n) =  u.y; %N
+        tri(1).bound(nb1,nb2).gdip(3:3:3*nd,n) = -u.z; %D
+        if mod(n,ceil(nf/3)) == 1
+          fprintf('MAKE GREEN at TRI sub-faults : %4i / %4i \n',n,nf)
+        end
+        [tri]     = CorrectFactor(blk,tri,nb1,nb2,dp,n,nf);
+        [blk,tri] = DiscriminateDirection(blk,tri,nb1,nb2,trix,triy,n,nf);
+      end
+      tri(1).nb = tri(1).nb+nf;
+    end
+  end
+end
+disp('==================')
+disp('PASS GREEN_TRI')
+disp('==================')
+end
+
+%% Calculate correction factor of (STR, DIP, TNS) unit vectors
+function [tri] = CorrectFactor(blk,tri,nb1,nb2,dp,n,nf)
+% Coded by H.Kimura 2018/1/31 (test ver.)
+switch blk(1).bound(nb1,nb2).flag1
+  case {1,2}
+    tri(1).cf(3*tri(1).nb+nf+n) = 1/sqrt(dp(1)^2+dp(2)^2);  % 1=sqrt(dp(1)^2+dp(2)^2+dp(3)^2): norm of dp
+  case 0
+    return
+end
+end
+
+%% DISCRIMINATE BOUNDARY TYPE AND SUBFAULT SURFACE DIRECTION
+function [blk,tri] = DiscriminateDirection(blk,tri,nb1,nb2,trix,triy,n,nf)
+% Coded by H.Kimura 2017/4/28 (test ver.)
+% Modified by H.Kimura 2018/2/6
+switch blk(1).bound(nb1,nb2).flag1
+  case 1
+    tri(1).inv(3*tri(1).nb     +n) =  1;
+    tri(1).inv(3*tri(1).nb+  nf+n) =  1;
+    tri(1).inv(3*tri(1).nb+2*nf+n) =  0;
+  case 2
+    tri(1).inv(3*tri(1).nb     +n) = -1;
+    tri(1).inv(3*tri(1).nb+  nf+n) = -1;
+    tri(1).inv(3*tri(1).nb+2*nf+n) =  0;
+  case 0
+    trixc   = mean(trix);
+    triyc   = mean(triy);
+    [in,on] = inpolygon(trixc,triyc,blk(nb1).localx,blk(nb1).localy);
+    if in==1 && on~=1
+      tri(1).inv(3*tri(1).nb     +n) =  1;
+      tri(1).inv(3*tri(1).nb+  nf+n) =  0;
+      tri(1).inv(3*tri(1).nb+2*nf+n) =  1;
+    elseif in==1 && on==1
+      tric = [trixc triyc 0];
+      uv   = [0 0 1];
+      nv   = cross(uv,tri(1).bound(nb1,nb2).st(n,:));
+      cnv  = tric+nv;
+      if inpolygon(cnv(1),cnv(2),blk(nb1).localx,blk(nb1).localy)==1
+        tri(1).inv(3*tri(1).nb     +n) =  1;
+        tri(1).inv(3*tri(1).nb+  nf+n) =  0;
+        tri(1).inv(3*tri(1).nb+2*nf+n) =  1;
+      else
+        tri(1).inv(3*tri(1).nb     +n) = -1;
+        tri(1).inv(3*tri(1).nb+  nf+n) =  0;
+        tri(1).inv(3*tri(1).nb+2*nf+n) = -1;
+      end
+    else
+      tri(1).inv(3*tri(1).nb     +n) =  -1;
+      tri(1).inv(3*tri(1).nb+  nf+n) =   0;
+      tri(1).inv(3*tri(1).nb+2*nf+n) =  -1;
+    end
+end
+% 
+end
+
+%% ESTIMATE FAULT PARAMETERS FOR TRI
+function [floc,da,nv,st,dp] = EstFaultTri(loc_f)
+% Coded by Takeo Ito 2015/11/11 (ver 1.0)
+[da]       = AreaTri(loc_f(1,:),loc_f(2,:),loc_f(3,:));
+floc       = mean(loc_f,2)';
+[nv,st,dp] = Tri_StrDip(loc_f(1,:),loc_f(2,:),loc_f(3,:));
+end
+
+%% ESTIMATE AREA AT SUB-FAULT FOR TRI
+function [da] = AreaTri(x,y,z)
+% CALC. AREA IN THREE DIMENSION USING HERON'S FOMULA
+% Coded by Takeo Ito 2006/03/04 (ver 1.0)
+leng(1) = sqrt((x(1)-x(2)).^2 + (y(1)-y(2)).^2 + (z(1)-z(2)).^2);
+leng(2) = sqrt((x(2)-x(3)).^2 + (y(2)-y(3)).^2 + (z(2)-z(3)).^2);
+leng(3) = sqrt((x(3)-x(1)).^2 + (y(3)-y(1)).^2 + (z(3)-z(1)).^2);
+s1 = (leng(1)+leng(2)+leng(3))./2;
+da = sqrt(s1*(s1-leng(1))*(s1-leng(2))*(s1-leng(3)));
+end
+
+%% Estimate strike and dip for tri fault
+function [nv,st,dp] = Tri_StrDip(x,y,z)
+%==========
+% CALC. STR AND DIP ON FAULT
+% CODE BY T.ITO (2006/03/04)
+% Modified by T.ITO (2015/11/13)
+% Modified by T.ITO (2016/02/16)
+% Modified by Kimura(2017/04/17)
+% UP IS MINUS
+%==========
+nv = cross([x(2);y(2);z(2)]-[x(1);y(1);z(1)], [x(3);y(3);z(3)]-[x(1);y(1);z(1)]);
+nv = nv./norm(nv);
+if (nv(3) < 0); nv = -nv; end % Enforce clockwise circulation
+st = [-sin(atan2(nv(2),nv(1))) cos(atan2(nv(2),nv(1))) 0];
+dp = cross(nv,st);
+end
+
 %% make Green's function of displacement
 function [Gu]=makeGreenDisp(obs,trixyz3,tri)
 % This function make Green's function of displacement (Gu).
