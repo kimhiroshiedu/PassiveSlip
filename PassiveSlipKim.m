@@ -23,8 +23,9 @@ ALAT0=38.3;
 % [xyz]=makexyz;
 [prm] = ReadParameters(prm);
 [obs] = ReadObs(prm);
-[eul] = ReadEulerPole(prm);
-[tri] = MakeInterfaceTri(prm);
+[blk,obs] = ReadBlockBound(folder,obs);
+[blk] = ReadBlockInterface(blk,prm);
+[eul,prm] = ReadEulerPoles(blk,prm);
 
 [Gu] = makeGreenDisp(obs,trixyz3);
 [Gs] = makeGreenStrain(trixyzC,trixyz3,sitaS,sitaD,normVec);
@@ -145,61 +146,46 @@ fprintf('==================\n')
 disp('PASS READ_PARAMETERS')
 end
 
-%% Read Observation file
-function [obs] = ReadObs(prm)
-% test version coded by H.Kimura 2019/1/24
-fid = fopen(prm.obsfile,'r');
-tmp = fscanf(fid,'%f %f %f\n',[3 Inf]);
-obs.x = tmp(1,:);
-obs.y = tmp(2,:);
-obs.z = tmp(3,:);
-[obs.lat,obs.lon] = XYTPL(obs.x,obs.y,prm.ALAT0,prm.ALON0);
-end
-
-%% Read Euler Pole file
-function [eul] = ReadEulerPole(prm)
-% test version coded by H.Kimura 2019/1/24
-fid = fopen(prm.epole,'r');
-tmp = fscanf(fid,'%i $f %f %f \n',[4 Inf]);
-eul.flag = tmp(1,:);
-eul.lon  = tmp(2,:);
-eul.lat  = tmp(3,:);
-eul.rot  = tmp(4,:);
-eul.wx = 1e-6.*deg2rad(eul.rot) .* cos(deg2rad(eul.lat)) .* cos(deg2rad(eul.lon));
-eul.wx = 1e-6.*deg2rad(eul.rot) .* cos(deg2rad(eul.lat)) .* sin(deg2rad(eul.lon));
-eul.wx = 1e-6.*deg2rad(eul.rot) .* sin(deg2rad(eul.lat));
-end
-
-%% Make Trimesh of plate interface
-function [tri] = MakeInterfaceTri(prm)
-% test version coded by H.Kimura 2019/1/24
-load(prm.interface)
-tri = mesh;
-[tri.lat,tri.lon] = XYTPL(tri.lat,tri.lon,prm.ALAT0,prm.ALON0);
-
-fid = fopen(prm.interface,'r');
-nf = 0;
-blon = zeros(1,3);
-blat = zeros(1,3);
-bdep = zeros(1,3);
+%% READ OBSERVATION DATA
+function obs = ReadObs(prm)
+%-------------------
+% INPUT format Observations:
+% unit is mm/yr
+% site_name lon lat EW_comp. NS_comp. UD_comp. ERR_EW ERR_NS ERR_UD 
+%-------------------
+fid_obs = fopen(prm.fileobs,'r');
+n = 0;
 while 1
-  nf = nf+1;
-  tmp = fscanf(fid,'%f %f %f \n', [3 3]);
-  tline = fgetl(fid); if ~ischar(tline); break; end
-  blon(nf,:) = tmp(1,:);  % Lon
-  blat(nf,:) = tmp(2,:);  % Lat
-  bdep(nf,:) = tmp(3,:);  % Hight
-  tline = fgetl(fid); if ~ischar(tline); break; end
+  tline = fgetl(fid_obs);
+  if ~ischar(tline); break; end
+  str   = strsplit(tline);
+  n = n+1;
+  obs(1).name(n)   = cellstr(str(1));
+  obs(1).alon(n)   = str2double(cellstr(str(2)));   % LON
+  obs(1).alat(n)   = str2double(cellstr(str(3)));   % LAT
+  obs(1).ahig(n)   = str2double(cellstr(str(4)));   % HIG
+  obs(1).evec(n)   = str2double(cellstr(str(5)));   % E-W
+  obs(1).nvec(n)   = str2double(cellstr(str(6)));   % N-S
+  obs(1).hvec(n)   = str2double(cellstr(str(7)));   % U-D
+  obs(1).eerr(n)   = str2double(cellstr(str(8)));   % E-W
+  obs(1).nerr(n)   = str2double(cellstr(str(9)));   % N-S
+  obs(1).herr(n)   = str2double(cellstr(str(10)));  % U-D
+  obs(1).weight(n) = str2double(cellstr(str(11)));  % Weight
+  obs(1).axyz(n,:) = conv2ell(obs(1).alat(n),obs(1).alon(n),obs(1).ahig(n));
 end
-
-
-
-
-
+obs(1).nobs   = n;
+obs(1).ablk   = zeros(obs(1).nobs,1);
+obs(1).latmax = max(obs(1).alat);
+obs(1).latmin = min(obs(1).alat);
+obs(1).lonmax = max(obs(1).alon);
+obs(1).lonmin = min(obs(1).alon);
+fprintf('==================\n') 
+fprintf('Number of GNSS site %4d \n',n)
+fprintf('==================\n') 
 end
 
 %% Read block boundary data
-function [blk,obs]=ReadBlockBound(folder,obs)
+function [blk,obs] = ReadBlockBound(folder,obs)
 ext = '*.txt';
 file = dir([folder,'/',ext]);
 [nblock,~] = size(file);
@@ -365,45 +351,45 @@ end
 end
 
 %% Read Euler Pole file
-function [POL,PRM] = READ_EULER_POLES(BLK,PRM)
+function [eul,prm] = ReadEulerPoles(blk,prm)
 % Fix euler poles at the block which has no observation site.
-% BLID  : Block ID that includes fix POLE
-% OMEGA : unit is deg/Myr
-POL.ID=false;
-POL.FLAG=0;
-POL.BLID=0;
-POL.FIXw=zeros(3*BLK(1).NBlock,1);
-if exist(PRM.FilePole,'file')~=2; return; end
+% blid  : block id that includes fix pole
+% omega : unit is deg/myr
+eul.id   = false;
+eul.flag = 0;
+eul.blid = 0;
+eul.fixw = zeros(3*blk(1).nblock,1);
+if exist(prm.filepole,'file')~=2; return; end  % No file.
 % 
-POL.FIXflag=1;
-FID=fopen(PRM.FilePole,'r');
-TMP=fscanf(FID,'%d %d %f %f %f\n',[5,Inf]);
-POL.ID=zeros(1,BLK(1).NBlock);
-FIXw=zeros(BLK(1).NBlock,3);
-POL.FLAG =TMP(1,:);
-POL.BLID =TMP(2,:);
-POL.LAT  =TMP(3,:);
-POL.LON  =TMP(4,:);
-POL.OMEGA=TMP(5,:);
-POL.FLAG =logical(POL.FLAG);   % use or not
-POL.BLID =POL.BLID(POL.FLAG) ;
-POL.LAT  =POL.LAT(POL.FLAG)  ;
-POL.LON  =POL.LON(POL.FLAG)  ;
-POL.OMEGA=POL.OMEGA(POL.FLAG);
-POL.LAT  =deg2rad(POL.LAT)        ;
-POL.LON  =deg2rad(POL.LON)        ;
-POL.OMEGA=deg2rad(POL.OMEGA.*1e-6);
-POL.wx=POL.OMEGA.*cos(POL.LAT).*cos(POL.LON);
-POL.wy=POL.OMEGA.*cos(POL.LAT).*sin(POL.LON);
-POL.wz=POL.OMEGA.*sin(POL.LAT)              ;
-POL.ID(POL.BLID)=true;
-FIXw(POL.BLID,1)=POL.wx;
-FIXw(POL.BLID,2)=POL.wy;
-FIXw(POL.BLID,3)=POL.wz;
-POL.ID=logical(reshape(repmat(POL.ID,3,1),3*BLK(1).NBlock,1));
-POL.FIXw=reshape(FIXw',3*BLK(1).NBlock,1);
+eul.fixflag=1;
+fid    = fopen(prm.filepole,'r');
+tmp    = fscanf(fid,'%d %d %f %f %f\n',[5,inf]);
+eul.id = zeros(1,blk(1).nblock);
+fixrot = zeros(blk(1).nblock,3);
+eul.flag  = tmp(1,:);
+eul.blid  = tmp(2,:);
+eul.lat   = tmp(3,:);
+eul.lon   = tmp(4,:);
+eul.omega = tmp(5,:);
+eul.flag  = logical(eul.flag);   % use or not
+eul.blid  = eul.blid(eul.flag) ;
+eul.lat   = eul.lat(eul.flag)  ;
+eul.lon   = eul.lon(eul.flag)  ;
+eul.omega = eul.omega(eul.flag);
+eul.lat   = deg2rad(eul.lat)        ;
+eul.lon   = deg2rad(eul.lon)        ;
+eul.omega = deg2rad(eul.omega.*1e-6);
+eul.wx    = eul.omega .* cos(eul.lat) .* cos(eul.lon);
+eul.wy    = eul.omega .* cos(eul.lat) .* sin(eul.lon);
+eul.wz    = eul.omega .* sin(eul.lat)                ;
+eul.id(eul.blid)   = true;
+fixrot(eul.blid,1) = eul.wx;
+fixrot(eul.blid,2) = eul.wy;
+fixrot(eul.blid,3) = eul.wz;
+eul.id   = logical(reshape(repmat(eul.id,3,1),3*blk(1).nblock,1));
+eul.fixw = reshape(fixrot',3*blk(1).nblock,1);
 % 
-PRM.APRIORIPOLE=TMP';
+prm.aprioripole = tmp';
 % 
 end
 
