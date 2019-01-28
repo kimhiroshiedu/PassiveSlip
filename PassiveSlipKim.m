@@ -21,11 +21,12 @@ ALAT0=38.3;
 [sitaS,sitaD,normVec]=strike_dip(trixyzC,trixyz3);
 
 % [xyz]=makexyz;
-[prm] = ReadParameters(prm);
-[obs] = ReadObs(prm);
+[prm]     = ReadParameters(prm);
+[obs]     = ReadObs(prm);
 [blk,obs] = ReadBlockBound(folder,obs);
-[blk] = ReadBlockInterface(blk,prm);
+[blk]     = ReadBlockInterface(blk,prm);
 [eul,prm] = ReadEulerPoles(blk,prm);
+[blk,prm] = ReadRigidBound(blk,prm);
 
 [Gu] = makeGreenDisp(obs,trixyz3);
 [Gs] = makeGreenStrain(trixyzC,trixyz3,sitaS,sitaD,normVec);
@@ -391,6 +392,15 @@ eul.fixw = reshape(fixrot',3*blk(1).nblock,1);
 % 
 prm.aprioripole = tmp';
 % 
+end
+
+%% Read rigid block boundary pair
+function [blk,prm] = ReadRigidBound(blk,prm)
+blk(1).RGPAIR = zeros(1,3);
+if exist(prm.FileRigb,'file') ~= 2; return; end  % File not exist
+fid = fopen(prm.FileRigb,'r');
+tmp = fscanf(fid,'%d %d %d\n',[3 Inf]);
+blk(1).RGPAIR = tmp';
 end
 
 %% CalcTriDisps.m
