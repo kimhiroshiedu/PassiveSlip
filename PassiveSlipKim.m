@@ -3,11 +3,6 @@ function PassiveSlipKim
 % Coded by Ryohei Sasajima final 2013/12/23
 % Combined by Hiroshi Kimura 2018/11/12
 %--- test
-prm.input = 'PARAMETER/parameter_test.txt';
-prm.obsfile = 'OBSDATA/synthetic_site.txt';
-prm.patchfile = 'PATCH/synthetic_locked_patch.txt';
-prm.interface = 'INTERFACE/synthetic_mesh.mat';
-prm.epole = 'PARAMETER/euler_pole_test.txt';
 prm.alon0 = 0;
 prm.alat0 = 0;
 %--
@@ -23,7 +18,7 @@ ALAT0=38.3;
 % [xyz]=makexyz;
 [prm]     = ReadParameters(prm);
 [obs]     = ReadObs(prm);
-[blk,obs] = ReadBlockBound(folder,obs);
+[blk,obs] = ReadBlockBound(prm,obs);
 [blk]     = ReadBlockInterface(blk,prm);
 [eul,prm] = ReadEulerPoles(blk,prm);
 [blk,prm] = ReadRigidBound(blk,prm);
@@ -100,6 +95,7 @@ fid = fopen(prm.input,'r');
 fileobs            = fscanf(fid,'%s \n',[1,1]); [~] = fgetl(fid);
 dirblock           = fscanf(fid,'%s \n',[1,1]); [~] = fgetl(fid);
 dirblock_interface = fscanf(fid,'%s \n',[1,1]); [~] = fgetl(fid);
+dirblock_patch     = fscanf(fid,'%s \n',[1,1]); [~] = fgetl(fid);
 filepole           = fscanf(fid,'%s \n',[1,1]); [~] = fgetl(fid);
 filerigb           = fscanf(fid,'%s \n',[1,1]); [~] = fgetl(fid);
 fileinternal       = fscanf(fid,'%s \n',[1,1]); [~] = fgetl(fid);
@@ -108,6 +104,7 @@ prm.home_d = pwd;
 prm.fileobs            = fullfile(prm.home_d,fileobs);
 prm.dirblock           = fullfile(prm.home_d,dirblock);
 prm.dirblock_interface = fullfile(prm.home_d,dirblock_interface);
+prm.dirblock_patch     = fullfile(prm.home_d,dirblock_patch);
 prm.filepole           = fullfile(prm.home_d,filepole);
 prm.filerigb           = fullfile(prm.home_d,filerigb);
 prm.fileinternal       = fullfile(prm.home_d,fileinternal);
@@ -186,13 +183,13 @@ fprintf('==================\n')
 end
 
 %% Read block boundary data
-function [blk,obs] = ReadBlockBound(folder,obs)
+function [blk,obs] = ReadBlockBound(prm,obs)
 ext = '*.txt';
-file = dir([folder,'/',ext]);
+file = dir([prm.dirblock,'/',ext]);
 [nblock,~] = size(file);
 blk(1).nblock = nblock;
 for nb = 1:blk(1).nblock
-  tmp = load(fullfile(folder,file(nb).name));
+  tmp = load(fullfile(prm.dirblock,file(nb).name));
   blk(nb).name = file(nb).name;
   blk(nb).lon  = tmp(:,1);
   blk(nb).lat  = tmp(:,2);
@@ -349,6 +346,11 @@ for nb1 = 1:blk(1).nblock
     blk(1).nb = blk(1).nb+size(blk(1).bound(nb1,nb2).blon,1);
   end
 end
+end
+
+%% Read locked patches
+function [blk] = ReadLockedPatch(blk,prm)
+
 end
 
 %% Read Euler Pole file
