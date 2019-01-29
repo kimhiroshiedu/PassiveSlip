@@ -20,9 +20,11 @@ ALAT0=38.3;
 [obs]     = ReadObs(prm);
 [blk,obs] = ReadBlockBound(prm,obs);
 [blk]     = ReadBlockInterface(blk,prm);
-[blk]     = ReadLockedPatch(blk,prm);
 [eul,prm] = ReadEulerPoles(blk,prm);
-[blk,prm] = ReadRigidBound(blk,prm);
+[blk,prm] = ReadDippingBound(blk,prm);
+[blk]     = ReadLockedPatch(blk,prm);
+
+[tri]     = MakeGreenFunction(blk,obs);
 
 [Gu] = makeGreenDisp(obs,trixyz3);
 [Gs] = makeGreenStrain(trixyzC,trixyz3,sitaS,sitaD,normVec);
@@ -351,6 +353,109 @@ end
 
 %% Read locked patches
 function [blk] = ReadLockedPatch(blk,prm)
+% test version coded by H. Kimura 2019/01/29
+for nb1 = 1:blk(1).nblock
+  for nb2 = nb1+1:blk(1).nblock
+    blk(1).bound(nb1,nb2).type = 1;
+    pre_tri_f = fullfile(dirblk,['trib_',num2str(nb1),'_',num2str(nb2),'.txt']); 
+    fid = fopen(pre_tri_f,'r');
+    if fid >= 0
+      fprintf('block interface: %2i  %2i \n',nb1,nb2)
+      fprintf('read interface tri boudary file : %s \n',pre_tri_f)
+      nf   = 0;
+      blon = zeros(1,3);
+      blat = zeros(1,3);
+      bdep = zeros(1,3);
+      while 1
+        nf    = nf+1;
+        loc_f = fscanf(fid,'%f %f %f \n', [3 3]);
+        tline = fgetl(fid); if ~ischar(tline); break; end
+        blon(nf,:) = loc_f(1,:);  % lon
+        blat(nf,:) = loc_f(2,:);  % lat
+        bdep(nf,:) = loc_f(3,:);  % hight
+        tline = fgetl(fid); if ~ischar(tline); break; end
+      end
+      fclose(fid);
+      bo_tri_f = fullfile(dirblk,['tribo_',num2str(nb1),'_',num2str(nb2),'.txt']); 
+      fid = fopen(bo_tri_f,'r');
+      if fid >= 0
+        bound_blk = textscan(fid,'%f%f'); fclose(fid);
+        bound_blk = cell2mat(bound_blk);
+        bslon = mean(blon,2);
+        bslat = mean(blat,2);
+        id = inpolygon(bslon,bslat,bound_blk(:,1),bound_blk(:,2));
+        blon = blon(id,:);
+        blat = blat(id,:);
+        bdep = bdep(id,:);
+      end
+      blk(1).bound(nb1,nb2).blon = blon;  % lon
+      blk(1).bound(nb1,nb2).blat = blat;  % lat
+      blk(1).bound(nb1,nb2).bdep = bdep;  % hight
+    else
+      sub_f = fullfile(dirblk,['b_',num2str(nb1),'_',num2str(nb2),'.txt']);
+      fid   = fopen(sub_f,'r');
+      if fid >= 0
+        fprintf('block interface: %2i  %2i \n',nb1,nb2)
+        fprintf('read interface boudary shape file : %s \n',sub_f)
+        dep_blk = textscan(fid,'%f%f%f'); fclose(fid);
+        dep_blk = cell2mat(dep_blk);
+        f    = scatteredinterpolant(dep_blk(:,1),dep_blk(:,2),dep_blk(:,3));
+        bo_f = fullfile(dirblk,['bo_',num2str(nb1),'_',num2str(nb2),'.txt']);
+        fid  = fopen(bo_f,'r');
+        if fid >= 0
+          fprintf('read interface boudary definition file : %s \n',bo_f)
+          bound_blk = textscan(fid,'%f%f'); fclose(fid);     
+          bound_blk = cell2mat(bound_blk);
+        else
+          idb       = boundary(dep_blk(:,1),dep_blk(:,2));
+          bound_blk = dep_blk(idb,:);
+        end
+        inb = intersect(find(prm.optb1==nb1),find(prm.optb2==nb2));
+        if isempty(inb)
+          int_bo = int_tri;
+        else
+          int_bo = prm.optint(inb);
+        end
+        [p,bstri] = mesh2d_uni(bound_blk,int_bo,bound_blk);
+        bslon = p(:,1);
+        bslat = p(:,2);
+        bsdep = f(bslon,bslat);
+       else
+        bstri = [];
+        leng  = length(blk(1).bound(nb1,nb2).lon);
+        if leng~=0
+          bslon = [blk(1).bound(nb1,nb2).lon; blk(1).bound(nb1,nb2).lon(1); (blk(1).bound(nb1,nb2).lon(1:leng-1)+blk(1).bound(nb1,nb2).lon(2:leng))./2;blk(1).bound(nb1,nb2).lon(leng)];
+          bslat = [blk(1).bound(nb1,nb2).lat; blk(1).bound(nb1,nb2).lat(1); (blk(1).bound(nb1,nb2).lat(1:leng-1)+blk(1).bound(nb1,nb2).lat(2:leng))./2;blk(1).bound(nb1,nb2).lat(leng)];
+          bsdep = [zeros(leng,1)            ; dep_limit_low.*ones(leng+1,1)];
+          bstri(1:leng-1     ,1:3) = [1     :leng-1;      2:leng    ; leng+2:2*leng]';
+          bstri(leng:2*leng-1,1:3) = [leng+1:2*leng; leng+2:2*leng+1;      1:  leng]';
+          fprintf('block interface: %2i  %2i auto set %4i \n',nb1,nb2,(leng-1)*2+1)
+          blk(1).bound(nb1,nb2).type = 5;
+        else
+          blk(1).bound(nb1,nb2).blon = [];
+          blk(1).bound(nb1,nb2).blat = [];
+          blk(1).bound(nb1,nb2).bdep = [];          
+        end
+      end
+      if ~isempty(bstri)
+        blk(1).bound(nb1,nb2).blon = [bslon(bstri(:,1)), bslon(bstri(:,2)), bslon(bstri(:,3))];
+        blk(1).bound(nb1,nb2).blat = [bslat(bstri(:,1)), bslat(bstri(:,2)), bslat(bstri(:,3))];
+        blk(1).bound(nb1,nb2).bdep = [bsdep(bstri(:,1)), bsdep(bstri(:,2)), bsdep(bstri(:,3))];
+%
+        out_tri_f = fullfile(prm.dirblock,['trib_',num2str(nb1),'_',num2str(nb2),'.out']);
+        nlen      = length(blk(1).bound(nb1,nb2).blat(:,1));
+        fid_out   = fopen(out_tri_f,'w+');
+        fprintf(fid_out,'%10.5f %9.5f %9.3f \n%10.5f %9.5f %9.3f \n%10.5f %9.5f %9.3f \n%10.5f %9.5f %9.3f \n> \n',...
+        reshape([blk(1).bound(nb1,nb2).blon(:,1), blk(1).bound(nb1,nb2).blat(:,1), blk(1).bound(nb1,nb2).bdep(:,1),...
+                 blk(1).bound(nb1,nb2).blon(:,2), blk(1).bound(nb1,nb2).blat(:,2), blk(1).bound(nb1,nb2).bdep(:,2),...
+                 blk(1).bound(nb1,nb2).blon(:,3), blk(1).bound(nb1,nb2).blat(:,3), blk(1).bound(nb1,nb2).bdep(:,3),...
+                 blk(1).bound(nb1,nb2).blon(:,1), blk(1).bound(nb1,nb2).blat(:,1), blk(1).bound(nb1,nb2).bdep(:,1)]',4*nlen,3));
+        fclose(fid_out);
+      end
+    end
+    blk(1).nb = blk(1).nb+size(blk(1).bound(nb1,nb2).blon,1);
+  end
+end
 
 end
 
@@ -397,13 +502,13 @@ prm.aprioripole = tmp';
 % 
 end
 
-%% Read rigid block boundary pair
-function [blk,prm] = ReadRigidBound(blk,prm)
-blk(1).RGPAIR = zeros(1,3);
-if exist(prm.FileRigb,'file') ~= 2; return; end  % File not exist
-fid = fopen(prm.FileRigb,'r');
+%% Read dipping block boundary
+function [blk,prm] = ReadDippingBound(blk,prm)
+blk(1).dipbo = zeros(1,3);
+if exist(prm.FileDipb,'file') ~= 2; return; end  % File not exist
+fid = fopen(prm.FileDipb,'r');
 tmp = fscanf(fid,'%d %d %d\n',[3 Inf]);
-blk(1).RGPAIR = tmp';
+blk(1).dipbo = tmp';
 end
 
 %% CalcTriDisps.m
@@ -1183,10 +1288,9 @@ end
 
 end
 
-%% MAKE GREEN FUNCTION
-function tri = GreenTri(blk,obs)
-% Coded by Takeo Ito 2017/01/02 (ver 1.1)
-% Modified by Hiroshi Kimura 2019/01/28
+%% Make Green's function of halfspace elastic strain for triangular meshes
+function [tri] = MakeGreenFunction(blk,obs)
+% Coded by Hiroshi Kimura 2019/01/28 (ver 1.0)
 pr = 0.25;
 nd = size(obs(1).alat,2);
 %
@@ -1213,12 +1317,18 @@ for nb1 = 1:blk(1).nblock
 %
       fprintf('==================\n Block %2i : Block %2i \n Number of TRI sub-faults : %4i \n',nb1,nb2,nf)
 %
+      triclon = mean(blk(1).bound(nb1,nb2).blon,2);
+      triclat = mean(blk(1).bound(nb1,nb2).blat,2);
+      tricdep = mean(blk(1).bound(nb1,nb2).bdep,2);
+      [tricx,tricy] = PLTXY(triclat,triclat,alat,alon);
+      tricz = -tricdep;
+
       blk(1).bound(nb1,nb2).flag1 = 0;
-      for ii = 1:size(blk(1).rgpair,1)
-        rgpairid = ismember([nb1 nb2],blk(1).rgpair(ii,2:3));
-        ispair   = sum(rgpairid);
+      for ii = 1:size(blk(1).dipbo,1)
+        dippingid = ismember([nb1 nb2],blk(1).dipbo(ii,2:3));
+        ispair    = sum(dippingid);
         if ispair == 2
-          if max(blk(1).rgpair(ii,2:3)) == blk(1).rgpair(ii,1)
+          if max(blk(1).dipbo(ii,2:3)) == blk(1).dipbo(ii,1)
             blk(1).bound(nb1,nb2).flag1 = 1;
           else
             blk(1).bound(nb1,nb2).flag1 = 2;
@@ -1228,10 +1338,10 @@ for nb1 = 1:blk(1).nblock
       end
 
       for n = 1:nf
-        [trix,triy] = PLTXY(blk(1).BOUND(nb1,nb2).blat(n,:),blk(1).BOUND(nb1,nb2).blon(n,:),alat,alon);
+        [trix,triy] = PLTXY(blk(1).bound(nb1,nb2).blat(n,:),blk(1).bound(nb1,nb2).blon(n,:),alat,alon);
         triz        = -1.*blk(1).bound(nb1,nb2).bdep(n,:);
-        f_loc           = [trix;triy;triz];
-        [f,da,nv,st,dp] = EstFaultTri(f_loc);
+        f_loc       = [trix;triy;triz];
+        [f,da,nv,st,dp,phi,theta] = EstFaultTri(f_loc);
         nv(3) = -nv(3);
         dp(3) = -dp(3);
         tri(1).bound(nb1,nb2).clat(n)   = mean(blk(1).bound(nb1,nb2).blat(n,:));
@@ -1241,24 +1351,48 @@ for nb1 = 1:blk(1).nblock
         tri(1).bound(nb1,nb2).nv(n,:)   = nv;
         tri(1).bound(nb1,nb2).st(n,:)   = st;
         tri(1).bound(nb1,nb2).dp(n,:)   = dp;
+        tri(1).bound(nb1,nb2).phi(n)    = phi;
+        tri(1).bound(nb1,nb2).theta(n)  = theta;
         tri(1).bound(nb1,nb2).oxyz(n,:) = conv2ell(tri(1).bound(nb1,nb2).clat(n),tri(1).bound(nb1,nb2).clon(n),1e3.*tri(1).bound(nb1,nb2).cdep(n));
         u = CalcTriDisps(obsx,obsy,obsz,trix,triy,triz,pr,1,0,0);
-        tri(1).bound(nb1,nb2).gstr(1:3:3*nd,n) =  u.x; %E
-        tri(1).bound(nb1,nb2).gstr(2:3:3*nd,n) =  u.y; %N
-        tri(1).bound(nb1,nb2).gstr(3:3:3*nd,n) = -u.z; %D
+        s = CalcTriStrains(tricx,tricy,tricz,trix,triy,triz,pr,1,0,0);
+        tri(1).bound(nb1,nb2).gustr(1:3:3*nd,n) =  u.x;  % E
+        tri(1).bound(nb1,nb2).gustr(2:3:3*nd,n) =  u.y;  % N
+        tri(1).bound(nb1,nb2).gustr(3:3:3*nd,n) = -u.z;  % U
+        tri(1).bound(nb1,nb2).gsstr(1:6:6*nf,n) =  s.xx;  % exx
+        tri(1).bound(nb1,nb2).gsstr(2:6:6*nf,n) =  s.xy;  % exy
+        tri(1).bound(nb1,nb2).gsstr(3:6:6*nf,n) = -s.xz;  % exz
+        tri(1).bound(nb1,nb2).gsstr(4:6:6*nf,n) =  s.yy;  % eyy
+        tri(1).bound(nb1,nb2).gsstr(5:6:6*nf,n) = -s.yz;  % eyz
+        tri(1).bound(nb1,nb2).gsstr(6:6:6*nf,n) = -s.zz;  % ezz
         u = CalcTriDisps(obsx,obsy,obsz,trix,triy,triz,pr,0,1,0);
-        tri(1).bound(nb1,nb2).gtns(1:3:3*nd,n) =  u.x; %E
-        tri(1).bound(nb1,nb2).gtns(2:3:3*nd,n) =  u.y; %N
-        tri(1).bound(nb1,nb2).gtns(3:3:3*nd,n) = -u.z; %D 
+        s = CalcTriStrains(tricx,tricy,tricz,trix,triy,triz,pr,0,1,0);
+        tri(1).bound(nb1,nb2).gutns(1:3:3*nd,n) =  u.x;  % E
+        tri(1).bound(nb1,nb2).gutns(2:3:3*nd,n) =  u.y;  % N
+        tri(1).bound(nb1,nb2).gutns(3:3:3*nd,n) = -u.z;  % U 
+        tri(1).bound(nb1,nb2).gstns(1:6:6*nf,n) =  s.xx;  % exx
+        tri(1).bound(nb1,nb2).gstns(2:6:6*nf,n) =  s.xy;  % exy
+        tri(1).bound(nb1,nb2).gstns(3:6:6*nf,n) = -s.xz;  % exz
+        tri(1).bound(nb1,nb2).gstns(4:6:6*nf,n) =  s.yy;  % eyy
+        tri(1).bound(nb1,nb2).gstns(5:6:6*nf,n) = -s.yz;  % eyz
+        tri(1).bound(nb1,nb2).gstns(6:6:6*nf,n) = -s.zz;  % ezz
         u = CalcTriDisps(obsx,obsy,obsz,trix,triy,triz,pr,0,0,1);
-        tri(1).bound(nb1,nb2).gdip(1:3:3*nd,n) =  u.x; %E
-        tri(1).bound(nb1,nb2).gdip(2:3:3*nd,n) =  u.y; %N
-        tri(1).bound(nb1,nb2).gdip(3:3:3*nd,n) = -u.z; %D
+        s = CalcTriStrains(tricx,tricy,tricz,trix,triy,triz,pr,0,0,1);
+        tri(1).bound(nb1,nb2).gudip(1:3:3*nd,n) =  u.x;  % E
+        tri(1).bound(nb1,nb2).gudip(2:3:3*nd,n) =  u.y;  % N
+        tri(1).bound(nb1,nb2).gudip(3:3:3*nd,n) = -u.z;  % U
+        tri(1).bound(nb1,nb2).gsdip(1:6:6*nf,n) =  s.xx;  % exx
+        tri(1).bound(nb1,nb2).gsdip(2:6:6*nf,n) =  s.xy;  % exy
+        tri(1).bound(nb1,nb2).gsdip(3:6:6*nf,n) = -s.xz;  % exz
+        tri(1).bound(nb1,nb2).gsdip(4:6:6*nf,n) =  s.yy;  % eyy
+        tri(1).bound(nb1,nb2).gsdip(5:6:6*nf,n) = -s.yz;  % eyz
+        tri(1).bound(nb1,nb2).gsdip(6:6:6*nf,n) = -s.zz;  % ezz
         if mod(n,ceil(nf/3)) == 1
           fprintf('MAKE GREEN at TRI sub-faults : %4i / %4i \n',n,nf)
         end
         [tri]     = CorrectFactor(blk,tri,nb1,nb2,dp,n,nf);
         [blk,tri] = DiscriminateDirection(blk,tri,nb1,nb2,trix,triy,n,nf);
+        [tri]     = trans_xyz2strdip(tri,nb1,nb2,n,nf);
       end
       tri(1).nb = tri(1).nb+nf;
     end
@@ -1325,11 +1459,12 @@ end
 end
 
 %% ESTIMATE FAULT PARAMETERS FOR TRI
-function [floc,da,nv,st,dp] = EstFaultTri(loc_f)
+function [floc,da,nv,st,dp,phi,theta] = EstFaultTri(loc_f)
 % Coded by Takeo Ito 2015/11/11 (ver 1.0)
+% Modified by Hiroshi Kimura 2019/01/29
 [da]       = AreaTri(loc_f(1,:),loc_f(2,:),loc_f(3,:));
 floc       = mean(loc_f,2)';
-[nv,st,dp] = Tri_StrDip(loc_f(1,:),loc_f(2,:),loc_f(3,:));
+[nv,st,dp,phi,theta] = Tri_StrDip(loc_f(1,:),loc_f(2,:),loc_f(3,:));
 end
 
 %% ESTIMATE AREA AT SUB-FAULT FOR TRI
@@ -1344,20 +1479,21 @@ da = sqrt(s1*(s1-leng(1))*(s1-leng(2))*(s1-leng(3)));
 end
 
 %% Estimate strike and dip for tri fault
-function [nv,st,dp] = Tri_StrDip(x,y,z)
+function [nv,st,dp,phi,theta] = Tri_StrDip(x,y,z)
 %==========
-% CALC. STR AND DIP ON FAULT
-% CODE BY T.ITO (2006/03/04)
-% Modified by T.ITO (2015/11/13)
-% Modified by T.ITO (2016/02/16)
-% Modified by Kimura(2017/04/17)
-% UP IS MINUS
+% Calculate strike and dip on fault.
+% Coded by Hiroshi Kimura (2019/01/29)
+% Up is minus.
+% phi   : Strike angle of from x-axis (counter-clock wise).
+% theta : Dip angle from x-y plane.
 %==========
 nv = cross([x(2);y(2);z(2)]-[x(1);y(1);z(1)], [x(3);y(3);z(3)]-[x(1);y(1);z(1)]);
 nv = nv./norm(nv);
 if (nv(3) < 0); nv = -nv; end % Enforce clockwise circulation
 st = [-sin(atan2(nv(2),nv(1))) cos(atan2(nv(2),nv(1))) 0];
 dp = cross(nv,st);
+phi   = atan2(st(2),st(1));
+theta = asin(dp(3));
 end
 
 %% make Green's function of displacement
@@ -1450,10 +1586,38 @@ for n=1:nflt
     Gs.dp(5:6:6*nflt,n)=S.yz;
     Gs.dp(6:6:6*nflt,n)=S.zz;
 end
-[Gs]=trans_xyz2strdip(Gs,sitaS,sitaD);
+[Gs]=trans_xyz2strdip_old(Gs,sitaS,sitaD);
 end
+
+%%
+function [tri] = trans_xyz2strdip(tri,nb1,nb2,n,nf)
+% This function transforms a strain tensor from xyz to fault strike-dip.
+% Strain of strike direction on the fault corresponds to ezx',
+% strain of dip direction on the fault corresponds to ezy', and
+% strain of tensile direction on the fault corresponds to ezz'.
+
+c1=cos(tri(1).bound(nb1,nb2).phi(n));
+s1=sin(tri(1).bound(nb1,nb2).phi(n));
+c2=cos(tri(1).bound(nb1,nb2).theta(n));
+s2=sin(tri(1).bound(nb1,nb2).theta(n));
+
+[sst,sdp,sts] = calctrans(tri(1).bound(nb1,nb2).gsstr(:,n),c1,s1,c2,s2);  % response to strike slip
+tri(1).bound(nb1,nb2).gsstrT(1:3:3*nf,n)=sst;  % str
+tri(1).bound(nb1,nb2).gsstrT(2:3:3*nf,n)=sdp;  % dip
+tri(1).bound(nb1,nb2).gsstrT(3:3:3*nf,n)=sts;  % tns
+[sst,sdp,sts] = calctrans(tri(1).bound(nb1,nb2).gstns(:,n),c1,s1,c2,s2);  % response to tensile slip
+tri(1).bound(nb1,nb2).gstnsT(1:3:3*nf,n)=sst;  % str
+tri(1).bound(nb1,nb2).gstnsT(2:3:3*nf,n)=sdp;  % dip
+tri(1).bound(nb1,nb2).gstnsT(3:3:3*nf,n)=sts;  % tns
+[sst,sdp,sts] = calctrans(tri(1).bound(nb1,nb2).gsdip(:,n),c1,s1,c2,s2);  % response to dip slip
+tri(1).bound(nb1,nb2).gsdipT(1:3:3*nf,n)=sst;  % str
+tri(1).bound(nb1,nb2).gsdipT(2:3:3*nf,n)=sdp;  % dip
+tri(1).bound(nb1,nb2).gsdipT(3:3:3*nf,n)=sts;  % tns
+
+end
+
 %% Transform tensor from xyz to strike-dip
-function [Gs]=trans_xyz2strdip(Gs,sitaS,sitaD)
+function [Gs]=trans_xyz2strdip_old(Gs,sitaS,sitaD)
 % This function transforms a strain tensor from xyz to fault strike-dip.
 % 
 % Output
@@ -1515,9 +1679,9 @@ s1_2 = s1.^2;
 s2_2 = s2.^2;
 c1s1 = c1.*s1;
 c2s2 = c2.*s2;
-% ezx' = -s2*( c1*s1*( eyy - exx ) + ( c1^2 - c2^2 )*exy ) + c2( c1*exz + s1*eyz );
-% ezy' = c2*s2*( ezz - s1^2*exx + 2*c1*s1*exy - c1^2*eyy ) + ( c2^2 - s2^2 )*( c1*eyz - s1*exz );
-% ezz' = s2^2*( s1^2*exx -2*c1*s1*exy + c1^2*eyy ) + 2*c2*s2*( s1*exz - c1*eyz ) + c2^2*ezz;
+% ezx' = sst = -s2*( c1*s1*( eyy - exx ) + ( c1^2 - c2^2 )*exy ) + c2( c1*exz + s1*eyz );
+% ezy' = sdp = c2*s2*( ezz - s1^2*exx + 2*c1*s1*exy - c1^2*eyy ) + ( c2^2 - s2^2 )*( c1*eyz - s1*exz );
+% ezz' = sts = s2^2*( s1^2*exx -2*c1*s1*exy + c1^2*eyy ) + 2*c2*s2*( s1*exz - c1*eyz ) + c2^2*ezz;
 exx = sxyz(1:6:end,:);
 exy = sxyz(2:6:end,:);
 exz = sxyz(3:6:end,:);
