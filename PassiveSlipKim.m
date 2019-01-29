@@ -3,17 +3,19 @@ function PassiveSlipKim
 % Coded by Ryohei Sasajima final 2013/12/23
 % Combined by Hiroshi Kimura 2018/11/12
 %--- test
+prm.input = 'PARAMETER/parameter_test.txt';
+prm.optfile='PARAMETER/opt_bound_par.txt';
 prm.alon0 = 0;
 prm.alat0 = 0;
 %--
 
-[triC,tri3,tri,sll]=make_test_trill;
-
-ALON0=142.5;
-ALAT0=38.3;
-[trixyzC,trixyz3,sxyz]=trill2trixyz(triC,tri3,sll,ALAT0,ALON0);
-
-[sitaS,sitaD,normVec]=strike_dip(trixyzC,trixyz3);
+% [triC,tri3,tri,sll]=make_test_trill;
+% 
+% ALON0=142.5;
+% ALAT0=38.3;
+% [trixyzC,trixyz3,sxyz]=trill2trixyz(triC,tri3,sll,ALAT0,ALON0);
+% 
+% [sitaS,sitaD,normVec]=strike_dip(trixyzC,trixyz3);
 
 % [xyz]=makexyz;
 [prm]     = ReadParameters(prm);
@@ -121,7 +123,7 @@ prm.kep = fscanf(fid,'%d \n',[1,1]); [~] = fgetl(fid);
 prm.rwd = fscanf(fid,'%f \n',[1,1]);
 fclose(fid);
 %====================================================
-tmp = load(input.optfile);
+tmp = load(prm.optfile);
 prm.num    = size(tmp,1);
 prm.optb1  = tmp(:,1);
 prm.optb2  = tmp(:,2);
