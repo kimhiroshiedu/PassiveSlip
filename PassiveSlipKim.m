@@ -356,6 +356,47 @@ function [blk] = ReadLockedPatch(blk,prm)
 % test version coded by H. Kimura 2019/01/29
 for nb1 = 1:blk(1).nblock
   for nb2 = nb1+1:blk(1).nblock
+    blk(1).bounc(nb1,nb2).patchid = 0;
+    patchfile = fullfile(prm.dirblock_patch,['patchb_',num2str(nb1),'_',num2str(nb2),'.txt']);
+    fid       = fopen(patchfile,'r');
+    if fid >= 0
+      np    = 0;
+      tline = fgetl(fid);
+      while 1
+        if tline < 0
+          break
+        elseif tline == ">"
+          np = np+1;
+          blk(1).bound(nb1,nb2).patch(np).lon = [];
+          blk(1).bound(nb1,nb2).patch(np).lat = [];
+          while 1
+            tline = fgetl(fid);
+            if tline < 0
+              break
+            end
+            tmp = strtrim(strsplit(tline));
+            if ~or(strcmpi(tmp(1),'>'), strcmpi(tmp(1),''))
+              tmp = str2double(char(tmp));
+              blk(1).bound(nb1,nb2).patch(np).lon = [blk(1).bound(nb1,nb2).patch(np).lon, tmp(1)];
+              blk(1).bound(nb1,nb2).patch(np).lat = [blk(1).bound(nb1,nb2).patch(np).lat, tmp(1)];
+            else
+              break
+            end
+          end
+        elseif tline == ""
+          break
+        end
+      end
+    end
+  end
+end
+
+end
+    
+%%
+function tmp      
+for nb1 = 1:blk(1).nblock
+  for nb2 = nb1+1:blk(1).nblock
     blk(1).bound(nb1,nb2).type = 1;
     pre_tri_f = fullfile(dirblk,['trib_',num2str(nb1),'_',num2str(nb2),'.txt']); 
     fid = fopen(pre_tri_f,'r');
