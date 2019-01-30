@@ -102,7 +102,7 @@ dirblock           = fscanf(fid,'%s \n',[1,1]); [~] = fgetl(fid);
 dirblock_interface = fscanf(fid,'%s \n',[1,1]); [~] = fgetl(fid);
 dirblock_patch     = fscanf(fid,'%s \n',[1,1]); [~] = fgetl(fid);
 filepole           = fscanf(fid,'%s \n',[1,1]); [~] = fgetl(fid);
-filerigb           = fscanf(fid,'%s \n',[1,1]); [~] = fgetl(fid);
+filedipb           = fscanf(fid,'%s \n',[1,1]); [~] = fgetl(fid);
 fileinternal       = fscanf(fid,'%s \n',[1,1]); [~] = fgetl(fid);
 dirresult          = fscanf(fid,'%s \n',[1,1]); [~] = fgetl(fid);
 prm.home_d = pwd;
@@ -111,7 +111,7 @@ prm.dirblock           = fullfile(prm.home_d,dirblock);
 prm.dirblock_interface = fullfile(prm.home_d,dirblock_interface);
 prm.dirblock_patch     = fullfile(prm.home_d,dirblock_patch);
 prm.filepole           = fullfile(prm.home_d,filepole);
-prm.filerigb           = fullfile(prm.home_d,filerigb);
+prm.filedipb           = fullfile(prm.home_d,filedipb);
 prm.fileinternal       = fullfile(prm.home_d,fileinternal);
 prm.dirresult          = fullfile(prm.home_d,dirresult);
 %
@@ -135,7 +135,7 @@ fprintf('FileOBS                   : %s \n',prm.fileobs)
 fprintf('DIRBlock                  : %s \n',prm.dirblock)
 fprintf('DIRBlock_Interface        : %s \n',prm.dirblock_interface) 
 fprintf('File fixed epole          : %s \n',prm.filepole) 
-fprintf('File Rigid boundary       : %s \n',prm.filerigb) 
+fprintf('File Rigid boundary       : %s \n',prm.filedipb) 
 fprintf('File Internal deformation : %s \n',prm.fileinternal) 
 fprintf('DIRResult                 : %s \n',prm.dirresult) 
 fprintf('GPUdev (CPU:99)           : %i \n',prm.gpu) 
@@ -548,8 +548,8 @@ end
 %% Read dipping block boundary
 function [blk,prm] = ReadDippingBound(blk,prm)
 blk(1).dipbo = zeros(1,3);
-if exist(prm.FileDipb,'file') ~= 2; return; end  % File not exist
-fid = fopen(prm.FileDipb,'r');
+if exist(prm.filedipb,'file') ~= 2; return; end  % File not exist
+fid = fopen(prm.filedipb,'r');
 tmp = fscanf(fid,'%d %d %d\n',[3 Inf]);
 blk(1).dipbo = tmp';
 end
