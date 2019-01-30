@@ -27,6 +27,7 @@ prm.alat0 = 0;
 [blk]     = ReadLockedPatch(blk,prm);
 
 [tri]     = MakeGreenFunction(blk,obs);
+[d,G]     = GreenFunctionMatrix(blk,obs,tri);
 
 [Gu] = makeGreenDisp(obs,trixyz3);
 [Gs] = makeGreenStrain(trixyzC,trixyz3,sitaS,sitaD,normVec);
@@ -395,113 +396,6 @@ end
 
 end
     
-%%
-function tmp      
-for nb1 = 1:blk(1).nblock
-  for nb2 = nb1+1:blk(1).nblock
-    blk(1).bound(nb1,nb2).type = 1;
-    pre_tri_f = fullfile(dirblk,['trib_',num2str(nb1),'_',num2str(nb2),'.txt']); 
-    fid = fopen(pre_tri_f,'r');
-    if fid >= 0
-      fprintf('block interface: %2i  %2i \n',nb1,nb2)
-      fprintf('read interface tri boudary file : %s \n',pre_tri_f)
-      nf   = 0;
-      blon = zeros(1,3);
-      blat = zeros(1,3);
-      bdep = zeros(1,3);
-      while 1
-        nf    = nf+1;
-        loc_f = fscanf(fid,'%f %f %f \n', [3 3]);
-        tline = fgetl(fid); if ~ischar(tline); break; end
-        blon(nf,:) = loc_f(1,:);  % lon
-        blat(nf,:) = loc_f(2,:);  % lat
-        bdep(nf,:) = loc_f(3,:);  % hight
-        tline = fgetl(fid); if ~ischar(tline); break; end
-      end
-      fclose(fid);
-      bo_tri_f = fullfile(dirblk,['tribo_',num2str(nb1),'_',num2str(nb2),'.txt']); 
-      fid = fopen(bo_tri_f,'r');
-      if fid >= 0
-        bound_blk = textscan(fid,'%f%f'); fclose(fid);
-        bound_blk = cell2mat(bound_blk);
-        bslon = mean(blon,2);
-        bslat = mean(blat,2);
-        id = inpolygon(bslon,bslat,bound_blk(:,1),bound_blk(:,2));
-        blon = blon(id,:);
-        blat = blat(id,:);
-        bdep = bdep(id,:);
-      end
-      blk(1).bound(nb1,nb2).blon = blon;  % lon
-      blk(1).bound(nb1,nb2).blat = blat;  % lat
-      blk(1).bound(nb1,nb2).bdep = bdep;  % hight
-    else
-      sub_f = fullfile(dirblk,['b_',num2str(nb1),'_',num2str(nb2),'.txt']);
-      fid   = fopen(sub_f,'r');
-      if fid >= 0
-        fprintf('block interface: %2i  %2i \n',nb1,nb2)
-        fprintf('read interface boudary shape file : %s \n',sub_f)
-        dep_blk = textscan(fid,'%f%f%f'); fclose(fid);
-        dep_blk = cell2mat(dep_blk);
-        f    = scatteredinterpolant(dep_blk(:,1),dep_blk(:,2),dep_blk(:,3));
-        bo_f = fullfile(dirblk,['bo_',num2str(nb1),'_',num2str(nb2),'.txt']);
-        fid  = fopen(bo_f,'r');
-        if fid >= 0
-          fprintf('read interface boudary definition file : %s \n',bo_f)
-          bound_blk = textscan(fid,'%f%f'); fclose(fid);     
-          bound_blk = cell2mat(bound_blk);
-        else
-          idb       = boundary(dep_blk(:,1),dep_blk(:,2));
-          bound_blk = dep_blk(idb,:);
-        end
-        inb = intersect(find(prm.optb1==nb1),find(prm.optb2==nb2));
-        if isempty(inb)
-          int_bo = int_tri;
-        else
-          int_bo = prm.optint(inb);
-        end
-        [p,bstri] = mesh2d_uni(bound_blk,int_bo,bound_blk);
-        bslon = p(:,1);
-        bslat = p(:,2);
-        bsdep = f(bslon,bslat);
-       else
-        bstri = [];
-        leng  = length(blk(1).bound(nb1,nb2).lon);
-        if leng~=0
-          bslon = [blk(1).bound(nb1,nb2).lon; blk(1).bound(nb1,nb2).lon(1); (blk(1).bound(nb1,nb2).lon(1:leng-1)+blk(1).bound(nb1,nb2).lon(2:leng))./2;blk(1).bound(nb1,nb2).lon(leng)];
-          bslat = [blk(1).bound(nb1,nb2).lat; blk(1).bound(nb1,nb2).lat(1); (blk(1).bound(nb1,nb2).lat(1:leng-1)+blk(1).bound(nb1,nb2).lat(2:leng))./2;blk(1).bound(nb1,nb2).lat(leng)];
-          bsdep = [zeros(leng,1)            ; dep_limit_low.*ones(leng+1,1)];
-          bstri(1:leng-1     ,1:3) = [1     :leng-1;      2:leng    ; leng+2:2*leng]';
-          bstri(leng:2*leng-1,1:3) = [leng+1:2*leng; leng+2:2*leng+1;      1:  leng]';
-          fprintf('block interface: %2i  %2i auto set %4i \n',nb1,nb2,(leng-1)*2+1)
-          blk(1).bound(nb1,nb2).type = 5;
-        else
-          blk(1).bound(nb1,nb2).blon = [];
-          blk(1).bound(nb1,nb2).blat = [];
-          blk(1).bound(nb1,nb2).bdep = [];          
-        end
-      end
-      if ~isempty(bstri)
-        blk(1).bound(nb1,nb2).blon = [bslon(bstri(:,1)), bslon(bstri(:,2)), bslon(bstri(:,3))];
-        blk(1).bound(nb1,nb2).blat = [bslat(bstri(:,1)), bslat(bstri(:,2)), bslat(bstri(:,3))];
-        blk(1).bound(nb1,nb2).bdep = [bsdep(bstri(:,1)), bsdep(bstri(:,2)), bsdep(bstri(:,3))];
-%
-        out_tri_f = fullfile(prm.dirblock,['trib_',num2str(nb1),'_',num2str(nb2),'.out']);
-        nlen      = length(blk(1).bound(nb1,nb2).blat(:,1));
-        fid_out   = fopen(out_tri_f,'w+');
-        fprintf(fid_out,'%10.5f %9.5f %9.3f \n%10.5f %9.5f %9.3f \n%10.5f %9.5f %9.3f \n%10.5f %9.5f %9.3f \n> \n',...
-        reshape([blk(1).bound(nb1,nb2).blon(:,1), blk(1).bound(nb1,nb2).blat(:,1), blk(1).bound(nb1,nb2).bdep(:,1),...
-                 blk(1).bound(nb1,nb2).blon(:,2), blk(1).bound(nb1,nb2).blat(:,2), blk(1).bound(nb1,nb2).bdep(:,2),...
-                 blk(1).bound(nb1,nb2).blon(:,3), blk(1).bound(nb1,nb2).blat(:,3), blk(1).bound(nb1,nb2).bdep(:,3),...
-                 blk(1).bound(nb1,nb2).blon(:,1), blk(1).bound(nb1,nb2).blat(:,1), blk(1).bound(nb1,nb2).bdep(:,1)]',4*nlen,3));
-        fclose(fid_out);
-      end
-    end
-    blk(1).nb = blk(1).nb+size(blk(1).bound(nb1,nb2).blon,1);
-  end
-end
-
-end
-
 %% Read Euler Pole file
 function [eul,prm] = ReadEulerPoles(blk,prm)
 % Fix euler poles at the block which has no observation site.
@@ -1739,6 +1633,105 @@ sts = s2_2.*( s1_2.*exx -2*c1s1.*exy + c1_2.*eyy )...
          + 2.*c2s2.*( s1.*exz - c1.*eyz )...
          + c2_2.*ezz;
 end
+
+%% Make Matrix
+function [d,G] = GreenFunctionMatrix(blk,obs,tri)
+% Coded by Takeo Ito 2017/01/02 (ver 1.1)
+% Coded by Hiroshi Kimura 2018/05/01 (ver 1.2)
+% Modified by Hiroshi Kimura 2019/01/30 (ver 1.3)
+% pole unit is mm
+nobs = length(obs(1).evec);
+tmp.obs(1:3:3*nobs) = obs(1).evec;
+tmp.obs(2:3:3*nobs) = obs(1).nvec;
+tmp.obs(3:3:3*nobs) = obs(1).hvec;
+tmp.err(1:3:3*nobs) = obs(1).eerr./sqrt(obs(1).weight);
+tmp.err(2:3:3*nobs) = obs(1).nerr./sqrt(obs(1).weight);
+tmp.err(3:3:3*nobs) = obs(1).herr;
+%
+d(1).ind = find(tmp.err ~= 0)';
+d(1).obs = tmp.obs(d(1).ind)';
+d(1).err = tmp.err(d(1).ind)';
+d(1).mid = [];
+d(1).cnt = 0;
+%
+% (G(1).C * (( G(1).T * ( G(1).B1 - G(1).B2 ) * Mp)*Mc ) + G(1).P * Mp
+% 
+% (G(1).C * (( G(1).T * ( G(1).B1 - G(1).B2 ) * Mp)*Mc ) + G(1).P * Mp +
+% G(1).I * Mi  % including internal deformation
+%
+G(1).t = zeros(3*blk(1).nb,2.*blk(1).nb);
+G(1).b = zeros(2*blk(1).nb,3.*blk(1).nblock);
+tmp.p  = zeros(3*nobs,3.*blk(1).NBlock);
+tmp.i  = zeros(3*nobs,3.*blk(1).NBlock);
+% 
+mc = 1;
+mt = 1;
+mr = 1;
+for nb1 = 1:blk(1).nblock
+  for nb2 = nb1+1:blk(1).nblock
+    nf = size(tri(1).bound(nb1,nb2).clon,2);
+    if nf ~= 0
+      d(1).cnt             = d(1).cnt+1;
+      d(1).mid             = zeros(blk(1).nb,1);
+      d(1).mid(mr:mr+nf-1) = 1;
+      d(1).mid             = [d(1).mid d(1).mid];
+      tmp.c(1:3*nobs,mc     :mc+  nf-1) = tri(1).bound(nb1,nb2).gstr;
+      tmp.c(1:3*nobs,mc+  nf:mc+2*nf-1) = tri(1).bound(nb1,nb2).gdip;
+      tmp.c(1:3*nobs,mc+2*nf:mc+3*nf-1) = tri(1).bound(nb1,nb2).gtns;
+      G(1).t(mc   :mc+  nf-1,mt   :mt+  nf-1) = diag(tri(1).bound(nb1,nb2).st(:,1));
+      G(1).t(mc+nf:mc+2*nf-1,mt   :mt+  nf-1) = diag(tri(1).bound(nb1,nb2).dp(:,1));
+      G(1).t(mc   :mc+  nf-1,mt+nf:mt+2*nf-1) = diag(tri(1).bound(nb1,nb2).st(:,2));
+      G(1).t(mc+nf:mc+2*nf-1,mt+nf:mt+2*nf-1) = diag(tri(1).bound(nb1,nb2).dp(:,2));
+      G(1).b(mt   :mt+  nf-1,3*nb1-2) = -1.*(-tri(1).bound(nb1,nb2).oxyz(:,7).*tri(1).bound(nb1,nb2).oxyz(:,3));
+      G(1).b(mt   :mt+  nf-1,3*nb1-1) = -1.*(-tri(1).bound(nb1,nb2).oxyz(:,5).*tri(1).bound(nb1,nb2).oxyz(:,3));
+      G(1).b(mt   :mt+  nf-1,3*nb1  ) = -1.*( tri(1).bound(nb1,nb2).oxyz(:,5).*tri(1).bound(nb1,nb2).oxyz(:,2)...
+                                      +tri(1).bound(nb1,nb2).oxyz(:,7).*tri(1).bound(nb1,nb2).oxyz(:,1));
+      G(1).b(mt+nf:mt+2*nf-1,3*nb1-2) = -1.*( tri(1).bound(nb1,nb2).oxyz(:,4).*tri(1).bound(nb1,nb2).oxyz(:,5).*tri(1).bound(nb1,nb2).oxyz(:,3)...
+                                      +tri(1).bound(nb1,nb2).oxyz(:,6).*tri(1).bound(nb1,nb2).oxyz(:,2));
+      G(1).b(mt+nf:mt+2*nf-1,3*nb1-1) = -1.*(-tri(1).bound(nb1,nb2).oxyz(:,4).*tri(1).bound(nb1,nb2).oxyz(:,7).*tri(1).bound(nb1,nb2).oxyz(:,3)...
+                                      -tri(1).bound(nb1,nb2).oxyz(:,6).*tri(1).bound(nb1,nb2).oxyz(:,1));
+      G(1).b(mt+nf:mt+2*nf-1,3*nb1  ) = -1.*( tri(1).bound(nb1,nb2).oxyz(:,4).*tri(1).bound(nb1,nb2).oxyz(:,7).*tri(1).bound(nb1,nb2).oxyz(:,2)...
+                                      -tri(1).bound(nb1,nb2).oxyz(:,4).*tri(1).bound(nb1,nb2).oxyz(:,5).*tri(1).bound(nb1,nb2).oxyz(:,1));
+      G(1).b(mt   :mt+  nf-1,3*nb2-2) = -G(1).b(mt   :mt+  nf-1,3*nb1-2);
+      G(1).b(mt   :mt+  nf-1,3*nb2-1) = -G(1).b(mt   :mt+  nf-1,3*nb1-1);
+      G(1).b(mt   :mt+  nf-1,3*nb2  ) = -G(1).b(mt   :mt+  nf-1,3*nb1  );
+      G(1).b(mt+nf:mt+2*nf-1,3*nb2-2) = -G(1).b(mt+nf:mt+2*nf-1,3*nb1-2);
+      G(1).b(mt+nf:mt+2*nf-1,3*nb2-1) = -G(1).b(mt+nf:mt+2*nf-1,3*nb1-1);
+      G(1).b(mt+nf:mt+2*nf-1,3*nb2  ) = -G(1).b(mt+nf:mt+2*nf-1,3*nb1  );           
+%       
+      mc = mc + 3*nf;
+      mt = mt + 2*nf;
+      mr = mr +   nf;
+    end
+  end
+%   
+  ind  = obs(1).ablk == nb1;  
+  nind = [zeros(size(ind)),ind,zeros(size(ind))]; nind=logical(reshape(nind',3*nobs,1));
+  eind = [ind,zeros(size(ind)),zeros(size(ind))]; eind=logical(reshape(eind',3*nobs,1));
+  tmp.p(eind,3*nb1-2) = -obs(1).axyz(ind,7).*obs(1).axyz(ind,3);
+  tmp.p(eind,3*nb1-1) = -obs(1).axyz(ind,5).*obs(1).axyz(ind,3);
+  tmp.p(eind,3*nb1  ) =  obs(1).axyz(ind,5).*obs(1).axyz(ind,2)                    +obs(1).axyz(ind,7).*obs(1).axyz(ind,1);
+  tmp.p(nind,3*nb1-2) =  obs(1).axyz(ind,4).*obs(1).axyz(ind,5).*obs(1).axyz(ind,3)+obs(1).axyz(ind,6).*obs(1).axyz(ind,2);
+  tmp.p(nind,3*nb1-1) = -obs(1).axyz(ind,4).*obs(1).axyz(ind,7).*obs(1).axyz(ind,3)-obs(1).axyz(ind,6).*obs(1).axyz(ind,1);
+  tmp.p(nind,3*nb1  ) =  obs(1).axyz(ind,4).*obs(1).axyz(ind,7).*obs(1).axyz(ind,2)-obs(1).axyz(ind,4).*obs(1).axyz(ind,5).*obs(1).axyz(ind,1);
+  tmp.i(eind,3*nb1-2) =  (blk(nb1).xinter).*10^6;
+  tmp.i(eind,3*nb1-1) =  (blk(nb1).yinter).*10^6;
+  tmp.i(eind,3*nb1  ) =  0;
+  tmp.i(nind,3*nb1-2) =  0;
+  tmp.i(nind,3*nb1-1) =  (blk(nb1).xinter).*10^6;
+  tmp.i(nind,3*nb1  ) =  (blk(nb1).yinter).*10^6;
+end
+% 
+G(1).c     = tmp.c(d(1).ind,:);
+G(1).p     = tmp.p(d(1).ind,:);
+G(1).i     = tmp.i(d(1).ind,:);
+G(1).tb    = sparse(G(1).t*G(1).b);
+d(1).mid   = logical(repmat(d(1).mid,3,1));
+d(1).cfinv = tri(1).cf.*(tri(1).inv);
+end
+
+%% Make asperities
+
 %% make_test_trill.m
 %====================================================
 function [triC,tri3,tri,sll]=make_test_trill
