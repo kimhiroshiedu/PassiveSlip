@@ -252,7 +252,7 @@ blk(1).nb = 0;
 for nb1 = 1:blk(1).nblock
   for nb2 = nb1+1:blk(1).nblock
     blk(1).bound(nb1,nb2).type = 1;
-    pre_tri_f = fullfile(dirblk,['trib_',num2str(nb1),'_',num2str(nb2),'.txt']); 
+    pre_tri_f = fullfile(dirblk,['triB_',num2str(nb1),'_',num2str(nb2),'.txt']); 
     fid = fopen(pre_tri_f,'r');
     if fid >= 0
       fprintf('block interface: %2i  %2i \n',nb1,nb2)
@@ -271,7 +271,7 @@ for nb1 = 1:blk(1).nblock
         tline = fgetl(fid); if ~ischar(tline); break; end
       end
       fclose(fid);
-      bo_tri_f = fullfile(dirblk,['tribo_',num2str(nb1),'_',num2str(nb2),'.txt']); 
+      bo_tri_f = fullfile(dirblk,['triBO_',num2str(nb1),'_',num2str(nb2),'.txt']); 
       fid = fopen(bo_tri_f,'r');
       if fid >= 0
         bound_blk = textscan(fid,'%f%f'); fclose(fid);
@@ -287,7 +287,7 @@ for nb1 = 1:blk(1).nblock
       blk(1).bound(nb1,nb2).blat = blat;  % lat
       blk(1).bound(nb1,nb2).bdep = bdep;  % hight
     else
-      sub_f = fullfile(dirblk,['b_',num2str(nb1),'_',num2str(nb2),'.txt']);
+      sub_f = fullfile(dirblk,['B_',num2str(nb1),'_',num2str(nb2),'.txt']);
       fid   = fopen(sub_f,'r');
       if fid >= 0
         fprintf('block interface: %2i  %2i \n',nb1,nb2)
@@ -295,7 +295,7 @@ for nb1 = 1:blk(1).nblock
         dep_blk = textscan(fid,'%f%f%f'); fclose(fid);
         dep_blk = cell2mat(dep_blk);
         f    = scatteredinterpolant(dep_blk(:,1),dep_blk(:,2),dep_blk(:,3));
-        bo_f = fullfile(dirblk,['bo_',num2str(nb1),'_',num2str(nb2),'.txt']);
+        bo_f = fullfile(dirblk,['BO_',num2str(nb1),'_',num2str(nb2),'.txt']);
         fid  = fopen(bo_f,'r');
         if fid >= 0
           fprintf('read interface boudary definition file : %s \n',bo_f)
@@ -337,7 +337,7 @@ for nb1 = 1:blk(1).nblock
         blk(1).bound(nb1,nb2).blat = [bslat(bstri(:,1)), bslat(bstri(:,2)), bslat(bstri(:,3))];
         blk(1).bound(nb1,nb2).bdep = [bsdep(bstri(:,1)), bsdep(bstri(:,2)), bsdep(bstri(:,3))];
 %
-        out_tri_f = fullfile(prm.dirblock,['trib_',num2str(nb1),'_',num2str(nb2),'.out']);
+        out_tri_f = fullfile(prm.dirblock,['triB_',num2str(nb1),'_',num2str(nb2),'.out']);
         nlen      = length(blk(1).bound(nb1,nb2).blat(:,1));
         fid_out   = fopen(out_tri_f,'w+');
         fprintf(fid_out,'%10.5f %9.5f %9.3f \n%10.5f %9.5f %9.3f \n%10.5f %9.5f %9.3f \n%10.5f %9.5f %9.3f \n> \n',...
