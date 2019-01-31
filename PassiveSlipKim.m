@@ -1250,108 +1250,105 @@ for nb1 = 1:blk(1).nblock
     tri(1).bound(nb1,nb2).clon = [];
     tri(1).bound(nb1,nb2).cdep = [];
     if nf ~= 0
-%       fid = fopen(fullfile(prm.dirtmp,['tri_',num2str(nb1),'_'num2str(  %
-%       TO DO
-      tri(1).bound(nb1,nb2).gstr = zeros(3*nd,nf);
-      tri(1).bound(nb1,nb2).gdip = zeros(3*nd,nf);
-      tri(1).bound(nb1,nb2).gtns = zeros(3*nd,nf);
-%
-      fprintf('==================\n Block %2i : Block %2i \n Number of TRI sub-faults : %4i \n',nb1,nb2,nf)
-%
-      triclon = mean(blk(1).bound(nb1,nb2).blon,2);
-      triclat = mean(blk(1).bound(nb1,nb2).blat,2);
-      tricdep = mean(blk(1).bound(nb1,nb2).bdep,2);
-      [tricx,tricy] = PLTXY(triclat,triclat,alat,alon);
-      tricz = -tricdep;
-
-      blk(1).bound(nb1,nb2).flag1 = 0;
-      for ii = 1:size(blk(1).dipbo,1)
-        dippingid = ismember([nb1 nb2],blk(1).dipbo(ii,2:3));
-        ispair    = sum(dippingid);
-        if ispair == 2
-          if max(blk(1).dipbo(ii,2:3)) == blk(1).dipbo(ii,1)
-            blk(1).bound(nb1,nb2).flag1 = 1;
-          else
-            blk(1).bound(nb1,nb2).flag1 = 2;
+      trimat = fullfile(prm.dirtmp,['tri_',num2str(nb1),'_',num2str(nb2),'.mat']);
+      fid = fopen(trimat);
+      if fid > 0
+        load(trimat);
+        tri(1).bound(nb1,nb2) = trisave;
+      else
+        tri(1).bound(nb1,nb2).gstr = zeros(3*nd,nf);
+        tri(1).bound(nb1,nb2).gdip = zeros(3*nd,nf);
+        tri(1).bound(nb1,nb2).gtns = zeros(3*nd,nf);
+        %
+        fprintf('==================\n Block %2i : Block %2i \n Number of TRI sub-faults : %4i \n',nb1,nb2,nf)
+        %
+        triclon = mean(blk(1).bound(nb1,nb2).blon,2);
+        triclat = mean(blk(1).bound(nb1,nb2).blat,2);
+        tricdep = mean(blk(1).bound(nb1,nb2).bdep,2);
+        [tricx,tricy] = PLTXY(triclat,triclon,alat,alon);
+        tricz = -tricdep;
+        %
+        blk(1).bound(nb1,nb2).flag1 = 0;
+        for ii = 1:size(blk(1).dipbo,1)
+          dippingid = ismember([nb1 nb2],blk(1).dipbo(ii,2:3));
+          ispair    = sum(dippingid);
+          if ispair == 2
+            if max(blk(1).dipbo(ii,2:3)) == blk(1).dipbo(ii,1)
+              blk(1).bound(nb1,nb2).flag1 = 1;
+            else
+              blk(1).bound(nb1,nb2).flag1 = 2;
+            end
+            break
           end
-          break
         end
-      end
-
-      for n = 1:nf
-        [trix,triy] = PLTXY(blk(1).bound(nb1,nb2).blat(n,:),blk(1).bound(nb1,nb2).blon(n,:),alat,alon);
-        triz        = -1.*blk(1).bound(nb1,nb2).bdep(n,:);
-        f_loc       = [trix;triy;triz];
-        [f,da,nv,st,dp,phi,theta] = EstFaultTri(f_loc);
-        nv(3) = -nv(3);
-        dp(3) = -dp(3);
-        tri(1).bound(nb1,nb2).clat(n)   = mean(blk(1).bound(nb1,nb2).blat(n,:));
-        tri(1).bound(nb1,nb2).clon(n)   = mean(blk(1).bound(nb1,nb2).blon(n,:));
-        tri(1).bound(nb1,nb2).cdep(n)   = mean(blk(1).bound(nb1,nb2).bdep(n,:)); % up is plus
-        tri(1).bound(nb1,nb2).da(n)     = da;
-        tri(1).bound(nb1,nb2).nv(n,:)   = nv;
-        tri(1).bound(nb1,nb2).st(n,:)   = st;
-        tri(1).bound(nb1,nb2).dp(n,:)   = dp;
-        tri(1).bound(nb1,nb2).phi(n)    = phi;
-        tri(1).bound(nb1,nb2).theta(n)  = theta;
-        tri(1).bound(nb1,nb2).oxyz(n,:) = conv2ell(tri(1).bound(nb1,nb2).clat(n),tri(1).bound(nb1,nb2).clon(n),1e3.*tri(1).bound(nb1,nb2).cdep(n));
-        u = CalcTriDisps(obsx,obsy,obsz,trix,triy,triz,pr,1,0,0);
-        s = CalcTriStrains(tricx,tricy,tricz,trix,triy,triz,pr,1,0,0);
-        tri(1).bound(nb1,nb2).gustr(1:3:3*nd,n) =  u.x;  % E
-        tri(1).bound(nb1,nb2).gustr(2:3:3*nd,n) =  u.y;  % N
-        tri(1).bound(nb1,nb2).gustr(3:3:3*nd,n) = -u.z;  % U
-        tri(1).bound(nb1,nb2).gsstr(1:6:6*nf,n) =  s.xx;  % exx
-        tri(1).bound(nb1,nb2).gsstr(2:6:6*nf,n) =  s.xy;  % exy
-        tri(1).bound(nb1,nb2).gsstr(3:6:6*nf,n) = -s.xz;  % exz
-        tri(1).bound(nb1,nb2).gsstr(4:6:6*nf,n) =  s.yy;  % eyy
-        tri(1).bound(nb1,nb2).gsstr(5:6:6*nf,n) = -s.yz;  % eyz
-        tri(1).bound(nb1,nb2).gsstr(6:6:6*nf,n) = -s.zz;  % ezz
-        u = CalcTriDisps(obsx,obsy,obsz,trix,triy,triz,pr,0,1,0);
-        s = CalcTriStrains(tricx,tricy,tricz,trix,triy,triz,pr,0,1,0);
-        tri(1).bound(nb1,nb2).gutns(1:3:3*nd,n) =  u.x;  % E
-        tri(1).bound(nb1,nb2).gutns(2:3:3*nd,n) =  u.y;  % N
-        tri(1).bound(nb1,nb2).gutns(3:3:3*nd,n) = -u.z;  % U 
-        tri(1).bound(nb1,nb2).gstns(1:6:6*nf,n) =  s.xx;  % exx
-        tri(1).bound(nb1,nb2).gstns(2:6:6*nf,n) =  s.xy;  % exy
-        tri(1).bound(nb1,nb2).gstns(3:6:6*nf,n) = -s.xz;  % exz
-        tri(1).bound(nb1,nb2).gstns(4:6:6*nf,n) =  s.yy;  % eyy
-        tri(1).bound(nb1,nb2).gstns(5:6:6*nf,n) = -s.yz;  % eyz
-        tri(1).bound(nb1,nb2).gstns(6:6:6*nf,n) = -s.zz;  % ezz
-        u = CalcTriDisps(obsx,obsy,obsz,trix,triy,triz,pr,0,0,1);
-        s = CalcTriStrains(tricx,tricy,tricz,trix,triy,triz,pr,0,0,1);
-        tri(1).bound(nb1,nb2).gudip(1:3:3*nd,n) =  u.x;  % E
-        tri(1).bound(nb1,nb2).gudip(2:3:3*nd,n) =  u.y;  % N
-        tri(1).bound(nb1,nb2).gudip(3:3:3*nd,n) = -u.z;  % U
-        tri(1).bound(nb1,nb2).gsdip(1:6:6*nf,n) =  s.xx;  % exx
-        tri(1).bound(nb1,nb2).gsdip(2:6:6*nf,n) =  s.xy;  % exy
-        tri(1).bound(nb1,nb2).gsdip(3:6:6*nf,n) = -s.xz;  % exz
-        tri(1).bound(nb1,nb2).gsdip(4:6:6*nf,n) =  s.yy;  % eyy
-        tri(1).bound(nb1,nb2).gsdip(5:6:6*nf,n) = -s.yz;  % eyz
-        tri(1).bound(nb1,nb2).gsdip(6:6:6*nf,n) = -s.zz;  % ezz
-        if mod(n,ceil(nf/3)) == 1
-          fprintf('MAKE GREEN at TRI sub-faults : %4i / %4i \n',n,nf)
+        %
+        for n = 1:nf
+          [trix,triy] = PLTXY(blk(1).bound(nb1,nb2).blat(n,:),blk(1).bound(nb1,nb2).blon(n,:),alat,alon);
+          triz        = -1.*blk(1).bound(nb1,nb2).bdep(n,:);
+          f_loc       = [trix;triy;triz];
+          [f,da,nv,st,dp,phi,theta] = EstFaultTri(f_loc);
+          nv(3) = -nv(3);
+          dp(3) = -dp(3);
+          tri(1).bound(nb1,nb2).clat(n)   = mean(blk(1).bound(nb1,nb2).blat(n,:));
+          tri(1).bound(nb1,nb2).clon(n)   = mean(blk(1).bound(nb1,nb2).blon(n,:));
+          tri(1).bound(nb1,nb2).cdep(n)   = mean(blk(1).bound(nb1,nb2).bdep(n,:)); % up is plus
+          tri(1).bound(nb1,nb2).da(n)     = da;
+          tri(1).bound(nb1,nb2).nv(n,:)   = nv;
+          tri(1).bound(nb1,nb2).st(n,:)   = st;
+          tri(1).bound(nb1,nb2).dp(n,:)   = dp;
+          tri(1).bound(nb1,nb2).phi(n)    = phi;
+          tri(1).bound(nb1,nb2).theta(n)  = theta;
+          tri(1).bound(nb1,nb2).oxyz(n,:) = conv2ell(tri(1).bound(nb1,nb2).clat(n),tri(1).bound(nb1,nb2).clon(n),1e3.*tri(1).bound(nb1,nb2).cdep(n));
+          u = CalcTriDisps(obsx,obsy,obsz,trix,triy,triz,pr,1,0,0);
+          s = CalcTriStrains(tricx,tricy,tricz,trix,triy,triz,pr,1,0,0);
+          tri(1).bound(nb1,nb2).gustr(1:3:3*nd,n) =  u.x;  % E
+          tri(1).bound(nb1,nb2).gustr(2:3:3*nd,n) =  u.y;  % N
+          tri(1).bound(nb1,nb2).gustr(3:3:3*nd,n) = -u.z;  % U
+          tri(1).bound(nb1,nb2).gsstr(1:6:6*nf,n) =  s.xx;  % exx
+          tri(1).bound(nb1,nb2).gsstr(2:6:6*nf,n) =  s.xy;  % exy
+          tri(1).bound(nb1,nb2).gsstr(3:6:6*nf,n) = -s.xz;  % exz
+          tri(1).bound(nb1,nb2).gsstr(4:6:6*nf,n) =  s.yy;  % eyy
+          tri(1).bound(nb1,nb2).gsstr(5:6:6*nf,n) = -s.yz;  % eyz
+          tri(1).bound(nb1,nb2).gsstr(6:6:6*nf,n) = -s.zz;  % ezz
+          u = CalcTriDisps(obsx,obsy,obsz,trix,triy,triz,pr,0,1,0);
+          s = CalcTriStrains(tricx,tricy,tricz,trix,triy,triz,pr,0,1,0);
+          tri(1).bound(nb1,nb2).gutns(1:3:3*nd,n) =  u.x;  % E
+          tri(1).bound(nb1,nb2).gutns(2:3:3*nd,n) =  u.y;  % N
+          tri(1).bound(nb1,nb2).gutns(3:3:3*nd,n) = -u.z;  % U 
+          tri(1).bound(nb1,nb2).gstns(1:6:6*nf,n) =  s.xx;  % exx
+          tri(1).bound(nb1,nb2).gstns(2:6:6*nf,n) =  s.xy;  % exy
+          tri(1).bound(nb1,nb2).gstns(3:6:6*nf,n) = -s.xz;  % exz
+          tri(1).bound(nb1,nb2).gstns(4:6:6*nf,n) =  s.yy;  % eyy
+          tri(1).bound(nb1,nb2).gstns(5:6:6*nf,n) = -s.yz;  % eyz
+          tri(1).bound(nb1,nb2).gstns(6:6:6*nf,n) = -s.zz;  % ezz
+          u = CalcTriDisps(obsx,obsy,obsz,trix,triy,triz,pr,0,0,1);
+          s = CalcTriStrains(tricx,tricy,tricz,trix,triy,triz,pr,0,0,1);
+          tri(1).bound(nb1,nb2).gudip(1:3:3*nd,n) =  u.x;  % E
+          tri(1).bound(nb1,nb2).gudip(2:3:3*nd,n) =  u.y;  % N
+          tri(1).bound(nb1,nb2).gudip(3:3:3*nd,n) = -u.z;  % U
+          tri(1).bound(nb1,nb2).gsdip(1:6:6*nf,n) =  s.xx;  % exx
+          tri(1).bound(nb1,nb2).gsdip(2:6:6*nf,n) =  s.xy;  % exy
+          tri(1).bound(nb1,nb2).gsdip(3:6:6*nf,n) = -s.xz;  % exz
+          tri(1).bound(nb1,nb2).gsdip(4:6:6*nf,n) =  s.yy;  % eyy
+          tri(1).bound(nb1,nb2).gsdip(5:6:6*nf,n) = -s.yz;  % eyz
+          tri(1).bound(nb1,nb2).gsdip(6:6:6*nf,n) = -s.zz;  % ezz
+          if mod(n,ceil(nf/3)) == 1
+            fprintf('MAKE GREEN at TRI sub-faults : %4i / %4i \n',n,nf)
+          end
+          [tri]     = CorrectFactor(blk,tri,nb1,nb2,dp,n,nf);
+          [blk,tri] = DiscriminateDirection(blk,tri,nb1,nb2,trix,triy,n,nf);
+          [tri]     = trans_xyz2strdip(tri,nb1,nb2,n,nf);
         end
-        [tri]     = CorrectFactor(blk,tri,nb1,nb2,dp,n,nf);
-        [blk,tri] = DiscriminateDirection(blk,tri,nb1,nb2,trix,triy,n,nf);
-        [tri]     = trans_xyz2strdip(tri,nb1,nb2,n,nf);
+        tri(1).nb = tri(1).nb+nf;
+        trisave = tri(1).bound(nb1,nb2);
+        save(trimat,'trisave','-v7.3');
       end
-      tri(1).nb = tri(1).nb+nf;
     end
   end
 end
 disp('==================')
 disp('PASS GREEN_TRI')
 disp('==================')
-end
-
-%% Make Green's function
-function MakeGreenFunction
-
-end
-
-%% Load Green's function mat file
-function LoadGreenFunction
-
 end
 
 %% Calculate correction factor of (STR, DIP, TNS) unit vectors
