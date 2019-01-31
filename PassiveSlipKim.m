@@ -26,7 +26,7 @@ prm.alat0 = 0;
 [blk,prm] = ReadDippingBound(blk,prm);
 [blk]     = ReadLockedPatch(blk,prm);
 
-[tri]     = MakeGreenFunction(blk,obs);
+[tri]     = GreenTri(blk,obs,prm);
 [d,G]     = GreenFunctionMatrix(blk,obs,tri);
 
 [Gu] = makeGreenDisp(obs,trixyz3);
@@ -105,6 +105,7 @@ dirblock_patch     = fscanf(fid,'%s \n',[1,1]); [~] = fgetl(fid);
 filepole           = fscanf(fid,'%s \n',[1,1]); [~] = fgetl(fid);
 filedipb           = fscanf(fid,'%s \n',[1,1]); [~] = fgetl(fid);
 fileinternal       = fscanf(fid,'%s \n',[1,1]); [~] = fgetl(fid);
+dirtmp             = fscanf(fid,'%s \n',[1,1]); [~] = fgetl(fid);
 dirresult          = fscanf(fid,'%s \n',[1,1]); [~] = fgetl(fid);
 prm.home_d = pwd;
 prm.fileobs            = fullfile(prm.home_d,fileobs);
@@ -114,6 +115,7 @@ prm.dirblock_patch     = fullfile(prm.home_d,dirblock_patch);
 prm.filepole           = fullfile(prm.home_d,filepole);
 prm.filedipb           = fullfile(prm.home_d,filedipb);
 prm.fileinternal       = fullfile(prm.home_d,fileinternal);
+prm.dirtmp             = fullfile(prm.home_d,dirtmp);
 prm.dirresult          = fullfile(prm.home_d,dirresult);
 %
 prm.gpu = fscanf(fid,'%d \n',[1,1]); [~] = fgetl(fid);
@@ -1226,7 +1228,7 @@ end
 end
 
 %% Make Green's function of halfspace elastic strain for triangular meshes
-function [tri] = MakeGreenFunction(blk,obs)
+function [tri] = GreenTri(blk,obs,prm)
 % Coded by Hiroshi Kimura 2019/01/28 (ver 1.0)
 pr = 0.25;
 nd = size(obs(1).alat,2);
@@ -1248,6 +1250,8 @@ for nb1 = 1:blk(1).nblock
     tri(1).bound(nb1,nb2).clon = [];
     tri(1).bound(nb1,nb2).cdep = [];
     if nf ~= 0
+%       fid = fopen(fullfile(prm.dirtmp,['tri_',num2str(nb1),'_'num2str(  %
+%       TO DO
       tri(1).bound(nb1,nb2).gstr = zeros(3*nd,nf);
       tri(1).bound(nb1,nb2).gdip = zeros(3*nd,nf);
       tri(1).bound(nb1,nb2).gtns = zeros(3*nd,nf);
@@ -1338,6 +1342,16 @@ end
 disp('==================')
 disp('PASS GREEN_TRI')
 disp('==================')
+end
+
+%% Make Green's function
+function MakeGreenFunction
+
+end
+
+%% Load Green's function mat file
+function LoadGreenFunction
+
 end
 
 %% Calculate correction factor of (STR, DIP, TNS) unit vectors
