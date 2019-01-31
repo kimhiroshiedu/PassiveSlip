@@ -24,6 +24,7 @@ prm.alat0 = 0;
 [blk]     = ReadBlockInterface(blk,prm);
 [eul,prm] = ReadEulerPoles(blk,prm);
 [blk,prm] = ReadDippingBound(blk,prm);
+[blk,prm] = ReadInternalStrain(blk,obs,prm);
 [blk]     = ReadLockedPatch(blk,prm);
 
 [tri]     = GreenTri(blk,obs,prm);
@@ -105,7 +106,6 @@ dirblock_patch     = fscanf(fid,'%s \n',[1,1]); [~] = fgetl(fid);
 filepole           = fscanf(fid,'%s \n',[1,1]); [~] = fgetl(fid);
 filedipb           = fscanf(fid,'%s \n',[1,1]); [~] = fgetl(fid);
 fileinternal       = fscanf(fid,'%s \n',[1,1]); [~] = fgetl(fid);
-dirtmp             = fscanf(fid,'%s \n',[1,1]); [~] = fgetl(fid);
 dirresult          = fscanf(fid,'%s \n',[1,1]); [~] = fgetl(fid);
 prm.home_d = pwd;
 prm.fileobs            = fullfile(prm.home_d,fileobs);
@@ -115,7 +115,6 @@ prm.dirblock_patch     = fullfile(prm.home_d,dirblock_patch);
 prm.filepole           = fullfile(prm.home_d,filepole);
 prm.filedipb           = fullfile(prm.home_d,filedipb);
 prm.fileinternal       = fullfile(prm.home_d,fileinternal);
-prm.dirtmp             = fullfile(prm.home_d,dirtmp);
 prm.dirresult          = fullfile(prm.home_d,dirresult);
 %
 prm.gpu = fscanf(fid,'%d \n',[1,1]); [~] = fgetl(fid);
@@ -448,6 +447,39 @@ if exist(prm.filedipb,'file') ~= 2; return; end  % File not exist
 fid = fopen(prm.filedipb,'r');
 tmp = fscanf(fid,'%d %d %d\n',[3 Inf]);
 blk(1).dipbo = tmp';
+end
+
+%% Read internal strain file
+function [blk,prm] = ReadInternalStrain(blk,obs,prm)
+% Coded by Hiroshi Kimura 2018/05/01 (ver 1.0)
+% Revised by Hiroshi Kimura 2018/05/08 (ver 1.1)
+% Revised by Hiroshi Kimura 2019/01/31 (ver 1.2)
+%------------------------- Parameter file format --------------------------
+% Block_Num. Flag1
+% Flag1 : If uniform internal deformation is calculated, 1, else, 0
+% If there is no description about a certain block, internal deformation is
+% calculated for the block. If you 'do not' want to calculate internal
+% deformation for a certain block, describe the block number and set FLAG1
+% to '0'.
+% -------------------------------------------------------------------------
+blk(1).internal = zeros(1,5);
+if exist(prm.fileinternal,'file') ~= 2; return; end
+fid = fopen(prm.fileinternal,'r');
+tmp = fscanf(fid,'%d %d\n',[2 inf]);
+blk(1).internal = tmp';
+idinter = zeros(1,blk(1).nblock);
+for nb = 1:blk(1).nblock
+  [id,flag] = find(blk(1).internal(:,1) == nb);
+  blk(nb).flaginter = 0;
+  blk(nb).latinter  = mean(obs(nb).lat);
+  blk(nb).loninter  = mean(obs(nb).lon);
+  if (flag == 1 && blk(1).internal(id,2) == 1) || flag == 0
+    blk(nb).flaginter = 1;
+  end
+  [blk(nb).xinter,blk(nb).yinter] = PLTXY(obs(nb).lat,obs(nb).lon,blk(nb).latinter,blk(nb).loninter);
+  idinter(nb) = blk(nb).flaginter;
+end
+blk(1).idinter = reshape(repmat(idinter,3,1),3*blk(1).nblock,1);
 end
 
 %% CalcTriDisps.m
@@ -1246,11 +1278,8 @@ for nb1 = 1:blk(1).nblock
   [blk(nb1).localx,blk(nb1).localy] = PLTXY(blk(nb1).lat,blk(nb1).lon,alat,alon);
   for nb2 = nb1+1:blk(1).nblock
     nf = size(blk(1).bound(nb1,nb2).blon,1);
-    tri(1).bound(nb1,nb2).clat = [];
-    tri(1).bound(nb1,nb2).clon = [];
-    tri(1).bound(nb1,nb2).cdep = [];
     if nf ~= 0
-      trimat = fullfile(prm.dirtmp,['tri_',num2str(nb1),'_',num2str(nb2),'.mat']);
+      trimat = fullfile(prm.dirblock_interface,['tri_',num2str(nb1),'_',num2str(nb2),'.mat']);
       fid = fopen(trimat);
       if fid > 0
         load(trimat);
@@ -1343,6 +1372,10 @@ for nb1 = 1:blk(1).nblock
         trisave = tri(1).bound(nb1,nb2);
         save(trimat,'trisave','-v7.3');
       end
+    else
+      tri(1).bound(nb1,nb2).clat = [];
+      tri(1).bound(nb1,nb2).clon = [];
+      tri(1).bound(nb1,nb2).cdep = [];
     end
   end
 end
@@ -1672,8 +1705,8 @@ d(1).cnt = 0;
 %
 G(1).t = zeros(3*blk(1).nb,2.*blk(1).nb);
 G(1).b = zeros(2*blk(1).nb,3.*blk(1).nblock);
-tmp.p  = zeros(3*nobs,3.*blk(1).NBlock);
-tmp.i  = zeros(3*nobs,3.*blk(1).NBlock);
+tmp.p  = zeros(3*nobs,3.*blk(1).nblock);
+tmp.i  = zeros(3*nobs,3.*blk(1).nblock);
 % 
 mc = 1;
 mt = 1;
@@ -1740,8 +1773,6 @@ G(1).tb    = sparse(G(1).t*G(1).b);
 d(1).mid   = logical(repmat(d(1).mid,3,1));
 d(1).cfinv = tri(1).cf.*(tri(1).inv);
 end
-
-%% Make asperities
 
 %% make_test_trill.m
 %====================================================
