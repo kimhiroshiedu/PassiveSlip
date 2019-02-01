@@ -1776,9 +1776,39 @@ d(1).mid   = logical(repmat(d(1).mid,3,1));
 d(1).cfinv = tri(1).cf.*(tri(1).inv);
 end
 
-%%
+%% Calculate passive slip by locked patch
 function [cal] = CalcSlip(blk,tri,prm,obs,eul,d,G)
 % Test version coded by Hiroshi Kimura in 2019/2/1
+nb = blk(1).nblock;
+
+mp.old = double(blk(1).pole);
+mi.old = 1e-10.*(-0.5+rand(mi.n,1,precision));
+% Define initial locked patch
+for nb1 = 1:blk(1).nblock
+  for nb2 = nb1+1:blk(1).nblock
+    nf = size(tri(1).bound(nb1,nb2).clon,2);
+    if nf ~= 0
+      blk(1).bound(nb1,nb2).slipid = zeros(3*nf,1);
+      for np = 1:size(blk(n).bound(nb1,nb2).patch,2)
+%         slipid = inpolygon(blk(1).bound(nb1,nb2).
+      end
+    end
+  end
+end
+
+% substitute euler pole vectors
+mp.old(eul.id) = 0;
+mp.old = mp.old+eul.fixw;
+% substitute internal strain tensors
+mi.old = mi.old.*blk(1).idinter;
+
+
+
+
+cal.rig=G.p*mp.smp;
+cal.ela=G.c*((G.tb*mp.smp).*d(1).cfinv.*mc.smpmat);
+cal.ine=G.i*mi.smp;
+cal.smp=cal.rig+cal.ela+cal.ine;   % including internal deformation
 
 
 end
