@@ -30,6 +30,8 @@ prm.alat0 = 0;
 [tri]     = GreenTri(blk,obs,prm);
 [d,G]     = GreenFunctionMatrix(blk,obs,tri);
 
+[cal]     = CalcSlip(blk,tri,prm,obs,eul,d,G);
+
 [Gu] = makeGreenDisp(obs,trixyz3);
 [Gs] = makeGreenStrain(trixyzC,trixyz3,sitaS,sitaD,normVec);
 sUxyz=Gu.st;
@@ -1772,6 +1774,13 @@ G(1).i     = tmp.i(d(1).ind,:);
 G(1).tb    = sparse(G(1).t*G(1).b);
 d(1).mid   = logical(repmat(d(1).mid,3,1));
 d(1).cfinv = tri(1).cf.*(tri(1).inv);
+end
+
+%%
+function [cal] = CalcSlip(blk,tri,prm,obs,eul,d,G)
+% Test version coded by Hiroshi Kimura in 2019/2/1
+
+
 end
 
 %% make_test_trill.m
