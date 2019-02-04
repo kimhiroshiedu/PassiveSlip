@@ -9,6 +9,7 @@ PARAMETER/*
 MODEL_*/*
 # add files to be maintained
 # *.asv
+!.gitignore
 !MinorFile/*
 !org/*
 !PassiveSlipKim.m
