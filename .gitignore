@@ -1,7 +1,19 @@
-MODEL
-INTERFACE
-OBSDATA
-PATCH
-PARAMETER
-MODEL_*
-*.asv
+# ignore all
+*
+# ignore folders
+MODEL/*
+INTERFACE/*
+OBSDATA/*
+PATCH/*
+PARAMETER/*
+MODEL_*/*
+# add files to be maintained
+# *.asv
+!MinorFile/*
+!org/*
+!PassiveSlipKim.m
+!README.md
+!calctrans.m
+!makeGreenDisp.m
+!makeGreenStrain.m
+!trans_xyz2strdip.m
