@@ -26,6 +26,7 @@ prm.alat0 = 0;
 [blk,prm] = ReadDippingBound(blk,prm);
 [blk,prm] = ReadInternalStrain(blk,obs,prm);
 [blk]     = ReadLockedPatch(blk,prm);
+[blk,obs] = CalcAIC(blk,obs,eul,prm);
 
 [tri]     = GreenTri(blk,obs,prm);
 [d,G]     = GreenFunctionMatrix(blk,obs,tri);
@@ -398,7 +399,61 @@ for nb1 = 1:blk(1).nblock
 end
 
 end
-    
+
+%% Calculate AIC
+function [blk,obs] = CalcAIC(blk,obs,eul,prm)
+TSig=0; NumB=0;
+blk(1).POLE=[];
+logfile=fullfile(prm.DirResult,'log.txt');
+logFID=fopen(logfile,'a');
+for N=1:blk(1).NBlock
+  Sig=0;EVne=[];POLE=[0; 0; 0];
+  obs(N).EEV=zeros(obs(N).NBLK,1);
+  obs(N).ENV=zeros(obs(N).NBLK,1);
+  if obs(N).NBLK~=0
+    Sig=0;
+    EVne=[0 0];
+    if ismember(N,eul.BLID)
+      pol.wx=eul.wx(eul.BLID==N);
+      pol.wy=eul.wy(eul.BLID==N);
+      pol.wz=eul.wz(eul.BLID==N);
+      [POLE,EVne,Sig]=est_pole_fix(obs(N).OXYZ,obs(N).Vne,obs(N).Ver,pol);
+      TSig=TSig+Sig.*2.*obs(N).NBLK;
+    elseif obs(N).NBLK>=1
+      NumB=NumB+1;
+%       OBS(N).GRweight=OBS(1).Gw(OBS(1).ABLK==N);
+%       OBS(N).GRweight=reshape(repmat(OBS(1).Gw(OBS(1).ABLK==N),1,2)',2*size(OBS(N).GRweight,1),1);
+%       [POLE,EVne,Sig]=est_pole_w(OBS(N).OXYZ,OBS(N).Vne,OBS(N).GRweight./(OBS(N).Vww.^2));
+      [POLE,EVne,Sig]=est_pole_w(obs(N).OXYZ,obs(N).Vne,obs(N).Vww);
+      TSig=TSig+Sig.*2.*obs(N).NBLK;
+    end
+  end
+  blk(N).SIG=Sig;
+  blk(N).POL=POLE;
+  blk(1).POLE=[blk(1).POLE;blk(N).POL];
+  obs(N).EEV=EVne(1:2:end);
+  obs(N).ENV=EVne(2:2:end);
+  fprintf('BLOCK=%2d NUM_OBS=%2d Sigma^2=%5.2f ',N,obs(N).NBLK,Sig)
+  fprintf(logFID,'BLOCK=%2d NUM_OBS=%2d Sigma^2=%5.2f ',N,obs(N).NBLK,Sig);
+  [latp,lonp,ang]=xyzp2lla(POLE(1),POLE(2),POLE(3));
+  fprintf('Lat:%7.2f deg. Lon:%8.2f deg. Ang:%9.2e deg./m.y. \n',latp,lonp,ang);    
+  fprintf(logFID,'Lat:%7.2f deg. Lon:%8.2f deg. Ang:%9.2e deg./m.y. \n',latp,lonp,ang);    
+%   if OBS(N).NBLK>=2 
+%     fprintf('OBS(E,N) ')
+%     fprintf('%5.2f ',OBS(N).Vne);fprintf('\n')
+%     fprintf('EST(E,N) ')
+%     fprintf('%5.2f ',EVne)      ;fprintf('\n')
+%   fprintf('\n')
+%   end
+end
+AIC=(obs(1).NOBS.*2).*log(TSig./(obs(1).NOBS.*2))+2.*NumB.*3;
+cAIC=AIC+2.*NumB.*3.*(NumB.*3+1)./(obs(1).NOBS.*2-NumB.*3-1);
+fprintf('Sigma^2=%8.3f AIC=%7.3f cAIC=%7.3f K=%2d\n',TSig./(obs(1).NOBS.*2),AIC,cAIC,NumB.*3)
+fprintf(logFID,'Sigma^2=%8.3f AIC=%7.3f cAIC=%7.3f K=%2d\n',TSig./(obs(1).NOBS.*2),AIC,cAIC,NumB.*3);
+fclose(logFID);
+%
+end
+
 %% Read Euler Pole file
 function [eul,prm] = ReadEulerPoles(blk,prm)
 % Fix euler poles at the block which has no observation site.
