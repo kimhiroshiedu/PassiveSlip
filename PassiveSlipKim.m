@@ -360,44 +360,37 @@ end
 
 %% Read locked patches
 function [blk] = ReadLockedPatch(blk,prm)
-% test version coded by H. Kimura 2019/01/29
+%    Test version coded by H. Kimura 2019/1/29
+% Revised version coded by H. Kimura 2019/2/5
+
 for nb1 = 1:blk(1).nblock
   for nb2 = nb1+1:blk(1).nblock
-    blk(1).bounc(nb1,nb2).patchid = 0;
+    blk(1).bound(nb1,nb2).patchid = 0;
     patchfile = fullfile(prm.dirblock_patch,['patchb_',num2str(nb1),'_',num2str(nb2),'.txt']);
     fid       = fopen(patchfile,'r');
     if fid >= 0
+      blk(1).bound(nb1,nb2).patchid = 1;
       np    = 0;
-      tline = fgetl(fid);
+      n     = 0;
       while 1
-        if tline < 0
-          break
-        elseif tline == ">"
+        tline = fgetl(fid);
+        if ~ischar(tline) ; break; end
+        if tline(1) ~= '>'
+          n   = n+1;
+          tmp = strsplit(tline);
+          blk(1).bound(nb1,nb2).patch(np+1).lon(n) = str2double(cellstr(tmp(1)));
+          blk(1).bound(nb1,nb2).patch(np+1).lat(n) = str2double(cellstr(tmp(2)));
+        else
           np = np+1;
-          blk(1).bound(nb1,nb2).patch(np).lon = [];
-          blk(1).bound(nb1,nb2).patch(np).lat = [];
-          while 1
-            tline = fgetl(fid);
-            if tline < 0
-              break
-            end
-            tmp = strtrim(strsplit(tline));
-            if ~or(strcmpi(tmp(1),'>'), strcmpi(tmp(1),''))
-              tmp = str2double(char(tmp));
-              blk(1).bound(nb1,nb2).patch(np).lon = [blk(1).bound(nb1,nb2).patch(np).lon, tmp(1)];
-              blk(1).bound(nb1,nb2).patch(np).lat = [blk(1).bound(nb1,nb2).patch(np).lat, tmp(1)];
-            else
-              break
-            end
-          end
-        elseif tline == ""
-          break
+          n  = 0;
+          continue;
         end
       end
     end
   end
 end
 
+fprintf('=== Read Locked Patches=== \n');
 end
 
 %% Calculate AIC
@@ -1868,15 +1861,13 @@ function [cal] = CalcSlip(blk,tri,prm,obs,eul,d,G)
 % Test version coded by Hiroshi Kimura in 2019/2/1
 nb = blk(1).nblock;
 
-mp.old = double(blk(1).pole);
-mi.old = 1e-10.*(-0.5+rand(mi.n,1,precision));
 % Define initial locked patch
 for nb1 = 1:blk(1).nblock
   for nb2 = nb1+1:blk(1).nblock
     nf = size(tri(1).bound(nb1,nb2).clon,2);
     if nf ~= 0
       blk(1).bound(nb1,nb2).slipid = zeros(3*nf,1);
-      for np = 1:size(blk(n).bound(nb1,nb2).patch,2)
+      for np = 1:size(blk(1).bound(nb1,nb2).patch,2)
 %         slipid = inpolygon(blk(1).bound(nb1,nb2).
       end
     end
@@ -1888,28 +1879,9 @@ mp.old(eul.id) = 0;
 mp.old = mp.old+eul.fixw;
 % substitute internal strain tensors
 mi.old = mi.old.*blk(1).idinter;
-
-
-
-
-cal.rig=G.p*mp.smp;
-cal.ela=G.c*((G.tb*mp.smp).*d(1).cfinv.*mc.smpmat);
-cal.ine=G.i*mi.smp;
-cal.smp=cal.rig+cal.ela+cal.ine;   % including internal deformation
-
 mp.old = double(blk(1).pole);
 mi.old = 1e-10.*(-0.5+rand(mi.n,1,precision));
-
-
-% substitute euler pole vectors
-mp.old(eul.id) = 0;
-mp.old = mp.old+eul.fixw;
-% substitute internal strain tensors
-mi.old = mi.old.*blk(1).idinter;
-
-
-
-
+% calculate velocities
 cal.rig=G.p*mp.smp;
 cal.ela=G.c*((G.tb*mp.smp).*d(1).cfinv.*mc.smpmat);
 cal.ine=G.i*mi.smp;
