@@ -1868,7 +1868,10 @@ for nb1 = 1:blk(1).nblock
     if nf ~= 0
       blk(1).bound(nb1,nb2).slipid = zeros(3*nf,1);
       for np = 1:size(blk(1).bound(nb1,nb2).patch,2)
-%         slipid = inpolygon(blk(1).bound(nb1,nb2).
+        slipid = inpolygon(tri(1).bound(nb1,nb2).clon,...
+                           tri(1).bound(nb1,nb2).clat,...
+                           blk(1).bound(nb1,nb2).patch(np).lon,...
+                           blk(1).bound(nb1,nb2).patch(np).lat);
       end
     end
   end
