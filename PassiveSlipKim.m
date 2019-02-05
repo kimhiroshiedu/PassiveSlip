@@ -1450,10 +1450,10 @@ for nb1 = 1:blk(1).nblock
           [blk,tri] = DiscriminateDirection(blk,tri,nb1,nb2,trix,triy,n,nf);
           [tri]     = trans_xyz2strdip(tri,nb1,nb2,n,nf);
         end
-        tri(1).nb = tri(1).nb+nf;
         trisave = tri(1).bound(nb1,nb2);
         save(trimat,'trisave','-v7.3');
       end
+      tri(1).nb = tri(1).nb+nf;
     else
       tri(1).bound(nb1,nb2).clat = [];
       tri(1).bound(nb1,nb2).clon = [];
@@ -1859,36 +1859,81 @@ end
 %% Calculate passive slip by locked patch
 function [cal] = CalcSlip(blk,tri,prm,obs,eul,d,G)
 % Test version coded by Hiroshi Kimura in 2019/2/1
-nb = blk(1).nblock;
+precision = 'double';
+rwd = prm.rwd;
+nb  = blk(1).nblock;
 
 % Define initial locked patch
+d(1).slipid = zeros(1,tri(1).nb);
+nc = 1;
+nt = 1;
+nr = 1;
 for nb1 = 1:blk(1).nblock
   for nb2 = nb1+1:blk(1).nblock
     nf = size(tri(1).bound(nb1,nb2).clon,2);
     if nf ~= 0
-      blk(1).bound(nb1,nb2).slipid = zeros(3*nf,1);
       for np = 1:size(blk(1).bound(nb1,nb2).patch,2)
         slipid = inpolygon(tri(1).bound(nb1,nb2).clon,...
                            tri(1).bound(nb1,nb2).clat,...
                            blk(1).bound(nb1,nb2).patch(np).lon,...
                            blk(1).bound(nb1,nb2).patch(np).lat);
+        d(1).slipid(nr:nr+nf-1) = d(1).slipid(nr:nr+nf-1) | slipid;
       end
+      nc = nc + 3*nf;
+      nt = nt + 2*nf;
+      nr = nr +   nf;
     end
   end
 end
 
+
+mc.int = 1e-2;
+mp.int = 1e-10;
+mi.int = 1e-10;
+mc.n   = blk(1).nb;
+mp.n   = 3.*blk(1).nblock;
+mi.n   = 3.*blk(1).nblock;
 % substitute euler pole vectors
+mp.old = double(blk(1).pole);
 mp.old(eul.id) = 0;
 mp.old = mp.old+eul.fixw;
 % substitute internal strain tensors
-mi.old = mi.old.*blk(1).idinter;
-mp.old = double(blk(1).pole);
 mi.old = 1e-10.*(-0.5+rand(mi.n,1,precision));
+mi.old = mi.old.*blk(1).idinter;
 % calculate velocities
-cal.rig=G.p*mp.smp;
-cal.ela=G.c*((G.tb*mp.smp).*d(1).cfinv.*mc.smpmat);
-cal.ine=G.i*mi.smp;
-cal.smp=cal.rig+cal.ela+cal.ine;   % including internal deformation
+cal.rig = G.p*mp.smp;
+cal.ela = G.c*((G.tb*mp.smp).*d(1).cfinv.*mc.smpmat);
+cal.ine = G.i*mi.smp;
+cal.smp = cal.rig+cal.ela+cal.ine;
+
+
+
+
+
+mc.std=mc.int.*ones(mc.n,1,precision);
+mp.std=mp.int.*ones(mp.n,1,precision);
+mi.std=mi.int.*ones(mi.n,1,precision);
+mp.old= double(blk(1).pole);
+mi.old= 1e-10.*(-0.5+rand(mi.n,1,precision));
+cha.mc= zeros(mc.n,prm.kep,precision);
+cha.mp= zeros(mp.n,prm.kep,precision);
+cha.mi= zeros(mi.n,prm.kep,precision);
+% set fix poles if pol.fixflag=1
+mp.old(pol.id)=0; mp.old=mp.old+pol.fixw;
+mp.std(pol.id)=0;
+%
+mi.old=mi.old.*blk(1).idinter;
+mi.std=mi.std.*blk(1).idinter;
+% 
+res.old=inf(1,1,precision);
+rwdscale=1000*rwd/(prm.cha);
+mcscale=rwdscale*0.13;
+mpscale=rwdscale*(1.3e-9).*ones(mp.n,1,precision).*~pol.id;
+miscale=rwdscale*1e-10;
+
+
+mc.smpmat=repmat(mc.smp,3,d.cnt);
+mc.smpmat=mc.smpmat(d.mid);
 
 
 end
@@ -2251,4 +2296,15 @@ deg2rad=pi/180;
 [Oxyz(:,1),Oxyz(:,2),Oxyz(:,3)]=ell2xyz(Olat,Olon,Ohig);
 Oxyz = Oxyz*1e3;
 OOxyz=[Oxyz sin(Olat*deg2rad) sin(Olon*deg2rad) cos(Olat*deg2rad) cos(Olon*deg2rad)];
+end
+
+%% Convert from (x,y,z) to (lon,lat,ang)
+function [lat,lon,ang]=xyzp2lla(X,Y,Z)
+% XYZP2LLA  Converts Shpear coordinates from cartesian. Vectorized.
+% GRS80
+% CODE BY T.ITO 2017/03/11     ver0.1
+% lat: deg, lon: deg, ang: deg/m.y.
+lat=atan2(Z,sqrt(X.*X+Y.*Y)).*180/pi;
+lon=atan2(Y,X).*180/pi;
+ang=sqrt(X.*X+Y.*Y+Z.*Z).*(1e6.*(180./pi));
 end
