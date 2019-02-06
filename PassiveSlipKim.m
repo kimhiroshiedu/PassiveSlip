@@ -679,9 +679,9 @@ sz1                          = sz(:);
 
 if (normVec(3) < 0) % Enforce clockwise circulation
     normVec                   = -normVec;
-    [x(2) x(3)]               = swap(x(2), x(3));
-    [y(2) y(3)]               = swap(y(2), y(3));
-    [z(2) z(3)]               = swap(z(2), z(3));
+    [x(2),x(3)]               = swap(x(2), x(3));
+    [y(2),y(3)]               = swap(y(2), y(3));
+    [z(2),z(3)]               = swap(z(2), z(3));
 end
 strikeVec                    = [-sin(atan2(normVec(2),normVec(1))) cos(atan2(normVec(2),normVec(1))) 0];
 dipVec                       = cross(normVec, strikeVec);
@@ -702,13 +702,13 @@ for iTri = 1:3
     % Calculate strike and dip of current leg
     strike                   = 180/pi*(atan2(y(iTri+1)-y(iTri), x(iTri+1)-x(iTri)));
     segMapLength             = sqrt((x(iTri)-x(iTri+1))^2 + (y(iTri)-y(iTri+1))^2);
-    [rx ry]                  = RotateXyVec(x(iTri+1)-x(iTri), y(iTri+1)-y(iTri), -strike);
+    [rx,ry]                  = RotateXyVec(x(iTri+1)-x(iTri), y(iTri+1)-y(iTri), -strike);
     dip                      = 180/pi*(atan2(z(iTri+1)-z(iTri), rx));
     
     if dip >= 0
         beta                  = pi/180*(90-dip);
         if beta > pi/2
-            beta               = pi/2-beta;
+            beta              = pi/2-beta;
         end
     else
         beta                  = -pi/180*(90+dip);
@@ -727,19 +727,19 @@ for iTri = 1:3
     
     if (abs(beta) > 0.000001) && (abs(beta-pi) > 0.000001)
         % First angular dislocation
-        [sx1 sy1]                 = RotateXyVec(sx-x(iTri), sy-y(iTri), -strike);
+        [sx1, sy1]                = RotateXyVec(sx-x(iTri), sy-y(iTri), -strike);
         sx1(abs(sx1)<0.0001)=0.0001;%for eliminate NAN by R. Sasajima and T. Ito ,Nagoya. U. in 2012%
         sy1(abs(sy1)<0.0001)=0.0001;
-        [ux1 uy1 uz1]             = adv(sx1, sy1, sz1-z(iTri), z(iTri), beta, pr, lss, lts, lds);
+        [ux1, uy1, uz1]           = adv(sx1, sy1, sz1-z(iTri), z(iTri), beta, pr, lss, lts, lds);
         
         % Second angular dislocation
-        [sx2 sy2]                 = RotateXyVec(sx-x(iTri+1), sy-y(iTri+1), -strike);
+        [sx2, sy2]                = RotateXyVec(sx-x(iTri+1), sy-y(iTri+1), -strike);
         sx2(abs(sx2)<0.0001)=0.0001;%for eliminate NAN by R. Sasajima and T. Ito ,Nagoya. U. in 2012%
         sy2(abs(sy2)<0.0001)=0.0001;
-        [ux2 uy2 uz2]             = adv(sx2, sy2, sz1-z(iTri+1), z(iTri+1), beta, pr, lss, lts, lds);
+        [ux2, uy2, uz2]           = adv(sx2, sy2, sz1-z(iTri+1), z(iTri+1), beta, pr, lss, lts, lds);
         
         % Rotate vectors to correct for strike
-        [uxn uyn]                 = RotateXyVec(ux1-ux2, uy1-uy2, strike);
+        [uxn, uyn]                = RotateXyVec(ux1-ux2, uy1-uy2, strike);
         uzn                       = uz1-uz2;
         
         % Add the displacements from current leg
@@ -753,7 +753,7 @@ end
 inPolyIdx                       = find(inpolygon(sx, sy, x, y) == 1);
 underIdx = [];
 for iIdx = 1 : numel(inPolyIdx)
-    d                            = LinePlaneIntersect(x, y, z, sx(inPolyIdx(iIdx)), sy(inPolyIdx(iIdx)), sz(inPolyIdx(iIdx)));
+    d                           = LinePlaneIntersect(x, y, z, sx(inPolyIdx(iIdx)), sy(inPolyIdx(iIdx)), sz(inPolyIdx(iIdx)));
     if d(3)-sz(inPolyIdx(iIdx)) < 0
         underIdx = [underIdx ; inPolyIdx(iIdx)];
     end
@@ -772,14 +772,14 @@ numerator                       = [1 1 1 1 ; x(1) x(2) x(3) sx ; y(1) y(2) y(3) 
 numerator                       = det(numerator);
 denominator                     = [1 1 1 0 ; x(1) x(2) x(3) 0 ; y(1) y(2) y(3) 0 ; z(1) z(2) z(3) -sz];
 denominator                     = det(denominator);
-if denominator == 0;
-    denominator                  = eps;
+if denominator == 0
+    denominator                 = eps;
 end
 t                               = numerator/denominator; % parametric curve parameter
 d                               = [sx sy sz]-([sx sy 0]-[sx sy sz])*t;
 end
 
-function [xp yp] = RotateXyVec(x, y, alpha)
+function [xp, yp] = RotateXyVec(x, y, alpha)
 % Rotate a vector by an angle alpha
 x                             = x(:);
 y                             = y(:);
@@ -848,9 +848,9 @@ normVec                      = cross([x(2);y(2);z(2)]-[x(1);y(1);z(1)], [x(3);y(
 normVec                      = normVec./norm(normVec);
 if (normVec(3) < 0) % Enforce clockwise circulation
     normVec                   = -normVec;
-    [x(2) x(3)]               = swap(x(2), x(3));
-    [y(2) y(3)]               = swap(y(2), y(3));
-    [z(2) z(3)]               = swap(z(2), z(3));
+    [x(2), x(3)]              = swap(x(2), x(3));
+    [y(2), y(3)]              = swap(y(2), y(3));
+    [z(2), z(3)]              = swap(z(2), z(3));
 end
 strikeVec                    = [-sin(atan2(normVec(2),normVec(1))) cos(atan2(normVec(2),normVec(1))) 0];
 dipVec                       = cross(normVec, strikeVec);
@@ -874,7 +874,7 @@ for iTri = 1:3
     % Calculate strike and dip of current leg
     strike                   = 180/pi*(atan2(y(iTri+1)-y(iTri), x(iTri+1)-x(iTri)));
     segMapLength             = sqrt((x(iTri)-x(iTri+1))^2 + (y(iTri)-y(iTri+1))^2);
-    [rx ry]                  = RotateXyVec(x(iTri+1)-x(iTri), y(iTri+1)-y(iTri), -strike);
+    [rx, ry]                 = RotateXyVec(x(iTri+1)-x(iTri), y(iTri+1)-y(iTri), -strike);
     dip                      = 180/pi*(atan2(z(iTri+1)-z(iTri), rx));
     
     if dip >= 0
@@ -897,16 +897,16 @@ for iTri = 1:3
     
     if (abs(beta) > 0.000001) && (abs(beta-pi) > 0.000001)
         % First angular dislocation
-        [sx1 sy1]                 = RotateXyVec(sx-x(iTri), sy-y(iTri), -strike);
+        [sx1,sy1]                 = RotateXyVec(sx-x(iTri), sy-y(iTri), -strike);
         sx1(abs(sx1)<0.0001)=0.0001;%for eliminate NAN by R. Sasajima and T. Ito ,Nagoya. U. in 2012%
         sy1(abs(sy1)<0.0001)=0.0001;
-        [a11 a22 a33 a12 a13 a23] = advs(sx1, sy1, sz-z(iTri), z(iTri), beta, pr, lss, lts, lds);
+        [a11,a22,a33,a12,a13,a23] = advs(sx1, sy1, sz-z(iTri), z(iTri), beta, pr, lss, lts, lds);
         
         % Second angular dislocation
-        [sx2 sy2]                 = RotateXyVec(sx-x(iTri+1), sy-y(iTri+1), -strike);
+        [sx2,sy2]                 = RotateXyVec(sx-x(iTri+1), sy-y(iTri+1), -strike);
         sx2(abs(sx2)<0.0001)=0.0001;
         sy2(abs(sy2)<0.0001)=0.0001;
-        [b11 b22 b33 b12 b13 b23] = advs(sx2, sy2, sz-z(iTri+1), z(iTri+1), beta, pr, lss, lts, lds);
+        [b11,b22,b33,b12,b13,b23] = advs(sx2, sy2, sz-z(iTri+1), z(iTri+1), beta, pr, lss, lts, lds);
         
         % Rotate tensors to correct for strike
         bxx                       = a11-b11;
@@ -935,7 +935,7 @@ for iTri = 1:3
 end
 end
 
-function [a b] = swap(a, b)
+function [a, b] = swap(a, b)
 % Swap two values
 temp                            = a;
 a                               = b;
