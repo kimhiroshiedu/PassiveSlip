@@ -10,10 +10,12 @@ MODEL_*/*
 # add files to be maintained
 # *.asv
 !.gitignore
+!README.md
 !MinorFile/*
 !org/*
 !PassiveSlipKim.m
-!README.md
+!adv.m
+!advs.m
 !calctrans.m
 !makeGreenDisp.m
 !makeGreenStrain.m
