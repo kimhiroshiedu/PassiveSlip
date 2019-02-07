@@ -1392,7 +1392,7 @@ function [tri] = CorrectFactor(blk,tri,nb1,nb2,dp,n,nf)
 % Coded by H.Kimura 2018/1/31 (test ver.)
 switch blk(1).bound(nb1,nb2).flag1
   case {1,2}
-    tri(1).cf(3*tri(1).nb+nf+n) = 1/sqrt(dp(1)^2+dp(2)^2);  % 1=sqrt(dp(1)^2+dp(2)^2+dp(3)^2): norm of dp
+    tri(1).bound(nb1,nb2).cf = 1/sqrt(dp(1)^2+dp(2)^2);   % 1=sqrt(dp(1)^2+dp(2)^2+dp(3)^2): norm of dp
   case 0
     return
 end
