@@ -1407,16 +1407,16 @@ switch blk(1).bound(nb1,nb2).flag1
 %     tri(1).inv(3*tri(1).nb     +n) =  1;
 %     tri(1).inv(3*tri(1).nb+  nf+n) =  1;
 %     tri(1).inv(3*tri(1).nb+2*nf+n) =  0;
-    blk(1).bound(nb1,nb2).inv(     n) = 1;
-    blk(1).bound(nb1,nb2).inv(  nf+n) = 1;
-    blk(1).bound(nb1,nb2).inv(2*nf+n) = 0;    
+    tri(1).bound(nb1,nb2).inv(     n) = 1;
+    tri(1).bound(nb1,nb2).inv(  nf+n) = 1;
+    tri(1).bound(nb1,nb2).inv(2*nf+n) = 0;    
   case 2
 %     tri(1).inv(3*tri(1).nb     +n) = -1;
 %     tri(1).inv(3*tri(1).nb+  nf+n) = -1;
 %     tri(1).inv(3*tri(1).nb+2*nf+n) =  0;
-    blk(1).bound(nb1,nb2).inv(     n) = -1;
-    blk(1).bound(nb1,nb2).inv(  nf+n) = -1;
-    blk(1).bound(nb1,nb2).inv(2*nf+n) =  0;    
+    tri(1).bound(nb1,nb2).inv(     n) = -1;
+    tri(1).bound(nb1,nb2).inv(  nf+n) = -1;
+    tri(1).bound(nb1,nb2).inv(2*nf+n) =  0;    
   case 0
     trixc   = mean(trix);
     triyc   = mean(triy);
@@ -1425,9 +1425,9 @@ switch blk(1).bound(nb1,nb2).flag1
 %       tri(1).inv(3*tri(1).nb     +n) =  1;
 %       tri(1).inv(3*tri(1).nb+  nf+n) =  0;
 %       tri(1).inv(3*tri(1).nb+2*nf+n) =  1;
-      blk(1).bound(nb1,nb2).inv(     n) = 1;
-      blk(1).bound(nb1,nb2).inv(  nf+n) = 0;
-      blk(1).bound(nb1,nb2).inv(2*nf+n) = 1;
+      tri(1).bound(nb1,nb2).inv(     n) = 1;
+      tri(1).bound(nb1,nb2).inv(  nf+n) = 0;
+      tri(1).bound(nb1,nb2).inv(2*nf+n) = 1;
     elseif in==1 && on==1
       tric = [trixc triyc 0];
       uv   = [0 0 1];
@@ -1437,24 +1437,24 @@ switch blk(1).bound(nb1,nb2).flag1
 %         tri(1).inv(3*tri(1).nb     +n) =  1;
 %         tri(1).inv(3*tri(1).nb+  nf+n) =  0;
 %         tri(1).inv(3*tri(1).nb+2*nf+n) =  1;
-        blk(1).bound(nb1,nb2).inv(     n) = 1;
-        blk(1).bound(nb1,nb2).inv(  nf+n) = 0;
-        blk(1).bound(nb1,nb2).inv(2*nf+n) = 1;
+        tri(1).bound(nb1,nb2).inv(     n) = 1;
+        tri(1).bound(nb1,nb2).inv(  nf+n) = 0;
+        tri(1).bound(nb1,nb2).inv(2*nf+n) = 1;
       else
 %         tri(1).inv(3*tri(1).nb     +n) = -1;
 %         tri(1).inv(3*tri(1).nb+  nf+n) =  0;
 %         tri(1).inv(3*tri(1).nb+2*nf+n) = -1;
-        blk(1).bound(nb1,nb2).inv(     n) = -1;
-        blk(1).bound(nb1,nb2).inv(  nf+n) =  0;
-        blk(1).bound(nb1,nb2).inv(2*nf+n) = -1;
+        tri(1).bound(nb1,nb2).inv(     n) = -1;
+        tri(1).bound(nb1,nb2).inv(  nf+n) =  0;
+        tri(1).bound(nb1,nb2).inv(2*nf+n) = -1;
       end
     else
 %       tri(1).inv(3*tri(1).nb     +n) =  -1;
 %       tri(1).inv(3*tri(1).nb+  nf+n) =   0;
 %       tri(1).inv(3*tri(1).nb+2*nf+n) =  -1;
-      blk(1).bound(nb1,nb2).inv(     n) = -1;
-      blk(1).bound(nb1,nb2).inv(  nf+n) =  0;
-      blk(1).bound(nb1,nb2).inv(2*nf+n) = -1;
+      tri(1).bound(nb1,nb2).inv(     n) = -1;
+      tri(1).bound(nb1,nb2).inv(  nf+n) =  0;
+      tri(1).bound(nb1,nb2).inv(2*nf+n) = -1;
     end
 end
 % 
