@@ -1785,7 +1785,7 @@ rwd = prm.rwd;
 nb  = blk(1).nblock;
 
 % Define initial locked patch
-d(1).slipid = zeros(1,tri(1).nb);
+d(1).slipid = zeros(3*tri(1).nb,1);
 nc = 1;
 nt = 1;
 nr = 1;
@@ -1798,7 +1798,7 @@ for nb1 = 1:blk(1).nblock
                            tri(1).bound(nb1,nb2).clat,...
                            blk(1).bound(nb1,nb2).patch(np).lon,...
                            blk(1).bound(nb1,nb2).patch(np).lat);
-        d(1).slipid(nr:nr+nf-1) = d(1).slipid(nr:nr+nf-1) | slipid;
+        d(1).slipid(nc:nc+3*nf-1) = d(1).slipid(nc:nc+3*nf-1) | repmat(slipid',3,1);
       end
       nc = nc + 3*nf;
       nt = nt + 2*nf;
@@ -1821,14 +1821,13 @@ mp.old = mp.old+eul.fixw;
 % substitute internal strain tensors
 mi.old = 1e-10.*(-0.5+rand(mi.n,1,precision));
 mi.old = mi.old.*blk(1).idinter;
+
 % calculate velocities
-cal.rig = G.p*mp.smp;
-cal.ela = G.c*((G.tb*mp.smp).*d(1).cfinv.*mc.smpmat);
-cal.ine = G.i*mi.smp;
-cal.smp = cal.rig+cal.ela+cal.ine;
-
-
-
+% cal.rig = G.p*mp.smp;
+% cal.ela = G.c*((G.tb*mp.smp).*d(1).cfinv.*mc.smpmat);
+% cal.ine = G.i*mi.smp;
+% cal.smp = cal.rig+cal.ela+cal.ine;
+cal.slip = (G.tb*mp.old).*d(1).cfinv.*d(1).slipid;
 
 
 mc.std=mc.int.*ones(mc.n,1,precision);
