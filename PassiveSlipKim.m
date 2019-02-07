@@ -1291,6 +1291,8 @@ for nb1 = 1:blk(1).nblock
         tri(1).bound(nb1,nb2).gstr = zeros(3*nd,nf);
         tri(1).bound(nb1,nb2).gdip = zeros(3*nd,nf);
         tri(1).bound(nb1,nb2).gtns = zeros(3*nd,nf);
+        tri(1).bound(nb1,nb2).cf   =  ones(3*nf,1);
+        tri(1).bound(nb1,nb2).inv  = zeros(3*nf,1);
         %
         fprintf('==================\n Block %2i : Block %2i \n Number of TRI sub-faults : %4i \n',nb1,nb2,nf)
         %
