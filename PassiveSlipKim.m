@@ -1706,10 +1706,12 @@ d(1).cnt = 0;
 % (G(1).C * (( G(1).T * ( G(1).B1 - G(1).B2 ) * Mp)*Mc ) + G(1).P * Mp +
 % G(1).I * Mi  % including internal deformation
 %
-G(1).t = zeros(3*blk(1).nb,2.*blk(1).nb);
-G(1).b = zeros(2*blk(1).nb,3.*blk(1).nblock);
-tmp.p  = zeros(3*nobs,3.*blk(1).nblock);
-tmp.i  = zeros(3*nobs,3.*blk(1).nblock);
+G(1).t  = zeros(3*blk(1).nb,2.*blk(1).nb);
+G(1).b  = zeros(2*blk(1).nb,3.*blk(1).nblock);
+tmp.p   = zeros(3*nobs,3.*blk(1).nblock);
+tmp.i   = zeros(3*nobs,3.*blk(1).nblock);
+tmp.cf  = ones(3*blk(1).nb,1);
+tmp.inv = zeros(3*blk(1).nb,1);
 % 
 mc = 1;
 mt = 1;
@@ -1725,6 +1727,8 @@ for nb1 = 1:blk(1).nblock
       tmp.c(1:3*nobs,mc     :mc+  nf-1) = tri(1).bound(nb1,nb2).gstr;
       tmp.c(1:3*nobs,mc+  nf:mc+2*nf-1) = tri(1).bound(nb1,nb2).gdip;
       tmp.c(1:3*nobs,mc+2*nf:mc+3*nf-1) = tri(1).bound(nb1,nb2).gtns;
+      tmp.cf( mc+nf:mc+2*nf-1) = blk(1).bound(nb1,nb2).cf ;
+      tmp.inv(mc   :mc+3*nf-1) = blk(1).bound(nb1,nb2).inv;
       G(1).t(mc   :mc+  nf-1,mt   :mt+  nf-1) = diag(tri(1).bound(nb1,nb2).st(:,1));
       G(1).t(mc+nf:mc+2*nf-1,mt   :mt+  nf-1) = diag(tri(1).bound(nb1,nb2).dp(:,1));
       G(1).t(mc   :mc+  nf-1,mt+nf:mt+2*nf-1) = diag(tri(1).bound(nb1,nb2).st(:,2));
@@ -1774,7 +1778,7 @@ G(1).p     = tmp.p(d(1).ind,:);
 G(1).i     = tmp.i(d(1).ind,:);
 G(1).tb    = sparse(G(1).t*G(1).b);
 d(1).mid   = logical(repmat(d(1).mid,3,1));
-d(1).cfinv = tri(1).cf.*(tri(1).inv);
+d(1).cfinv = tmp.cf.*tmp.inv;
 end
 
 %% Calculate passive slip by locked patch
