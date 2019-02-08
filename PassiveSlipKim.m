@@ -1808,6 +1808,21 @@ precision = 'double';
 rwd = prm.rwd;
 nb  = blk(1).nblock;
 
+% initial parameters
+mc.int = 1e-2;
+mp.int = 1e-10;
+mi.int = 1e-10;
+mc.n   = blk(1).nb;
+mp.n   = 3.*blk(1).nblock;
+mi.n   = 3.*blk(1).nblock;
+% substitute euler pole vectors
+mp.old = double(blk(1).pole);
+mp.old(eul.id) = 0;
+mp.old = mp.old+eul.fixw;
+% substitute internal strain tensors
+mi.old = 1e-10.*(-0.5+rand(mi.n,1,precision));
+mi.old = mi.old.*blk(1).idinter;
+
 % Define initial locked patch
 d(1).slipid = zeros(3*tri(1).nb,1);
 nc = 1;
@@ -1831,28 +1846,17 @@ for nb1 = 1:blk(1).nblock
   end
 end
 
-% initial parameters
-mc.int = 1e-2;
-mp.int = 1e-10;
-mi.int = 1e-10;
-mc.n   = blk(1).nb;
-mp.n   = 3.*blk(1).nblock;
-mi.n   = 3.*blk(1).nblock;
-% substitute euler pole vectors
-mp.old = double(blk(1).pole);
-mp.old(eul.id) = 0;
-mp.old = mp.old+eul.fixw;
-% substitute internal strain tensors
-mi.old = 1e-10.*(-0.5+rand(mi.n,1,precision));
-mi.old = mi.old.*blk(1).idinter;
-
-% calculate velocities
-% cal.rig = G.p*mp.smp;
-% cal.ela = G.c*((G.tb*mp.smp).*d(1).cfinv.*mc.smpmat);
-% cal.ine = G.i*mi.smp;
-% cal.smp = cal.rig+cal.ela+cal.ine;
+% Calculate back-slip on asperities.
 cal.slip = (G.tb*mp.old).*d(1).cfinv.*d(1).slipid;
 
+%{  
+%  TO DO
+%  MCMC inversion
+%  calculate velocities
+cal.rig = G.p*mp.smp;
+cal.ela = G.c*((G.tb*mp.smp).*d(1).cfinv.*mc.smpmat);
+cal.ine = G.i*mi.smp;
+cal.smp = cal.rig+cal.ela+cal.ine;
 
 mc.std=mc.int.*ones(mc.n,1,precision);
 mp.std=mp.int.*ones(mp.n,1,precision);
@@ -1875,10 +1879,9 @@ mcscale=rwdscale*0.13;
 mpscale=rwdscale*(1.3e-9).*ones(mp.n,1,precision).*~pol.id;
 miscale=rwdscale*1e-10;
 
-
 mc.smpmat=repmat(mc.smp,3,d.cnt);
 mc.smpmat=mc.smpmat(d.mid);
-
+%}
 
 end
 
