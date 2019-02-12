@@ -1834,11 +1834,16 @@ mi.old = 1e-10.*(-0.5+rand(mi.n,1,precision));
 mi.old = mi.old.*blk(1).idinter;
 
 % Define initial locked patch
-% c1_id : Locking  (coupling = 1)
-% c0_id : Creeping (coupling = 0)
-d(1).c1_id = zeros(3*tri(1).nb,1);
-d(1).c0_id = zeros(3*tri(1).nb,1);
-nc = 1;
+% c1_id_slip   : Locking  (coupling = 1), for slip
+% c0_id_slip   : Creeping (coupling = 0), for slip
+% c1_id_strain : Locking  (coupling = 1), for strain
+% c0_id_strain : Creeping (coupling = 0), for strain
+d(1).c1_id_slip   = zeros(3*tri(1).nb,1);
+d(1).c0_id_slip   = zeros(3*tri(1).nb,1);
+% d(1).c1_id_strain = zeros(2*tri(1).nb,1);
+% d(1).c0_id_strain = zeros(2*tri(1).nb,1);
+mc = 1;
+mt = 1;
 for nb1 = 1:blk(1).nblock
   for nb2 = nb1+1:blk(1).nblock
     nf = size(tri(1).bound(nb1,nb2).clon,2);
@@ -1848,21 +1853,28 @@ for nb1 = 1:blk(1).nblock
                            tri(1).bound(nb1,nb2).clat,...
                            blk(1).bound(nb1,nb2).patch(np).lon,...
                            blk(1).bound(nb1,nb2).patch(np).lat);
-        d(1).c1_id(nc:nc+3*nf-1) = d(1).c1_id(nc:nc+3*nf-1) | repmat(slipid',3,1);
+%         d(1).c1_id_slip(  mc:mc+3*nf-1) = d(1).c1_id_slip(  mc:mc+3*nf-1) | repmat(slipid',3,1);
+        d(1).c1_id_slip(  mc:mc+3*nf-1) = d(1).c1_id_slip(  mc:mc+3*nf-1) | [repmat( slipid',2,1); false(nf,1)];
+        d(1).c0_id_slip(  mc:mc+3*nf-1) = d(1).c0_id_slip(  mc:mc+3*nf-1) | [repmat(~slipid',2,1); false(nf,1)];
+%         d(1).c1_id_strain(mt:mt+2*nf-1) = d(1).c1_id_strain(mt:mt+2*nf-1) | repmat(slipid',2,1);
       end
-      nc = nc + 3*nf;
+      mc = mc + 3*nf;
+      mt = mt + 2*nf;
     end
   end
 end
-d(1).c0_id = ~d(1).c1_id;
+d(1).c1_id_slip = logical(d(1).c1_id_slip);
+d(1).c0_id_slip = logical(d(1).c0_id_slip);
+% d(1).c0_id_slip   = ~d(1).c1_id_slip;
+% d(1).c0_id_strain = ~d(1).c1_id_strain;
 
 cal.slip = zeros(3*tri(1).nb,1);
 % Calculate back-slip on locked patches.
-cal.slip             = (G(1).tb*mp.old).*d(1).cfinv.*d(1).c1_id;
+cal.slip             = (G(1).tb*mp.old).*d(1).cfinv.*d(1).c1_id_slip;
 % Calculate strain out of locked patches.
-cal.strain           = (G(1).s*cal.slip).*d(1).c0_id;
+cal.strain           = (G(1).s*cal.slip).*d(1).c0_id_slip;
 % Inverse velocity out of locked patches.
-cal.slip(d(1).c0_id) = G(1).s(d(1).c0_id,d(1).c0_id)\cal.strain(d(1).c0_id);
+cal.slip(d(1).c0_id_slip) = G(1).s(d(1).c0_id_slip,d(1).c0_id_slip)\cal.strain(d(1).c0_id_slip);
 
 %{  
 %  TO DO
