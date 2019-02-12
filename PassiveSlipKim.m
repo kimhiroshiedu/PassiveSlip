@@ -1856,8 +1856,13 @@ for nb1 = 1:blk(1).nblock
 end
 d(1).c0_id = ~d(1).c1_id;
 
+cal.slip = zeros(3*tri(1).nb,1);
 % Calculate back-slip on locked patches.
-cal.slip = (G.tb*mp.old).*d(1).cfinv.*d(1).c1_id;
+cal.slip             = (G(1).tb*mp.old).*d(1).cfinv.*d(1).c1_id;
+% Calculate strain out of locked patches.
+cal.strain           = (G(1).s*cal.slip).*d(1).c0_id;
+% Inverse velocity out of locked patches.
+cal.slip(d(1).c0_id) = G(1).s(d(1).c0_id,d(1).c0_id)\cal.strain(d(1).c0_id);
 
 %{  
 %  TO DO
