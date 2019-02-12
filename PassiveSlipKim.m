@@ -1824,10 +1824,11 @@ mi.old = 1e-10.*(-0.5+rand(mi.n,1,precision));
 mi.old = mi.old.*blk(1).idinter;
 
 % Define initial locked patch
-d(1).slipid = zeros(3*tri(1).nb,1);
+% c1_id : Locking  (coupling = 1)
+% c0_id : Creeping (coupling = 0)
+d(1).c1_id = zeros(3*tri(1).nb,1);
+d(1).c0_id = zeros(3*tri(1).nb,1);
 nc = 1;
-nt = 1;
-nr = 1;
 for nb1 = 1:blk(1).nblock
   for nb2 = nb1+1:blk(1).nblock
     nf = size(tri(1).bound(nb1,nb2).clon,2);
@@ -1837,17 +1838,16 @@ for nb1 = 1:blk(1).nblock
                            tri(1).bound(nb1,nb2).clat,...
                            blk(1).bound(nb1,nb2).patch(np).lon,...
                            blk(1).bound(nb1,nb2).patch(np).lat);
-        d(1).slipid(nc:nc+3*nf-1) = d(1).slipid(nc:nc+3*nf-1) | repmat(slipid',3,1);
+        d(1).c1_id(nc:nc+3*nf-1) = d(1).c1_id(nc:nc+3*nf-1) | repmat(slipid',3,1);
       end
       nc = nc + 3*nf;
-      nt = nt + 2*nf;
-      nr = nr +   nf;
     end
   end
 end
+d(1).c0_id = ~d(1).c1_id;
 
-% Calculate back-slip on asperities.
-cal.slip = (G.tb*mp.old).*d(1).cfinv.*d(1).slipid;
+% Calculate back-slip on locked patches.
+cal.slip = (G.tb*mp.old).*d(1).cfinv.*d(1).c1_id;
 
 %{  
 %  TO DO
