@@ -1330,8 +1330,8 @@ for nb1 = 1:blk(1).nblock
           tri(1).bound(nb1,nb2).nv(n,:)   = nv;
           tri(1).bound(nb1,nb2).st(n,:)   = st;
           tri(1).bound(nb1,nb2).dp(n,:)   = dp;
-          tri(1).bound(nb1,nb2).phi(n)    = phi;
-          tri(1).bound(nb1,nb2).theta(n)  = theta;
+          tri(1).bound(nb1,nb2).phi(n)    = phi;     % strike from x-axis (counter-clock wise)
+          tri(1).bound(nb1,nb2).theta(n)  = theta;   % dip from x-y plane (clock wise)
           tri(1).bound(nb1,nb2).oxyz(n,:) = conv2ell(tri(1).bound(nb1,nb2).clat(n),tri(1).bound(nb1,nb2).clon(n),1e3.*tri(1).bound(nb1,nb2).cdep(n));
           u = CalcTriDisps(obsx,obsy,obsz,trix,triy,triz,pr,1,0,0);
           s = CalcTriStrains(tricx,tricy,tricz,trix,triy,triz,pr,1,0,0);
@@ -1602,8 +1602,8 @@ function [tri] = trans_xyz2strdip(tri,nb1,nb2,n,nf)
 
 c1=cos(tri(1).bound(nb1,nb2).phi(n));
 s1=sin(tri(1).bound(nb1,nb2).phi(n));
-c2=cos(tri(1).bound(nb1,nb2).theta(n));
-s2=sin(tri(1).bound(nb1,nb2).theta(n));
+c2=cos(-tri(1).bound(nb1,nb2).theta(n));
+s2=sin(-tri(1).bound(nb1,nb2).theta(n));
 
 [sst,sdp,sts] = calctrans(tri(1).bound(nb1,nb2).gsstr(:,n),c1,s1,c2,s2);  % response to strike slip
 tri(1).bound(nb1,nb2).gsstrT(1:3:3*nf,n)=sst;  % str
@@ -1874,7 +1874,8 @@ cal.slip             = (G(1).tb*mp.old).*d(1).cfinv.*d(1).c1_id_slip;
 % Calculate strain out of locked patches.
 cal.strain           = (G(1).s*cal.slip).*d(1).c0_id_slip;
 % Inverse velocity out of locked patches.
-cal.slip(d(1).c0_id_slip) = G(1).s(d(1).c0_id_slip,d(1).c0_id_slip)\cal.strain(d(1).c0_id_slip);
+cal.slip(d(1).c0_id_slip) = -(G(1).s(d(1).c0_id_slip,d(1).c0_id_slip)...
+                                         \cal.strain(d(1).c0_id_slip));
 
 %{  
 %  TO DO
