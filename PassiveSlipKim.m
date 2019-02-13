@@ -1288,9 +1288,9 @@ for nb1 = 1:blk(1).nblock
         load(trimat);
         tri(1).bound(nb1,nb2) = trisave;
       else
-        tri(1).bound(nb1,nb2).gstr = zeros(3*nd,nf);
-        tri(1).bound(nb1,nb2).gdip = zeros(3*nd,nf);
-        tri(1).bound(nb1,nb2).gtns = zeros(3*nd,nf);
+        tri(1).bound(nb1,nb2).gustr = zeros(3*nd,nf);
+        tri(1).bound(nb1,nb2).gudip = zeros(3*nd,nf);
+        tri(1).bound(nb1,nb2).gutns = zeros(3*nd,nf);
         tri(1).bound(nb1,nb2).cf   =  ones(3*nf,1);
         tri(1).bound(nb1,nb2).inv  = zeros(3*nf,1);
         %
@@ -1745,9 +1745,9 @@ for nb1 = 1:blk(1).nblock
       d(1).mid             = zeros(blk(1).nb,1);
       d(1).mid(mr:mr+nf-1) = 1;
       d(1).mid             = [d(1).mid d(1).mid];
-      tmp.c(1:3*nobs,mc     :mc+  nf-1) = tri(1).bound(nb1,nb2).gstr;
-      tmp.c(1:3*nobs,mc+  nf:mc+2*nf-1) = tri(1).bound(nb1,nb2).gdip;
-      tmp.c(1:3*nobs,mc+2*nf:mc+3*nf-1) = tri(1).bound(nb1,nb2).gtns;
+      tmp.c(1:3*nobs,mc     :mc+  nf-1) = tri(1).bound(nb1,nb2).gustr;
+      tmp.c(1:3*nobs,mc+  nf:mc+2*nf-1) = tri(1).bound(nb1,nb2).gudip;
+      tmp.c(1:3*nobs,mc+2*nf:mc+3*nf-1) = tri(1).bound(nb1,nb2).gutns;
       tmp.cf( mc+nf:mc+2*nf-1) = tri(1).bound(nb1,nb2).cf ;
       tmp.inv(mc   :mc+3*nf-1) = tri(1).bound(nb1,nb2).inv;
       G(1).t(mc   :mc+  nf-1,mt   :mt+  nf-1) = diag(tri(1).bound(nb1,nb2).st(:,1));
@@ -1840,8 +1840,6 @@ mi.old = mi.old.*blk(1).idinter;
 % c0_id_strain : Creeping (coupling = 0), for strain
 d(1).c1_id_slip   = zeros(3*tri(1).nb,1);
 d(1).c0_id_slip   = zeros(3*tri(1).nb,1);
-% d(1).c1_id_strain = zeros(2*tri(1).nb,1);
-% d(1).c0_id_strain = zeros(2*tri(1).nb,1);
 mc = 1;
 mt = 1;
 for nb1 = 1:blk(1).nblock
@@ -1853,10 +1851,8 @@ for nb1 = 1:blk(1).nblock
                            tri(1).bound(nb1,nb2).clat,...
                            blk(1).bound(nb1,nb2).patch(np).lon,...
                            blk(1).bound(nb1,nb2).patch(np).lat);
-%         d(1).c1_id_slip(  mc:mc+3*nf-1) = d(1).c1_id_slip(  mc:mc+3*nf-1) | repmat(slipid',3,1);
         d(1).c1_id_slip(  mc:mc+3*nf-1) = d(1).c1_id_slip(  mc:mc+3*nf-1) | [repmat( slipid',2,1); false(nf,1)];
         d(1).c0_id_slip(  mc:mc+3*nf-1) = d(1).c0_id_slip(  mc:mc+3*nf-1) | [repmat(~slipid',2,1); false(nf,1)];
-%         d(1).c1_id_strain(mt:mt+2*nf-1) = d(1).c1_id_strain(mt:mt+2*nf-1) | repmat(slipid',2,1);
       end
       mc = mc + 3*nf;
       mt = mt + 2*nf;
@@ -1865,10 +1861,7 @@ for nb1 = 1:blk(1).nblock
 end
 d(1).c1_id_slip = logical(d(1).c1_id_slip);
 d(1).c0_id_slip = logical(d(1).c0_id_slip);
-% d(1).c0_id_slip   = ~d(1).c1_id_slip;
-% d(1).c0_id_strain = ~d(1).c1_id_strain;
 
-cal.slip = zeros(3*tri(1).nb,1);
 % Calculate back-slip on locked patches.
 cal.slip             = (G(1).tb*mp.old).*d(1).cfinv.*d(1).c1_id_slip;
 % Calculate strain out of locked patches.
@@ -1876,6 +1869,16 @@ cal.strain           = (G(1).s*cal.slip).*d(1).c0_id_slip;
 % Inverse velocity out of locked patches.
 cal.slip(d(1).c0_id_slip) = -(G(1).s(d(1).c0_id_slip,d(1).c0_id_slip)...
                                          \cal.strain(d(1).c0_id_slip));
+% Rigid motion
+cal.rig = G.p*mp.old;
+% Elastic motion due to slip deficit
+cal.ela = G.c*cal.slip;
+% Internal deformation
+cal.ine = G.i*mi.old;
+% Total velocity
+cal.smp = cal.rig+cal.ela+cal.ine;
+% keyboard
+% MakeFigs(cal,blk,obs)
 
 %{  
 %  TO DO
@@ -1911,6 +1914,134 @@ mc.smpmat=repmat(mc.smp,3,d.cnt);
 mc.smpmat=mc.smpmat(d.mid);
 %}
 
+end
+
+%% Make figures after calculation
+function MakeFigs(cha,blk,obs,rt,lo_mc,up_mc,vec,mi_mean)
+% cal,blk,obs
+% Color palette(POLAR)
+lo_mc = 0;
+up_mc = 1;
+red=[0:1/32:1 ones(1,32)]';
+green=[0:1/32:1 1-1/32:-1/32:0]';
+blue=[ones(1,32) 1:-1/32:0]';
+rwb=[red green blue];
+rw =rwb(33:end,:);
+if lo_mc==-1; cmap=rwb;
+else cmap=rw; end
+
+%---------show estimated coupling ratio------------------
+figure(100);clf(100)
+% bug to wait zero
+nn=1;
+for nb1=1:blk(1).nblock
+  for nb2=nb1+1:blk(1).nblock
+    nf=size(blk(1).bound(nb1,nb2).blon,1);
+    if nf~=0
+      patch(blk(1).bound(nb1,nb2).blon',blk(1).bound(nb1,nb2).blat',blk(1).bound(nb1,nb2).bdep',mean(cha.mc(nn:nn+nf-1,:),2));
+      nn=nn+nf;
+      hold on
+    end
+  end
+end
+ax=gca;
+ax.clim=[lo_mc up_mc];
+colormap(cmap)
+colorbar
+
+%---------show standard deviation for subfaults----------
+figure(110);clf(110)
+% bug to wait zero
+nn=1;
+for nb1=1:blk(1).nblock
+  for nb2=nb1+1:blk(1).nblock
+    nf=size(blk(1).bound(nb1,nb2).blon,1);
+    if nf~=0
+      patch(blk(1).bound(nb1,nb2).blon',blk(1).bound(nb1,nb2).blat',blk(1).bound(nb1,nb2).bdep',std(cha.mc(nn:nn+nf-1,:),0,2));
+      nn=nn+nf;
+      hold on
+    end
+  end
+end
+colormap(parula)
+colorbar
+
+%---------show 2-d histogram of sampled euler pole-------------
+figure(120);clf(120)
+for nb=1:blk(1).nblock
+  plot(blk(nb).lon,blk(nb).lat,'red')
+  hold on
+  text(mean(blk(nb).lon),mean(blk(nb).lat),int2str(nb))
+  hold on
+  [latp,lonp,~]=xyzp2lla(cha.mp(3.*nb-2,:),cha.mp(3.*nb-1,:),cha.mp(3.*nb,:));
+  minlon=min(lonp); maxlon=max(lonp); 
+  minlat=min(latp); maxlat=max(latp); 
+  if maxlon-minlon < 0.5; binlon=[minlon maxlon]; else binlon=minlon:0.5:maxlon; end  
+  if maxlat-minlat < 0.5; binlat=[minlat maxlat]; else binlat=minlat:0.5:maxlat; end  
+  histogram2(lonp,latp,binlon,binlat,'normalization','probability','facecolor','flat')
+  hold on
+  text(double(mean(lonp)),double(mean(latp)),int2str(nb))
+  hold on
+end
+quiver(obs(1).alon,obs(1).alat,obs(1).evec,obs(1).nvec,'green')
+quiver(obs(1).alon,obs(1).alat,cha.smp(1:3:end)',cha.smp(2:3:end)','blue')
+colorbar
+hold on
+
+%---------show obs and cal vector at sites -------------
+% color of arrows
+% green : observed deformation
+% blue  : calculated deformation
+figure(130);clf(130)
+quiver(obs(1).alon,obs(1).alat,obs(1).evec,obs(1).nvec,'green')
+hold on
+quiver(obs(1).alon,obs(1).alat,vec.sum(1:3:end)',vec.sum(2:3:end)','blue')
+hold on
+axis([obs(1).lonmin-1,obs(1).lonmax+1,obs(1).latmin-1,obs(1).latmax+1]);
+title(['obs and cal motion (iteration number: ',num2str(rt),')']);
+ 
+%-------------------- show rig and ela vectors ----------------------------
+% color of arrows
+% black   : rigid rotation
+% red     : elastic deformation due to slip deficit
+figure(140);clf(140)
+quiver(obs(1).alon,obs(1).alat,vec.rig(1:3:end)',vec.rig(2:3:end)','k')
+hold on
+quiver(obs(1).alon,obs(1).alat,vec.ela(1:3:end)',vec.ela(2:3:end)','r')
+% hold on
+% quiver(obs(1).alon,obs(1).alat,vec.rel(1:3:end)',vec.rel(2:3:end)','m')
+axis([obs(1).lonmin-1,obs(1).lonmax+1,obs(1).latmin-1,obs(1).latmax+1]);
+title(['rigid and elastic motion (iteration number: ',num2str(rt),')']);
+
+%------------------------show principal strain-----------------------------
+% color of arrows
+% cyan    : extension of principal strain
+% magenta : compression of principal strain
+figure(150);clf(150)
+efactor=1e8;
+for nb=1:blk(1).nblock
+  hold on; plot(blk(nb).lon,blk(nb).lat,'red')
+  hold on; text(mean(blk(nb).lon),mean(blk(nb).lat),int2str(nb),'color','r')
+  e=[mi_mean(3*nb-2) mi_mean(3*nb-1);...
+     mi_mean(3*nb-1) mi_mean(3*nb  )];
+  [eigv,eigd]=eig(e);
+  e1=eigd(1,1); e2=eigd(2,2);
+  v1=eigv(:,1); v2=eigv(:,2);
+  if e1>=0; c1='c'; else; c1='m'; end
+  if e2>=0; c2='c'; else; c2='m'; end
+  figure(150)
+  hold on; quiver(blk(nb).loninter,blk(nb).latinter,efactor* e1*v1(1),efactor* e1*v1(2),c1,'showarrowhead','off','linewidth',1);
+  hold on; quiver(blk(nb).loninter,blk(nb).latinter,efactor*-e1*v1(1),efactor*-e1*v1(2),c1,'showarrowhead','off','linewidth',1);
+  hold on; quiver(blk(nb).loninter,blk(nb).latinter,efactor* e2*v2(1),efactor* e2*v2(2),c2,'showarrowhead','off','linewidth',1);
+  hold on; quiver(blk(nb).loninter,blk(nb).latinter,efactor*-e2*v2(1),efactor*-e2*v2(2),c2,'showarrowhead','off','linewidth',1);
+  hold on; plot(blk(nb).loninter,blk(nb).latinter,'.k','markersize',5)
+  hold on; text(blk(nb).loninter,blk(nb).latinter,int2str(nb),'color','k')
+end
+axis([obs(1).lonmin-1,obs(1).lonmax+1,obs(1).latmin-1,obs(1).latmax+1]);
+title(['principle strain (iteration number: ',num2str(rt),')']);
+
+% debug----------
+drawnow
 end
 
 %% make_test_trill.m
