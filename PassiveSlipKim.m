@@ -1357,8 +1357,6 @@ id_crep = logical(d(1).id_crep);
 cal.slip             = (G(1).tb*mp.old).*d(1).cfinv.*id_lock;
 
 while 1
-  %   % Calculate back-slip on locked patches.
-  %   cal.slip             = (G(1).tb*mp.old).*d(1).cfinv.*id_lock;
   % Calculate strain out of locked patches.
   cal.strain           = (G(1).s*cal.slip).*id_crep;
   % Inverse velocity out of locked patches.
@@ -1372,8 +1370,6 @@ while 1
   cal.ine = G.i*mi.old;
   % Total velocity
   cal.smp = cal.rig+cal.ela+cal.ine;
-
-  % MakeFigs(cal,blk,obs)
 
   % Find back-slipped region
   id_lock_next = zeros(3*tri(1).nb,1);
@@ -1412,8 +1408,6 @@ patch(blk(1).bound(1,2).blon',...
       sqrt(cal.slip(1:nf).^2+cal.slip(nf+1:2*nf).^2))
 colormap('hot')
 colorbar
-% hold on
-% text(tri(1).bound(1,2).clon,tri(1).bound(1,2).clat,num2str(sqrt(cal.slip(1:nf).^2+cal.slip(nf+1:2*nf).^2)))
 % 
 % Velocity at surface due to back-slip
 hold on
