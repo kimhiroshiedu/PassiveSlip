@@ -38,6 +38,8 @@ prm.alat0 = 0;
 [tri]     = GreenTri(blk,obs,prm);
 % Arrange Green's functions.
 [d,G]     = GreenFunctionMatrix(blk,obs,tri);
+% Define locking patches.
+[d]       = InitialLockingPatch(blk,tri,d);
 % Calculate pasive slip and response to surface.
 [cal]     = CalcSlip(blk,tri,prm,obs,eul,d,G);
 % Save data.
@@ -1203,65 +1205,6 @@ end
 
 end
 %====================================================
-%% Make patches of locked asperity
-function [Slip]=MakeSlipPatch(triC,sitaS)
-% Read file of locked patch definition
-fid=fopen(prm.patch,'r');
-np = 0;
-nf = 0;
-while 1
-  tline = fgetl(fid);
-  if ~ischar(tline)
-    break
-  end
-  nf  = nf + 1;
-  tmp = strsplit(tline);
-  tmp = str2double(tmp);
-  if isnan(tmp)
-    np = np + 1;
-    nf = 0;
-  else
-    Slip.patch(np+1).lon(nf) = tmp(1);
-    Slip.patch(np+1).lat(nf) = tmp(2);
-  end
-end
-fclose(fid);
-
-% Generate locked patch
-
-
-% A1=Rectangle asperity_1%
-% p=minimum X and max Y, q=max X and minimum Y%
-% y=+ wa south%
-
-% 2011 Tohoku-oki
-A1SV=1.8810;
-A1plon=143;
-A1plat=41;
-A1qlon=145;
-A1qlat=38;
-A1Slip=0.090;
-A1xSlip=-A1Slip.*sin(A1SV);
-A1ySlip=A1Slip.*cos(A1SV);
-
-n=size(triC,1);
-Slip=zeros(n,2);
-define=zeros(n,1);
-for i=1:n
-  if triC(i,1)<A1plon,Slip(i,:)=[0,0];
-  elseif triC(i,1)>A1qlon,Slip(i,:)=[0,0];
-  elseif triC(i,2)<A1qlat,Slip(i,:)=[0,0];
-  elseif triC(i,2)>A1plat,Slip(i,:)=[0,0];
-  else
-    A1sSlip=cos(sitaS(i)).*A1xSlip-sin(sitaS(i)).*A1ySlip;
-    A1dSlip=sin(sitaS(i)).*A1xSlip+cos(sitaS(i)).*A1ySlip;
-    Slip(i,:)=[A1sSlip,A1dSlip];
-    define(i,1)=1;
-  end
-end
-
-end
-
 %% Make Green's function of halfspace elastic strain for triangular meshes
 function [tri] = GreenTri(blk,obs,prm)
 % Coded by Hiroshi Kimura 2019/01/28 (ver 1.0)
@@ -1811,33 +1754,14 @@ d(1).mid   = logical(repmat(d(1).mid,3,1));
 d(1).cfinv = tmp.cf.*tmp.inv;
 end
 
-%% Calculate passive slip by locked patch
-function [cal] = CalcSlip(blk,tri,prm,obs,eul,d,G)
-% Test version coded by Hiroshi Kimura in 2019/2/1
-precision = 'double';
-rwd = prm.rwd;
-nb  = blk(1).nblock;
-
-% initial parameters
-mc.int = 1e-2;
-mp.int = 1e-10;
-mi.int = 1e-10;
-mc.n   = blk(1).nb;
-mp.n   = 3.*blk(1).nblock;
-mi.n   = 3.*blk(1).nblock;
-% substitute euler pole vectors
-mp.old = double(blk(1).pole);
-mp.old(eul.id) = 0;
-mp.old = mp.old+eul.fixw;
-% substitute internal strain tensors
-mi.old = 1e-10.*(-0.5+rand(mi.n,1,precision));
-mi.old = mi.old.*blk(1).idinter;
-
-% Define initial locked patch
-% id_lock : Locking, give back-slip  (coupling = 1)
-% id_crep : Creeping, slip passively (coupling = 0)
-id_lock = zeros(3*tri(1).nb,1);
-id_crep = zeros(3*tri(1).nb,1);
+%% Define initial locking patches
+function [d] = InitialLockingPatch(blk,tri,d)
+% Coded by Hiroshi Kimura in 2019/2/14
+% d(1).id_lock : Locking, give back-slip  (coupling = 1)
+% d(1).id_crep : Creeping, slip passively (coupling = 0)
+% 
+d(1).id_lock = zeros(3*tri(1).nb,1);
+d(1).id_crep = zeros(3*tri(1).nb,1);
 mc = 1;
 mt = 1;
 for nb1 = 1:blk(1).nblock
@@ -1849,63 +1773,127 @@ for nb1 = 1:blk(1).nblock
                            tri(1).bound(nb1,nb2).clat,...
                            blk(1).bound(nb1,nb2).patch(np).lon,...
                            blk(1).bound(nb1,nb2).patch(np).lat);
-        id_lock(  mc:mc+3*nf-1) = id_lock(  mc:mc+3*nf-1) | [repmat( slipid',2,1); false(nf,1)];
-        id_crep(  mc:mc+3*nf-1) = id_crep(  mc:mc+3*nf-1) | [repmat(~slipid',2,1); false(nf,1)];
+        d(1).id_lock(mc:mc+3*nf-1) = d(1).id_lock(mc:mc+3*nf-1) | [repmat( slipid',2,1); false(nf,1)];
+        d(1).id_crep(mc:mc+3*nf-1) = d(1).id_crep(mc:mc+3*nf-1) | [repmat(~slipid',2,1); false(nf,1)];
       end
       mc = mc + 3*nf;
       mt = mt + 2*nf;
     end
   end
 end
-id_lock = logical(id_lock);
-id_crep = logical(id_crep);
+d(1).id_lock = logical(d(1).id_lock);
+d(1).id_crep = logical(d(1).id_crep);
+
+end
+
+%% Calculate passive slip by locked patch
+function [cal] = CalcSlip(blk,tri,prm,obs,eul,d,G)
+% Test version coded by Hiroshi Kimura in 2019/2/1
+precision  = 'double'     ;
+rwd        = prm.rwd      ;
+nb         = blk(1).nblock;
+passivelim = 1            ;  % [mm], TODO : How to determine?
+
+% initial parameters
+mc.int = 1e-2 ;
+mp.int = 1e-10;
+mi.int = 1e-10;
+mc.n   = blk(1).nb;
+mp.n   = 3.*blk(1).nblock;
+mi.n   = 3.*blk(1).nblock;
+% substitute euler pole vectors
+mp.old         = double(blk(1).pole);
+mp.old(eul.id) = 0                  ;
+mp.old         = mp.old+eul.fixw    ;
+% substitute internal strain tensors
+mi.old = 1e-10.*(-0.5+rand(mi.n,1,precision));
+mi.old = mi.old.*blk(1).idinter              ;
+
+% substitude index of locking patches
+id_lock = logical(d(1).id_lock);
+id_crep = logical(d(1).id_crep);
 
 % Calculate back-slip on locked patches.
 cal.slip             = (G(1).tb*mp.old).*d(1).cfinv.*id_lock;
-% Calculate strain out of locked patches.
-cal.strain           = (G(1).s*cal.slip).*id_crep;
-% Inverse velocity out of locked patches.
-cal.slip(id_crep) = -(G(1).s(id_crep,id_crep)...
-                                         \cal.strain(id_crep));
-% Rigid motion
-cal.rig = G.p*mp.old;
-% Elastic motion due to slip deficit
-cal.ela = G.c*cal.slip;
-% Internal deformation
-cal.ine = G.i*mi.old;
-% Total velocity
-cal.smp = cal.rig+cal.ela+cal.ine;
-% keyboard
-% MakeFigs(cal,blk,obs)
 
-% Find back-slipped region
-id_lock_next = zeros(3*tri(1).nb,1);
-id_crep_next = zeros(3*tri(1).nb,1);
-mc = 1;
-mt = 1;
+while 1
+  %   % Calculate back-slip on locked patches.
+  %   cal.slip             = (G(1).tb*mp.old).*d(1).cfinv.*id_lock;
+  % Calculate strain out of locked patches.
+  cal.strain           = (G(1).s*cal.slip).*id_crep;
+  % Inverse velocity out of locked patches.
+  cal.slip(id_crep) = -(G(1).s(id_crep,id_crep)...
+                                           \cal.strain(id_crep));
+  % Rigid motion
+  cal.rig = G.p*mp.old;
+  % Elastic motion due to slip deficit
+  cal.ela = G.c*cal.slip;
+  % Internal deformation
+  cal.ine = G.i*mi.old;
+  % Total velocity
+  cal.smp = cal.rig+cal.ela+cal.ine;
+
+  % MakeFigs(cal,blk,obs)
+
+  % Find back-slipped region
+  id_lock_next = zeros(3*tri(1).nb,1);
+  id_crep_next = zeros(3*tri(1).nb,1);
+  mc = 1;
+  mt = 1;
+  for nb1 = 1:blk(1).nblock
+    for nb2 = nb1+1:blk(1).nblock
+      nf = size(tri(1).bound(nb1,nb2).clon,2);
+      if nf ~= 0
+        slipid = sqrt(cal.slip(mc:mc+nf-1).^2+cal.slip(mc+nf:mc+2*nf-1).^2) >= passivelim;
+        id_lock_next(mc:mc+3*nf-1) = id_lock_next(mc:mc+3*nf-1) | [repmat( slipid,2,1); false(nf,1)];
+        id_crep_next(mc:mc+3*nf-1) = id_crep_next(mc:mc+3*nf-1) | [repmat(~slipid,2,1); false(nf,1)];
+        mc = mc + 3*nf;
+        mt = mt + 2*nf;
+      end
+    end
+  end
+  id_lock_next = logical(id_lock_next);
+  id_crep_next = logical(id_crep_next);
+  %
+  if sum(id_lock_next==id_lock)==3*tri(1).nb  % Passive slip is almost 0
+    break
+  else
+    id_lock = id_lock_next;
+    id_crep = id_crep_next;    
+  end
+  %
+end
+
+% Make figure
+figure(10); clf(10)
+% Back-slip rate
+patch(blk(1).bound(1,2).blon',...
+      blk(1).bound(1,2).blat',...
+      sqrt(cal.slip(1:nf).^2+cal.slip(nf+1:2*nf).^2))
+colormap('hot')
+colorbar
+% hold on
+% text(tri(1).bound(1,2).clon,tri(1).bound(1,2).clat,num2str(sqrt(cal.slip(1:nf).^2+cal.slip(nf+1:2*nf).^2)))
+% 
+% Velocity at surface due to back-slip
+hold on
+quiver(obs(1).alon,obs(1).alat,cal.smp(1:3:end)',cal.smp(2:3:end)')
+% 
+% Add initial patches
 for nb1 = 1:blk(1).nblock
   for nb2 = nb1+1:blk(1).nblock
     nf = size(tri(1).bound(nb1,nb2).clon,2);
     if nf ~= 0
-      slipid = sqrt(cal.slip(mc:mc+nf-1).^2+cal.slip(mc+nf:mc+2*nf-1).^2) >= 0.2;  % threshould of passive slip
-      id_lock_next(mc:mc+3*nf-1) = id_lock_next(mc:mc+3*nf-1) | [repmat( slipid,2,1); false(nf,1)];
-      id_crep_next(mc:mc+3*nf-1) = id_crep_next(mc:mc+3*nf-1) | [repmat(~slipid,2,1); false(nf,1)];
-      mc = mc + 3*nf;
-      mt = mt + 2*nf;
+      for np = 1:size(blk(1).bound(nb1,nb2).patch,2)
+        hold on
+        plot(blk(1).bound(nb1,nb2).patch(np).lon,...
+             blk(1).bound(nb1,nb2).patch(np).lat,...
+             'LineWidth',3,'Color','b')
+      end
     end
   end
 end
-id_lock_next = logical(id_lock_next);
-id_crep_next = logical(id_crep_next);
-
-if sum(id_lock_next==id_lock)==3*tri(1).nb  % Passive slip almost 0
-%   break
-else
-  id_lock = id_lock_next;
-  id_crep = id_crep_next;    
-end
-
-
+% 
 %{  
 %  TO DO
 %  MCMC inversion
