@@ -893,8 +893,6 @@ obsz = -1e-3.*obs(1).ahig;
 %
 tri(1).obsdis= [];
 tri(1).nb    = 0;
-tri(1).cf    = ones(3*blk(1).nb,1);
-tri(1).inv   = zeros(3*blk(1).nb,1);
 for nb1 = 1:blk(1).nblock
   [blk(nb1).localx,blk(nb1).localy] = PLTXY(blk(nb1).lat,blk(nb1).lon,alat,alon);
   for nb2 = nb1+1:blk(1).nblock
@@ -1014,7 +1012,7 @@ switch blk(1).bound(nb1,nb2).flag1
   case {1,2}
     cf = 1/sqrt(dp(1)^2+dp(2)^2);      % 1=sqrt(dp(1)^2+dp(2)^2+dp(3)^2): norm of dp
     if cf==Inf, cf=1; end
-    tri(1).bound(nb1,nb2).cf(3*tri(1).nb+nf+n) = cf;
+    tri(1).bound(nb1,nb2).cf(nf+n) = cf;
   case 0
     return
 end
