@@ -1,7 +1,8 @@
 %% PassiveSlip.m
 function PassiveSlipKim
 % Coded by Ryohei Sasajima final 2013/12/23
-% Combined by Hiroshi Kimura 2018/11/12
+% Combined by Hiroshi Kimura     2018/11/12
+% Revise by Hiroshi Kimura       2019/2/16
 %--- 
 prm.input = 'PARAMETER/parameter_forward.txt';
 prm.optfile='PARAMETER/opt_bound_par_forward.txt';
@@ -354,9 +355,9 @@ if size(file,1)~=0
   end
   b=sort(d_no);
   next_no=b(end)+1;
-  a_dir=fullfile(prm.DirResult,['Test_',num2str(next_no,'%02i')]);
+  a_dir=fullfile(prm.dirresult,['Test_',num2str(next_no,'%02i')]);
 else
-  a_dir=fullfile(prm.DirResult,'Test_01');
+  a_dir=fullfile(prm.dirresult,'Test_01');
 end
 f_fir=fullfile(a_dir,'figure');
 mkdir(a_dir);
@@ -371,15 +372,17 @@ save(fullfile(a_dir,'obs.mat'),'obs','-v7.3')
 save(fullfile(a_dir,'cal.mat'),'cal','-v7.3')
 save(fullfile(a_dir,'grn.mat'),'d','G','-v7.3')
 % 
+savefig(100,fullfile(f_fir,'back_slip'))
+%{
 savefig(140,fullfile(f_fir,'vec_rig_ela'))
 savefig(130,fullfile(f_fir,'vector'))
 savefig(120,fullfile(f_fir,'pole'))
 savefig(110,fullfile(f_fir,'std'))
 savefig(100,fullfile(f_fir,'coupling'))
-% 
+%}
 fprintf(log_fid,'MODEL= %s\n',prm.dirblock);
 fprintf(log_fid,'OBSDATA= %s\n',prm.fileobs);
-fclose(log_fid);
+fclose('all');
 movefile(logfile,a_dir);
 end
 
@@ -1285,7 +1288,6 @@ function [d] = InitialLockingPatch(blk,tri,d)
 d(1).id_lock = zeros(3*tri(1).nb,1);
 d(1).id_crep = zeros(3*tri(1).nb,1);
 mc = 1;
-mt = 1;
 for nb1 = 1:blk(1).nblock
   for nb2 = nb1+1:blk(1).nblock
     nf = size(tri(1).bound(nb1,nb2).clon,2);
@@ -1295,11 +1297,13 @@ for nb1 = 1:blk(1).nblock
                            tri(1).bound(nb1,nb2).clat,...
                            blk(1).bound(nb1,nb2).patch(np).lon,...
                            blk(1).bound(nb1,nb2).patch(np).lat);
-        d(1).id_lock(mc:mc+3*nf-1) = d(1).id_lock(mc:mc+3*nf-1) | [repmat( slipid',2,1); false(nf,1)];
-        d(1).id_crep(mc:mc+3*nf-1) = d(1).id_crep(mc:mc+3*nf-1) | [repmat(~slipid',2,1); false(nf,1)];
+        d(1).id_lock(mc:mc+nf-1) = d(1).id_lock(mc:mc+nf-1) | slipid';
+%         d(1).id_lock(mc:mc+3*nf-1) = d(1).id_lock(mc:mc+3*nf-1) | [repmat( slipid',2,1); false(nf,1)];
+%         d(1).id_crep(mc:mc+3*nf-1) = d(1).id_crep(mc:mc+3*nf-1) | [repmat(~slipid',2,1); false(nf,1)];
       end
+      d(1).id_lock(mc:mc+3*nf-1) = [repmat( d(1).id_lock(mc:mc+nf-1),2,1); false(nf,1)];
+      d(1).id_crep(mc:mc+3*nf-1) = [repmat(~d(1).id_lock(mc:mc+nf-1),2,1); false(nf,1)];
       mc = mc + 3*nf;
-      mt = mt + 2*nf;
     end
   end
 end
@@ -1342,8 +1346,7 @@ while 1
   % Calculate strain out of locked patches.
   cal.strain           = (G(1).s*cal.slip).*id_crep;
   % Inverse velocity out of locked patches.
-  cal.slip(id_crep) = -(G(1).s(id_crep,id_crep)...
-                                           \cal.strain(id_crep));
+  cal.slip(id_crep) = -(G(1).s(id_crep,id_crep) \ cal.strain(id_crep));
   % Rigid motion
   cal.rig = G.p*mp.old;
   % Elastic motion due to slip deficit
@@ -1357,7 +1360,6 @@ while 1
   id_lock_next = zeros(3*tri(1).nb,1);
   id_crep_next = zeros(3*tri(1).nb,1);
   mc = 1;
-  mt = 1;
   for nb1 = 1:blk(1).nblock
     for nb2 = nb1+1:blk(1).nblock
       nf = size(tri(1).bound(nb1,nb2).clon,2);
@@ -1366,7 +1368,6 @@ while 1
         id_lock_next(mc:mc+3*nf-1) = id_lock_next(mc:mc+3*nf-1) | [repmat( slipid,2,1); false(nf,1)];
         id_crep_next(mc:mc+3*nf-1) = id_crep_next(mc:mc+3*nf-1) | [repmat(~slipid,2,1); false(nf,1)];
         mc = mc + 3*nf;
-        mt = mt + 2*nf;
       end
     end
   end
@@ -1383,32 +1384,7 @@ while 1
 end
 
 % Make figure
-figure(10); clf(10)
-mc = 1;
-for nb1 = 1:blk(1).nblock
-  for nb2 = nb1+1:blk(1).nblock
-    nf = size(tri(1).bound(nb1,nb2).clon,2);
-    if nf ~= 0
-      % Back-slip rate
-      patch(blk(1).bound(nb1,nb2).blon',...
-            blk(1).bound(nb1,nb2).blon',...
-      sqrt(cal.slip(mc:mc+nf-1).^2+cal.slip(mc+nf:mc+2*nf-1).^2))
-      % Initial patches
-      for np = 1:size(blk(1).bound(nb1,nb2).patch,2)
-        hold on
-        plot(blk(1).bound(nb1,nb2).patch(np).lon,...
-             blk(1).bound(nb1,nb2).patch(np).lat,...
-             'LineWidth',3,'Color','b')
-      end
-      mc = mc + 3*nf;
-    end
-  end
-end
-colormap('hot')
-colorbar
-% Velocity at surface due to back-slip
-hold on
-quiver(obs(1).alon,obs(1).alat,cal.smp(1:3:end)',cal.smp(2:3:end)')
+MakeFigs(blk,tri,cal,obs);
 
 % 
 %{  
@@ -1445,6 +1421,38 @@ mc.smpmat=repmat(mc.smp,3,d.cnt);
 mc.smpmat=mc.smpmat(d.mid);
 %}
 
+end
+
+%% Make figures
+function MakeFigs(blk,tri,cal,obs)
+% 
+figure(100); clf(100)
+mc = 1;
+for nb1 = 1:blk(1).nblock
+  for nb2 = nb1+1:blk(1).nblock
+    nf = size(tri(1).bound(nb1,nb2).clon,2);
+    if nf ~= 0
+      % Back-slip rate
+      patch(blk(1).bound(nb1,nb2).blon',...
+            blk(1).bound(nb1,nb2).blat',...
+      sqrt(cal.slip(mc:mc+nf-1).^2+cal.slip(mc+nf:mc+2*nf-1).^2))
+      % Initial patches
+      for np = 1:size(blk(1).bound(nb1,nb2).patch,2)
+        hold on
+        plot(blk(1).bound(nb1,nb2).patch(np).lon,...
+             blk(1).bound(nb1,nb2).patch(np).lat,...
+             'LineWidth',3,'Color','b')
+      end
+      mc = mc + 3*nf;
+    end
+  end
+end
+colormap('hot')
+colorbar
+% Velocity at surface due to back-slip
+hold on
+quiver(obs(1).alon,obs(1).alat,cal.smp(1:3:end)',cal.smp(2:3:end)')
+% 
 end
 
 %% PLTXY
