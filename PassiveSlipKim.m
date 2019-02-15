@@ -1024,16 +1024,10 @@ function [blk,tri] = DiscriminateDirection(blk,tri,nb1,nb2,trix,triy,n,nf)
 % Modified by H.Kimura 2018/2/6
 switch blk(1).bound(nb1,nb2).flag1
   case 1
-%     tri(1).inv(3*tri(1).nb     +n) =  1;
-%     tri(1).inv(3*tri(1).nb+  nf+n) =  1;
-%     tri(1).inv(3*tri(1).nb+2*nf+n) =  0;
     tri(1).bound(nb1,nb2).inv(     n) = 1;
     tri(1).bound(nb1,nb2).inv(  nf+n) = 1;
     tri(1).bound(nb1,nb2).inv(2*nf+n) = 0;    
   case 2
-%     tri(1).inv(3*tri(1).nb     +n) = -1;
-%     tri(1).inv(3*tri(1).nb+  nf+n) = -1;
-%     tri(1).inv(3*tri(1).nb+2*nf+n) =  0;
     tri(1).bound(nb1,nb2).inv(     n) = -1;
     tri(1).bound(nb1,nb2).inv(  nf+n) = -1;
     tri(1).bound(nb1,nb2).inv(2*nf+n) =  0;    
@@ -1042,9 +1036,6 @@ switch blk(1).bound(nb1,nb2).flag1
     triyc   = mean(triy);
     [in,on] = inpolygon(trixc,triyc,blk(nb1).localx,blk(nb1).localy);
     if in==1 && on~=1
-%       tri(1).inv(3*tri(1).nb     +n) =  1;
-%       tri(1).inv(3*tri(1).nb+  nf+n) =  0;
-%       tri(1).inv(3*tri(1).nb+2*nf+n) =  1;
       tri(1).bound(nb1,nb2).inv(     n) = 1;
       tri(1).bound(nb1,nb2).inv(  nf+n) = 0;
       tri(1).bound(nb1,nb2).inv(2*nf+n) = 1;
@@ -1054,24 +1045,15 @@ switch blk(1).bound(nb1,nb2).flag1
       nv   = cross(uv,tri(1).bound(nb1,nb2).st(n,:));
       cnv  = tric+nv;
       if inpolygon(cnv(1),cnv(2),blk(nb1).localx,blk(nb1).localy)==1
-%         tri(1).inv(3*tri(1).nb     +n) =  1;
-%         tri(1).inv(3*tri(1).nb+  nf+n) =  0;
-%         tri(1).inv(3*tri(1).nb+2*nf+n) =  1;
         tri(1).bound(nb1,nb2).inv(     n) = 1;
         tri(1).bound(nb1,nb2).inv(  nf+n) = 0;
         tri(1).bound(nb1,nb2).inv(2*nf+n) = 1;
       else
-%         tri(1).inv(3*tri(1).nb     +n) = -1;
-%         tri(1).inv(3*tri(1).nb+  nf+n) =  0;
-%         tri(1).inv(3*tri(1).nb+2*nf+n) = -1;
         tri(1).bound(nb1,nb2).inv(     n) = -1;
         tri(1).bound(nb1,nb2).inv(  nf+n) =  0;
         tri(1).bound(nb1,nb2).inv(2*nf+n) = -1;
       end
     else
-%       tri(1).inv(3*tri(1).nb     +n) =  -1;
-%       tri(1).inv(3*tri(1).nb+  nf+n) =   0;
-%       tri(1).inv(3*tri(1).nb+2*nf+n) =  -1;
       tri(1).bound(nb1,nb2).inv(     n) = -1;
       tri(1).bound(nb1,nb2).inv(  nf+n) =  0;
       tri(1).bound(nb1,nb2).inv(2*nf+n) = -1;
