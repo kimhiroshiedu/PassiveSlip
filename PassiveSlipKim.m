@@ -3,8 +3,8 @@ function PassiveSlipKim
 % Coded by Ryohei Sasajima final 2013/12/23
 % Combined by Hiroshi Kimura 2018/11/12
 %--- 
-prm.input = 'PARAMETER/parameter_test.txt';
-prm.optfile='PARAMETER/opt_bound_par.txt';
+prm.input = 'PARAMETER/parameter_forward.txt';
+prm.optfile='PARAMETER/opt_bound_par_forward.txt';
 %--
 % Read Parameters.
 [prm]     = ReadParameters(prm);
@@ -1012,7 +1012,7 @@ function [tri] = CorrectFactor(blk,tri,nb1,nb2,dp,n,nf)
 % Coded by H.Kimura 2018/1/31 (test ver.)
 switch blk(1).bound(nb1,nb2).flag1
   case {1,2}
-    tri(1).bound(nb1,nb2).cf = 1/sqrt(dp(1)^2+dp(2)^2);   % 1=sqrt(dp(1)^2+dp(2)^2+dp(3)^2): norm of dp
+    tri(1).bound(nb1,nb2).cf(3*tri(1).nb+nf+n) = 1/sqrt(dp(1)^2+dp(2)^2);   % 1=sqrt(dp(1)^2+dp(2)^2+dp(3)^2): norm of dp
   case 0
     return
 end
@@ -1231,7 +1231,7 @@ for nb1 = 1:blk(1).nblock
       tmp.c(1:3*nobs,mc     :mc+  nf-1) = tri(1).bound(nb1,nb2).gustr;
       tmp.c(1:3*nobs,mc+  nf:mc+2*nf-1) = tri(1).bound(nb1,nb2).gudip;
       tmp.c(1:3*nobs,mc+2*nf:mc+3*nf-1) = tri(1).bound(nb1,nb2).gutns;
-      tmp.cf( mc+nf:mc+2*nf-1) = tri(1).bound(nb1,nb2).cf ;
+      tmp.cf( mc   :mc+3*nf-1) = tri(1).bound(nb1,nb2).cf ;
       tmp.inv(mc   :mc+3*nf-1) = tri(1).bound(nb1,nb2).inv;
       G(1).t(mc   :mc+  nf-1,mt   :mt+  nf-1) = diag(tri(1).bound(nb1,nb2).st(:,1));
       G(1).t(mc+nf:mc+2*nf-1,mt   :mt+  nf-1) = diag(tri(1).bound(nb1,nb2).dp(:,1));
@@ -1402,31 +1402,32 @@ end
 
 % Make figure
 figure(10); clf(10)
-% Back-slip rate
-patch(blk(1).bound(1,2).blon',...
-      blk(1).bound(1,2).blat',...
-      sqrt(cal.slip(1:nf).^2+cal.slip(nf+1:2*nf).^2))
-colormap('hot')
-colorbar
-% 
-% Velocity at surface due to back-slip
-hold on
-quiver(obs(1).alon,obs(1).alat,cal.smp(1:3:end)',cal.smp(2:3:end)')
-% 
-% Add initial patches
+mc = 1;
 for nb1 = 1:blk(1).nblock
   for nb2 = nb1+1:blk(1).nblock
     nf = size(tri(1).bound(nb1,nb2).clon,2);
     if nf ~= 0
+      % Back-slip rate
+      patch(blk(1).bound(nb1,nb2).blon',...
+            blk(1).bound(nb1,nb2).blon',...
+      sqrt(cal.slip(mc:mc+nf-1).^2+cal.slip(mc+nf:mc+2*nf-1).^2))
+      % Initial patches
       for np = 1:size(blk(1).bound(nb1,nb2).patch,2)
         hold on
         plot(blk(1).bound(nb1,nb2).patch(np).lon,...
              blk(1).bound(nb1,nb2).patch(np).lat,...
              'LineWidth',3,'Color','b')
       end
+      mc = mc + 3*nf;
     end
   end
 end
+colormap('hot')
+colorbar
+% Velocity at surface due to back-slip
+hold on
+quiver(obs(1).alon,obs(1).alat,cal.smp(1:3:end)',cal.smp(2:3:end)')
+
 % 
 %{  
 %  TO DO
