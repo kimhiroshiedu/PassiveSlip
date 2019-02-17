@@ -1,73 +1,121 @@
 %% Main part
 function out_passiveanalysis_v1(folder)
 result_dir = fullfile(pwd,folder);
-fprintf('Now loading %s ...',fullfile(result_dir,'/prm.mat'))
-load(fullfile(result_dir,'/prm.mat'));fprintf('load\n')
 fprintf('Now loading %s ...',fullfile(result_dir,'/obs.mat'))
 load(fullfile(result_dir,'/obs.mat'));fprintf('load\n')
 fprintf('Now loading %s ...',fullfile(result_dir,'/blk.mat'))
 load(fullfile(result_dir,'/blk.mat'));fprintf('load\n')
-fprintf('Now loading %s ...',fullfile(result_dir,'/tri.mat'))
-load(fullfile(result_dir,'/tri.mat'));fprintf('load\n')
+fprintf('Now loading %s ...',fullfile(result_dir,'/cal.mat'))
+load(fullfile(result_dir,'/cal.mat'));fprintf('load\n')
 fprintf('Now loading %s ...',fullfile(result_dir,'/grn.mat'))
 load(fullfile(result_dir,'/grn.mat'));fprintf('load\n')
-G(1).tb=full(G(1).tb);
 
-ExportSlipDeficit(DIR,TCHA,BLK,SDR);
-ExportVectors(DIR,BLK,TCHA,G,D,GRD,TRIg,OBS);
+ExportSlipDeficit(result_dir,cal,blk,d);
+ExportAsperities(folder,blk);
+ExportVectors(result_dir,obs,cal);
 end
 
 %% Save slip deficit to txt files
-function ExportSlipDeficit(DIR,TCHA,BLK,SDR)
-NN=1;
-folder=[DIR,'/coupling'];
-exid=exist(folder);
-if exid~=7; mkdir(folder); end
-FIDstdinfo=fopen([folder,'/Std_info.txt'],'w');
-fprintf(FIDstdinfo,'NB1 NB2 STDmax STDmin\n');
-for NB1=1:BLK(1).NBlock
-  for NB2=NB1+1:BLK(1).NBlock
-    NF=size(BLK(1).BOUND(NB1,NB2).blon,1);
-    if NF~=0
-      FIDmain = fopen([folder,'/C_',num2str(NB1),'_',num2str(NB2),'.txt'],'w');
-      FLTNUM = NN:NN+NF-1;
-      AVECP = TCHA.AVEFLT(FLTNUM,:);
-      MEDCP = TCHA.MEDFLT(FLTNUM,:);
-      SDRs  =    SDR.flax(FLTNUM,:);
-      STD   = TCHA.STDFLT(FLTNUM,:);
-      clon = mean(BLK(1).BOUND(NB1,NB2).blon,2);
-      clat = mean(BLK(1).BOUND(NB1,NB2).blat,2);
-      cdep = mean(BLK(1).BOUND(NB1,NB2).bdep,2);
-      outdata = [FLTNUM' ...
-          BLK(1).BOUND(NB1,NB2).blon ...
-          BLK(1).BOUND(NB1,NB2).blat ...
-          BLK(1).BOUND(NB1,NB2).bdep ...
+function ExportSlipDeficit(folder,cal,blk,d)
+mc = 1;
+mr = 1;
+dir_out=[folder,'/backslip'];
+exid=exist(dir_out);
+if exid~=7; mkdir(dir_out); end
+
+for nb1=1:blk(1).nblock
+  for nb2=nb1+1:blk(1).nblock
+    nf=size(blk(1).bound(nb1,nb2).blon,1);
+    if nf~=0
+      fid     = fopen([dir_out,'/bs_',num2str(nb1),'_',num2str(nb2),'.txt'],'w');
+      clon    = mean(blk(1).bound(nb1,nb2).blon,2);
+      clat    = mean(blk(1).bound(nb1,nb2).blat,2);
+      cdep    = mean(blk(1).bound(nb1,nb2).bdep,2);
+      sdr     = sqrt( cal.slip(mc     :mc+  nf-1).^2 ...
+                     + cal.slip(mc+  nf:mc+2*nf-1).^2 ...
+                     + cal.slip(mc+2*nf:mc+3*nf-1).^2 );
+      sdr_int = sdr.*d(1).id_lock(mc:mc+nf-1);
+      flt_id  = mr:mr+nf-1;
+      
+      outdata = [flt_id' ...
+          blk(1).bound(nb1,nb2).blon ...
+          blk(1).bound(nb1,nb2).blat ...
+          blk(1).bound(nb1,nb2).bdep ...
           clon clat cdep ...
-          AVECP MEDCP SDRs STD];
-      fprintf(FIDmain,'# %6s %7s %7s %7s %7s %7s %7s %7s %7s %7s %7s %7s %7s %10s %10s %10s %10s\n',...
-                      'Tri_No','Lon1','Lon2','Lon3','Lat1','Lat2','Lat3','Dep1','Dep2','Dep3',...
-                      'C_Lon','C_Lat','C_Dep','Mean_Cp','Median_Cp','SDR[mm/yr]','sigma');
-      fprintf(FIDmain,'%8d %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %10.4f %10.4f %10.4f %10.4f\n',outdata');
-      fprintf(FIDstdinfo,'%d %d %f %f\n',NB1,NB2,min(STD),max(STD));
-      fclose(FIDmain);
-      sdr(1).bound(NB1,NB2).str=SDR.str(FLTNUM,:);
-      sdr(1).bound(NB1,NB2).tns=SDR.tns(FLTNUM,:);
-      sdr(1).bound(NB1,NB2).dip=SDR.dip(FLTNUM,:);
-      NN=NN+NF;
+          sdr sdr_int];
+      
+      fprintf(fid,'# %6s %7s %7s %7s %7s %7s %7s %7s %7s %7s %7s %7s %7s %10s %10s \n',...
+                      'tri_no','lon1','lon2','lon3','lat1','lat2','lat3','dep1','dep2','dep3',...
+                      'c_lon','c_lat','c_dep','sdr[mm/yr]','sdr_int');
+      fprintf(fid,'%8d %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %10.4f %10.4f \n',outdata');
+      fclose(fid);
+      mr = mr+  nf;
+      mc = mc+3*nf;
     end
   end
 end
-fclose(FIDstdinfo);
-sdrfile=[folder,'/sdr'];
-save(sdrfile,'sdr','-v7.3')
+
+end
+
+%% Export asperities
+function ExportAsperities(folder,blk)
+dir_out=[folder,'/backslip'];
+exid=exist(dir_out);
+if exid~=7; mkdir(dir_out); end
+for nb1 = 1:blk(1).nblock
+  for nb2 = nb1+1:blk(1).nblock
+    nf = size(blk(1).bound(nb1,nb2).blon,1);
+    if nf ~= 0
+      fid = fopen([dir_out,'/patchb_',num2str(nb1),'_',num2str(nb2),'.txt'],'w');
+      for np = 1:size(blk(1).bound(nb1,nb2).patch,2)
+        fprintf(fid,'> \n');
+        patch = [blk(1).bound(nb1,nb2).patch(np).lon; ...
+                 blk(1).bound(nb1,nb2).patch(np).lat];
+        fprintf(fid,'%10.4f %10.4f \n',patch);
+      end
+      fclose(fid);
+    end
+  end
+end
+
 end
 
 %% Export vectors of calculation, observation, residual vector
-function ExportVectors(DIR,BLK,TCHA,G,D,GRD,TRIg,OBS)
+function ExportVectors(folder,obs,cal)
 % 
-calvec=calc_sampling_vector(OBS,BLK,TCHA,D,G);
-resvec=calc_residual_vector(BLK,OBS,calvec);
-[grdvec,GRD]=calc_vector_atmesh(BLK,TCHA,D,G,GRD,TRIg);
+% Calculate vector based on sampled parameter and green function
+calvec.rig=cal.rig;
+calvec.ela=cal.ela;
+calvec.ine=cal.ine;
+calvec.sum=cal.smp;
+% Calculate residual vectors
+obsv=[obs(1).evec;obs(1).nvec;obs(1).hvec];
+calv=[cal.smp(1:3:end)';cal.smp(2:3:end)';cal.smp(3:3:end)'];
+resvec.sum=obsv-calv;
 % 
-WRITE_VECTOR(DIR,OBS,BLK,calvec,resvec,grdvec,GRD);
+% Save to txt files
+odir=[folder,'/vector'];
+exid=exist(odir);
+if exid~=7; mkdir(odir); end
+obsvec=[obs(1).alon;obs(1).alat;obs(1).evec;obs(1).nvec;obs(1).hvec];
+calvec.rig=[obs(1).alon;obs(1).alat;calvec.rig(1:3:end)';calvec.rig(2:3:end)';calvec.rig(3:3:end)'];
+calvec.ela=[obs(1).alon;obs(1).alat;calvec.ela(1:3:end)';calvec.ela(2:3:end)';calvec.ela(3:3:end)'];
+calvec.sum=[obs(1).alon;obs(1).alat;calvec.sum(1:3:end)';calvec.sum(2:3:end)';calvec.sum(3:3:end)'];
+resvec.sum=[obs(1).alon;obs(1).alat;resvec.sum];
+fid=fopen([odir,'/obs_vector.txt'],'w');
+fprintf(fid,'%f %f %f %f %f\n',obsvec);
+fclose(fid);
+fid=fopen([odir,'/cal_vector.txt'],'w');
+fprintf(fid,'%f %f %f %f %f\n',calvec.sum);
+fclose(fid);
+fid=fopen([odir,'/cal_vector_rig_site.txt'],'w');
+fprintf(fid,'%f %f %f %f %f\n',calvec.rig);
+fclose(fid);
+fid=fopen([odir,'/cal_vector_ela_site.txt'],'w');
+fprintf(fid,'%f %f %f %f %f\n',calvec.ela);
+fclose(fid);
+fid=fopen([odir,'/res_vector.txt'],'w');
+fprintf(fid,'%f %f %f %f %f\n',resvec.sum);
+fclose(fid);
+% 
 end
