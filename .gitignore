@@ -1,18 +1,23 @@
-# ignore all
-*
-# ignore folders
-MODEL/*
-INTERFACE/*
-OBSDATA/*
-PATCH/*
-PARAMETER/*
-MODEL_*/*
-# add files to be maintained
-# *.asv
-!.gitignore
-!README.md
+# Ignore folders
+MODEL*
+INTERFACE
+OBSDATA
+PATCH
+PARAMETER
+Result*
+# Ignore files
+*.gz
+*.fig
+*.m
+*.txt
+
+# Maintain folders
+!subfunction/*
 !MinorFile/*
 !org/*
+# Maintain files
+!.gitignore
+!README.md
 !PassiveSlipKim.m
 !adv.m
 !advs.m
