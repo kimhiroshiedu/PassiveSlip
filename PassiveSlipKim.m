@@ -324,7 +324,7 @@ for nb1 = 1:blk(1).nblock
         if ~ischar(tline) ; break; end
         if tline(1) ~= '>'
           n   = n+1;
-          tmp = strsplit(tline);
+          tmp = strsplit(strtrim(tline));
           blk(1).bound(nb1,nb2).patch(np+1).lon(n) = str2double(cellstr(tmp(1)));
           blk(1).bound(nb1,nb2).patch(np+1).lat(n) = str2double(cellstr(tmp(2)));
         else
@@ -1342,6 +1342,7 @@ id_crep = logical(d(1).id_crep);
 % Calculate back-slip on locked patches.
 cal.slip             = (G(1).tb*mp.old).*d(1).cfinv.*id_lock;
 
+count = 1;
 while 1
   % Calculate strain out of locked patches.
   cal.strain           = (G(1).s*cal.slip).*id_crep;
@@ -1377,12 +1378,13 @@ while 1
   if sum(id_lock_next==id_lock)==3*tri(1).nb  % Passive slip is almost 0
     break
   else
+    count   = count + 1   ;
     id_lock = id_lock_next;
     id_crep = id_crep_next;    
   end
   %
 end
-
+cal.it_count = count;
 % Make figure
 MakeFigs(blk,tri,cal,obs);
 
@@ -1451,7 +1453,9 @@ colormap('hot')
 colorbar
 % Velocity at surface due to back-slip
 hold on
-quiver(obs(1).alon,obs(1).alat,cal.smp(1:3:end)',cal.smp(2:3:end)')
+quiver(obs(1).alon,obs(1).alat,obs(1).evec,obs(1).nvec,'green')
+hold on
+quiver(obs(1).alon,obs(1).alat,cal.smp(1:3:end)',cal.smp(2:3:end)','blue')
 % 
 end
 
