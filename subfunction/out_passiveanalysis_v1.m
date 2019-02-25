@@ -13,6 +13,8 @@ load(fullfile(result_dir,'/grn.mat'));fprintf('load\n')
 ExportSlipDeficit(result_dir,cal,blk,d);
 ExportAsperities(folder,blk);
 ExportVectors(result_dir,obs,cal);
+
+fprintf('Files exported! \n');
 end
 
 %% Save slip deficit to txt files
