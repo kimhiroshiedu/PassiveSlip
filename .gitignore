@@ -5,6 +5,8 @@ OBSDATA
 PATCH
 PARAMETER
 Result*
+PHS*
+PAC*
 # Ignore files
 *.gz
 *.fig
