@@ -132,7 +132,7 @@ mu     = 82;
 mr = 1;
 mc = 1;
 odir = [result_dir,'/stress'];
-exid=exist(odir);
+exid = exist(odir);
 if exid~=7; mkdir(odir); end
 for nb1 = 1:blk(1).nblock
   for nb2 = nb1+1:blk(1).nblock
@@ -156,24 +156,30 @@ for nb1 = 1:blk(1).nblock
       e_int.zz = cal.intstrain(mc+2*nf:mc+3*nf-1);
       [s]     = StrainToStress(e,lambda,mu);
       [s_int] = StrainToStress(e_int,lambda,mu);
-
-%       fid = fopen([odir,'/st_',num2str(nb1),'_',num2str(nb2),'.txt'],'w');
       
+      fid = fopen([odir,'/st_',num2str(nb1),'_',num2str(nb2),'.txt'],'w');
       outdata = [flt_id' ...
           blk(1).bound(nb1,nb2).blon ...
           blk(1).bound(nb1,nb2).blat ...
           blk(1).bound(nb1,nb2).bdep ...
           clon clat cdep ...
-          sdr sdr_int];
-%       fprintf(fid,'%8d %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %10.4f %10.4f \n',outdata);
-%       fclose(fid);
+          e.xz e.yz e.zz ...
+          e_int.xz e_int.yz e_int.zz ...
+          s.xz s.yz s.zz ...
+          s_int.xz s_int.yz s_int.zz];
+      fprintf(fid,'# %6s %7s %7s %7s %7s %7s %7s %7s %7s %7s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s \n', ...
+                  'tri_no','lon1','lon2','lon3','lat1','lat2','lat3','dep1','dep2','dep3',...
+                  'c_lon','c_lat','c_dep', ...
+                  'e_st','e_dp','e_ts','e_ini_st','e_ini_dp','e_ini_ts', ...
+                  's_st','s_dp','s_ts','s_ini_st','s_ini_dp','s_ini_ts');
+      fprintf(fid,'%8d %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f \n',outdata');
+      fclose(fid);
+
       mr = mr+  nf;
       mc = mc+3*nf;
     end
   end
 end
-
-
 
 end
 
