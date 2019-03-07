@@ -13,6 +13,7 @@ load(fullfile(result_dir,'/grn.mat'));fprintf('load\n')
 ExportSlipDeficit(result_dir,cal,blk,d);
 ExportAsperities(folder,blk);
 ExportVectors(result_dir,obs,cal);
+ExportStressStrain(result_dir,blk,cal);
 
 fprintf('Files exported! \n');
 end
@@ -120,4 +121,106 @@ fid=fopen([odir,'/res_vector.txt'],'w');
 fprintf(fid,'%f %f %f %f %f\n',resvec.sum);
 fclose(fid);
 % 
+end
+
+%% Export stress and strain
+function ExportStressStrain(result_dir,blk,cal)
+% Olivine
+lambda = 74;
+mu     = 82;
+% 
+mr = 1;
+mc = 1;
+odir = [result_dir,'/stress'];
+exid=exist(odir);
+if exid~=7; mkdir(odir); end
+for nb1 = 1:blk(1).nblock
+  for nb2 = nb1+1:blk(1).nblock
+    nf = size(blk(1).bound(nb1,nb2).blon,1);
+    if nf ~= 0
+      flt_id  = mr:mr+nf-1;
+      clon    = mean(blk(1).bound(nb1,nb2).blon,2);
+      clat    = mean(blk(1).bound(nb1,nb2).blat,2);
+      cdep    = mean(blk(1).bound(nb1,nb2).bdep,2);
+      e.xx = zeros(nf,1);
+      e.xy = zeros(nf,1);
+      e.yy = zeros(nf,1);
+      e.xz = cal.strain(mc     :mc+  nf-1);
+      e.yz = cal.strain(mc+  nf:mc+2*nf-1);
+      e.zz = cal.strain(mc+2*nf:mc+3*nf-1);
+      e_int.xx = zeros(nf,1);
+      e_int.xy = zeros(nf,1);
+      e_int.yy = zeros(nf,1);
+      e_int.xz = cal.intstrain(mc     :mc+  nf-1);
+      e_int.yz = cal.intstrain(mc+  nf:mc+2*nf-1);
+      e_int.zz = cal.intstrain(mc+2*nf:mc+3*nf-1);
+      [s]     = StrainToStress(e,lambda,mu);
+      [s_int] = StrainToStress(e_int,lambda,mu);
+
+%       fid = fopen([odir,'/st_',num2str(nb1),'_',num2str(nb2),'.txt'],'w');
+      
+      outdata = [flt_id' ...
+          blk(1).bound(nb1,nb2).blon ...
+          blk(1).bound(nb1,nb2).blat ...
+          blk(1).bound(nb1,nb2).bdep ...
+          clon clat cdep ...
+          sdr sdr_int];
+%       fprintf(fid,'%8d %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %10.4f %10.4f \n',outdata);
+%       fclose(fid);
+      mr = mr+  nf;
+      mc = mc+3*nf;
+    end
+  end
+end
+
+
+
+end
+
+%%
+function Stress = StrainToStress(Strain, lambda, mu)
+% StressToStrain.m
+%
+% Calculate stresses and invariants given a strain tensor and elastic
+% moduli lambda and mu.
+%
+% Implements algorithms described in the journal article:
+% Meade, B. J. Algorithms for calculating displacements, 
+% strains, and stresses for triangular dislocation elements
+% in a uniform elastic half space
+% Computers and Geosciences, submitted, 2006.
+%
+% Use at your own risk and please let me know of any bugs/errors!
+%
+% Copyright (c) 2006 Brendan Meade
+% 
+% Permission is hereby granted, free of charge, to any person obtaining a
+% copy of this software and associated documentation files (the
+% "Software"), to deal in the Software without restriction, including
+% without limitation the rights to use, copy, modify, merge, publish,
+% distribute, sublicense, and/or sell copies of the Software, and to permit
+% persons to whom the Software is furnished to do so, subject to the
+% following conditions:
+% 
+% The above copyright notice and this permission notice shall be included
+% in all copies or substantial portions of the Software.
+% 
+% THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+% OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+% MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN
+% NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+% DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+% OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
+% USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+Stress.xx = 2.*mu.*Strain.xx + lambda.*(Strain.xx+Strain.yy+Strain.zz);
+Stress.yy = 2.*mu.*Strain.yy + lambda.*(Strain.xx+Strain.yy+Strain.zz);
+Stress.zz = 2.*mu.*Strain.zz + lambda.*(Strain.xx+Strain.yy+Strain.zz);
+Stress.xy = 2.*mu.*Strain.xy;
+Stress.xz = 2.*mu.*Strain.xz;
+Stress.yz = 2.*mu.*Strain.yz;
+Stress.I1 = Stress.xx + Stress.yy + Stress.zz;
+Stress.I2 = -(Stress.xx.*Stress.yy + Stress.yy.*Stress.zz + Stress.xx.*Stress.zz) + Stress.xy.*Stress.xy + Stress.xz.*Stress.xz + Stress.yz.*Stress.yz;
+Stress.I3 = Stress.xx.*Stress.yy.*Stress.zz + 2.*Stress.xy.*Stress.xz.*Stress.yz - (Stress.xx.*Stress.yz.*Stress.yz + Stress.yy.*Stress.xz.*Stress.xz + Stress.zz.*Stress.xy.*Stress.xy);
+
 end
