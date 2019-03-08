@@ -125,9 +125,9 @@ end
 
 %% Export stress and strain
 function ExportStressStrain(result_dir,blk,cal)
-% Olivine
-lambda = 74;
-mu     = 82;
+% Stein and Wysession (2003)
+lambda = 30;
+mu     = 30;
 % 
 mr = 1;
 mc = 1;
@@ -142,18 +142,18 @@ for nb1 = 1:blk(1).nblock
       clon    = mean(blk(1).bound(nb1,nb2).blon,2);
       clat    = mean(blk(1).bound(nb1,nb2).blat,2);
       cdep    = mean(blk(1).bound(nb1,nb2).bdep,2);
-      e.xx = zeros(nf,1);
-      e.xy = zeros(nf,1);
-      e.yy = zeros(nf,1);
-      e.xz = cal.strain(mc     :mc+  nf-1);
-      e.yz = cal.strain(mc+  nf:mc+2*nf-1);
-      e.zz = cal.strain(mc+2*nf:mc+3*nf-1);
-      e_int.xx = zeros(nf,1);
-      e_int.xy = zeros(nf,1);
-      e_int.yy = zeros(nf,1);
-      e_int.xz = cal.intstrain(mc     :mc+  nf-1);
-      e_int.yz = cal.intstrain(mc+  nf:mc+2*nf-1);
-      e_int.zz = cal.intstrain(mc+2*nf:mc+3*nf-1);
+      e.xx = 1e-6.*zeros(nf,1);
+      e.xy = 1e-6.*zeros(nf,1);
+      e.yy = 1e-6.*zeros(nf,1);
+      e.xz = 1e-6.*cal.strain(mc     :mc+  nf-1);
+      e.yz = 1e-6.*cal.strain(mc+  nf:mc+2*nf-1);
+      e.zz = 1e-6.*cal.strain(mc+2*nf:mc+3*nf-1);
+      e_int.xx = 1e-6.*zeros(nf,1);
+      e_int.xy = 1e-6.*zeros(nf,1);
+      e_int.yy = 1e-6.*zeros(nf,1);
+      e_int.xz = 1e-6.*cal.intstrain(mc     :mc+  nf-1);
+      e_int.yz = 1e-6.*cal.intstrain(mc+  nf:mc+2*nf-1);
+      e_int.zz = 1e-6.*cal.intstrain(mc+2*nf:mc+3*nf-1);
       [s]     = StrainToStress(e,lambda,mu);
       [s_int] = StrainToStress(e_int,lambda,mu);
       
