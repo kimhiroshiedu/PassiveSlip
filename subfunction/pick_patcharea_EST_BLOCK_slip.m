@@ -1,3 +1,19 @@
+fid  = fopen('MODEL_OGnew/BLOCK_Int_sw_japan/triB_8_11.txt');
+nf   = 0;
+blon = zeros(1,3);
+blat = zeros(1,3);
+bdep = zeros(1,3);
+while 1
+  nf    = nf+1;
+  loc_f = fscanf(fid,'%f %f %f \n', [3 3]);
+  tline = fgetl(fid); if ~ischar(tline); break; end
+  blon(nf,:) = loc_f(1,:);  % lon
+  blat(nf,:) = loc_f(2,:);  % lat
+  bdep(nf,:) = loc_f(3,:);  % hight
+  tline = fgetl(fid); if ~ischar(tline); break; end
+end
+fclose(fid);
+% 
 fprintf('Now loading %s ...',[DIR,'/BLK.mat'])
 load([DIR,'/BLK.mat']);fprintf('load\n')
 fprintf('Now loading %s ...',[DIR,'/TCHA.mat'])
@@ -22,8 +38,8 @@ filename = gunzip('gshhs_i.b.gz', tempdir);
 japan    = gshhs(filename{1},latlim,lonlim);
 % 
 figure(10); clf(10)
-patch(blon',blat',bdep')
-hold on
+% patch(blon',blat','white')
+% hold on
 geoshow([japan.Lat], [japan.Lon])
 ax = gca;
 ax.XLim = [130 142];

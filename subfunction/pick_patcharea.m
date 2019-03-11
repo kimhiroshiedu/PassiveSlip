@@ -20,12 +20,39 @@ filename = gunzip('gshhs_i.b.gz', tempdir);
 japan    = gshhs(filename{1},latlim,lonlim);
 % 
 figure(10); clf(10)
-patch(blon',blat',bdep')
+% patch(blon',blat',bdep')
+patch(blon',blat','white')
 hold on
 geoshow([japan.Lat], [japan.Lon])
 ax = gca;
 ax.XLim = [130 142];
 ax.YLim = [ 30  37];
+% 
+fid = fopen('PHS_plate/plate_nankai.txt');
+np    = 0;
+n     = 0;
+while 1
+    tline = fgetl(fid);
+    if ~ischar(tline) ; break; end
+    if tline(1) ~= '>'
+        n   = n+1;
+        tmp = strsplit(strtrim(tline));
+        contour.line(np+1).lon(n) = str2double(cellstr(tmp(1)));
+        contour.line(np+1).lat(n) = str2double(cellstr(tmp(2)));
+        contour.line(np+1).dep(n) = str2double(cellstr(tmp(3)));
+    else
+        np = np+1;
+        n  = 0;
+        continue;
+    end
+end
+fclose(fid);
+% 
+hold on
+for nl=1:size(contour.line,2)
+    plot(contour.line(nl).lon,contour.line(nl).lat,'m')
+    hold on
+end
 % 
 lon=[];
 lat=[];
