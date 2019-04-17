@@ -1,0 +1,5 @@
+function InpolySpline
+
+
+
+end

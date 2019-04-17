@@ -27,3 +27,4 @@ PAC*
 !makeGreenDisp.m
 !makeGreenStrain.m
 !trans_xyz2strdip.m
+!InpolySpline.m
