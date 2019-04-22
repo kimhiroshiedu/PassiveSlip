@@ -32,7 +32,7 @@ prm.optfile='PARAMETER/opt_bound_par_forward.txt';
 % Define locking patches.
 [d]       = InitialLockingPatch(blk,tri,d);
 % Calculate pasive slip and response to surface.
-[cal]     = CalcSlip(blk,tri,prm,obs,eul,d,G);
+[cal]     = MechCoupling_MCMC_MH(blk,tri,prm,obs,eul,d,G);
 % Save data.
 % SaveData(prm,blk,obs,tri,d,G,cal)
 
@@ -1312,21 +1312,31 @@ d(1).id_crep = logical(d(1).id_crep);
 
 end
 
-%% Calculate passive slip by locked patch
-function [cal] = CalcSlip(blk,tri,prm,obs,eul,d,G)
+%% Estimate mechanical coupled area by MCMC (Metropolis-Hasting)
+function [cal] = MechCoupling_MCMC_MH(blk,tri,prm,obs,eul,d,G)
 % Test version coded by Hiroshi Kimura in 2019/2/1
+% Combined by Hiroshi Kimura in 2019/4/22
+
+% Logging
+logfile=fullfile(PRM.DirResult,'log.txt');
+logFID=fopen(logfile,'a');
+RR=(D(1).OBS./D(1).ERR)'*(D(1).OBS./D(1).ERR);
+fprintf('Residual=%9.3f \n',RR);
+fprintf(logFID,'Residual=%9.3f \n',RR);
+
+% Initial value
 precision  = 'double'     ;
 rwd        = prm.rwd      ;
 nb         = blk(1).nblock;
 passivelim = 1            ;  % [mm], TODO : How to determine?
 
-% initial parameters
 mc.int = 1e-2 ;
 mp.int = 1e-10;
 mi.int = 1e-10;
 mc.n   = blk(1).nb;
 mp.n   = 3.*blk(1).nblock;
 mi.n   = 3.*blk(1).nblock;
+
 % substitute euler pole vectors
 mp.old         = double(blk(1).pole);
 mp.old(eul.id) = 0                  ;
@@ -1429,13 +1439,10 @@ mc.smpmat=repmat(mc.smp,3,d.cnt);
 mc.smpmat=mc.smpmat(d.mid);
 %}
 
-end
-
-%% Estimate mechanical coupled area by MCMC (Metropolis-Hasting)
-function MechCoupling_MCMC_MH
-% Initial value
-
 % Generate next sample
+
+% Estimate passive slip
+
 
 % Accept or reject
 
