@@ -28,3 +28,4 @@ PAC*
 !makeGreenStrain.m
 !trans_xyz2strdip.m
 !InpolySpline.m
+!Est_PassiveSlip.m
