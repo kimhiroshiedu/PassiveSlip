@@ -34,7 +34,7 @@ prm.optfile='PARAMETER/opt_bound_par_forward.txt';
 % Calculate pasive slip and response to surface.
 [cal]     = CalcSlip(blk,tri,prm,obs,eul,d,G);
 % Save data.
-SaveData(prm,blk,obs,tri,d,G,cal)
+% SaveData(prm,blk,obs,tri,d,G,cal)
 
 end
 
@@ -1428,6 +1428,16 @@ miscale=rwdscale*1e-10;
 mc.smpmat=repmat(mc.smp,3,d.cnt);
 mc.smpmat=mc.smpmat(d.mid);
 %}
+
+end
+
+%% Estimate mechanical coupled area by MCMC (Metropolis-Hasting)
+function MechCoupling_MCMC_MH
+% Initial value
+
+% Generate next sample
+
+% Accept or reject
 
 end
 
