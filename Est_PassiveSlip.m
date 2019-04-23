@@ -23,6 +23,8 @@ prm.optfile='PARAMETER/opt_bound_par_forward.txt';
 [blk,prm] = ReadInternalStrain(blk,obs,prm);
 % Read locked patches definition.
 [blk]     = ReadLockedPatch(blk,prm);
+% Read random walk line definitions.
+[blk]     = DefRandomWalkLine(blk,prm);
 % Estimate rigid motion and calculate AIC.
 [blk,obs] = CalcAIC(blk,obs,eul,prm);
 % Generate Green's functions.
@@ -338,6 +340,27 @@ for nb1 = 1:blk(1).nblock
 end
 
 fprintf('=== Read Locked Patches=== \n');
+end
+
+%% Define random walk lines
+function [blk] = DefRandomWalkLine(blk,prm)
+for nb1 = 1:blk(1).nblock
+  for nb2 = nb1+1:blk(1).nblock
+    blk(1).bound(nb1,nb2).rwlid = 0;
+    rwlfile = fullfile(prm.dirblock_rwl,['rwlb_',num2str(nb1),'_',num2str(nb2),'.txt']);
+    fid       = fopen(rwlfile,'r');
+    if fid >= 0
+      blk(1).bound(nb1,nb2).rwlid = 1;
+      tmp = fscanf(fid,'%f %f %f %f \n',[4, Inf]);
+      blk(1).bound(nb1,nb2).lon_d = tmp(:,1);
+      blk(1).bound(nb1,nb2).lat_d = tmp(:,2);
+      blk(1).bound(nb1,nb2).lon_u = tmp(:,3);
+      blk(1).bound(nb1,nb2).lat_u = tmp(:,4);
+    end
+  end
+end
+
+fprintf('=== Read Random Walk Lines === \n');
 end
 
 %% Save data
