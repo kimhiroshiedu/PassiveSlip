@@ -901,6 +901,7 @@ for nb1 = 1:blk(1).nblock
   for nb2 = nb1+1:blk(1).nblock
     nf = size(blk(1).bound(nb1,nb2).blon,1);
     if nf ~= 0
+      fprintf('==================\n Block %2i : Block %2i \n Number of TRI sub-faults : %4i \n',nb1,nb2,nf)
       trimat = fullfile(prm.dirblock_interface,['tri_',num2str(nb1),'_',num2str(nb2),'.mat']);
       fid = fopen(trimat);
       if fid > 0
@@ -912,8 +913,6 @@ for nb1 = 1:blk(1).nblock
         tri(1).bound(nb1,nb2).gutns = zeros(3*nd,nf);
         tri(1).bound(nb1,nb2).cf   =  ones(3*nf,1);
         tri(1).bound(nb1,nb2).inv  = zeros(3*nf,1);
-        %
-        fprintf('==================\n Block %2i : Block %2i \n Number of TRI sub-faults : %4i \n',nb1,nb2,nf)
         %
         triclon = mean(blk(1).bound(nb1,nb2).blon,2);
         triclat = mean(blk(1).bound(nb1,nb2).blat,2);
