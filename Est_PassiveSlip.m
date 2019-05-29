@@ -1482,10 +1482,12 @@ xd = ratiosmpd.*lx;
 xu = ratiosmpu.*lx;
 yd = ratiosmpd.*ly;
 yu = ratiosmpu.*ly;
-yqd = spline(xd,yd,xqd);
-yqu = spline(xu,yu,xqu);
+% yqd = spline(xd,yd,xqd);
+% yqu = spline(xu,yu,xqu);
 edgex = [xd,trim(xu)];
 edgey = [yd,trim(yu)];
+% edgex = [xqd,trim(xqu)];
+% edgey = [yqd,trim(yqu)];
 id = inpolygon(trix,triy,edgex,edgey);
 
 % Estimate passive slip
