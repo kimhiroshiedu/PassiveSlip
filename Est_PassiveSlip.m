@@ -363,7 +363,11 @@ for nb1 = 1:blk(1).nblock
       blk(1).bound(nb1,nb2).lat_u = tmp(:,4);
       [xd,yd] = PLTXY(blk(1).bound(nb1,nb2).lat_d,blk(1).bound(nb1,nb2).lon_d,alat,alon);
       [xu,yu] = PLTXY(blk(1).bound(nb1,nb2).lat_u,blk(1).bound(nb1,nb2).lon_u,alat,alon);
-      lline=sqrt((xd-xu).^2+(yd-yu).^2);
+%       lline=sqrt((xd-xu).^2+(yd-yu).^2);
+      blk(1).bound(nb1,nb2).xd = xd;
+      blk(1).bound(nb1,nb2).yd = yd;
+      blk(1).bound(nb1,nb2).xu = xu;
+      blk(1).bound(nb1,nb2).yu = yu;
     end
   end
 end
@@ -1471,6 +1475,18 @@ mc.smpmat=mc.smpmat(d.mid);
 %}
 
 % Generate next sample
+% ratiosmp=0~1
+lx = blk(1).bound(nb1,nb2).xu - blk(1).bound(nb1,nb2).xd;
+ly = blk(1).bound(nb1,nb2).yu - blk(1).bound(nb1,nb2).yd;
+xd = ratiosmpd.*lx;
+xu = ratiosmpu.*lx;
+yd = ratiosmpd.*ly;
+yu = ratiosmpu.*ly;
+yqd = spline(xd,yd,xqd);
+yqu = spline(xu,yu,xqu);
+edgex = [xd,trim(xu)];
+edgey = [yd,trim(yu)];
+id = inpolygon(trix,triy,edgex,edgey);
 
 % Estimate passive slip
 
