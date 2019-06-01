@@ -347,7 +347,6 @@ function [blk] = DefRandomWalkLine(blk,obs,prm)
 
 alat = mean(obs(1).alat(:));
 alon = mean(obs(1).alon(:));
-% [obsx,obsy] = PLTXY(obs(1).alat,obs(1).alon,alat,alon);
 
 for nb1 = 1:blk(1).nblock
   for nb2 = nb1+1:blk(1).nblock
@@ -357,17 +356,17 @@ for nb1 = 1:blk(1).nblock
     if fid >= 0
       blk(1).bound(nb1,nb2).rwlid = 1;
       tmp = fscanf(fid,'%f %f %f %f \n',[4, Inf]);
-      blk(1).bound(nb1,nb2).lon_d = tmp(:,1);
-      blk(1).bound(nb1,nb2).lat_d = tmp(:,2);
-      blk(1).bound(nb1,nb2).lon_u = tmp(:,3);
-      blk(1).bound(nb1,nb2).lat_u = tmp(:,4);
-      [xd,yd] = PLTXY(blk(1).bound(nb1,nb2).lat_d,blk(1).bound(nb1,nb2).lon_d,alat,alon);
-      [xu,yu] = PLTXY(blk(1).bound(nb1,nb2).lat_u,blk(1).bound(nb1,nb2).lon_u,alat,alon);
-%       lline=sqrt((xd-xu).^2+(yd-yu).^2);
-      blk(1).bound(nb1,nb2).xd = xd;
-      blk(1).bound(nb1,nb2).yd = yd;
-      blk(1).bound(nb1,nb2).xu = xu;
-      blk(1).bound(nb1,nb2).yu = yu;
+      blk(1).bound(nb1,nb2).asp_lond = tmp(:,1);
+      blk(1).bound(nb1,nb2).asp_latd = tmp(:,2);
+      blk(1).bound(nb1,nb2).asp_lonu = tmp(:,3);
+      blk(1).bound(nb1,nb2).asp_latu = tmp(:,4);
+      [xd,yd] = PLTXY(blk(1).bound(nb1,nb2).asp_latd,blk(1).bound(nb1,nb2).asp_lond,alat,alon);
+      [xu,yu] = PLTXY(blk(1).bound(nb1,nb2).asp_latu,blk(1).bound(nb1,nb2).asp_lonu,alat,alon);
+      blk(1).bound(nb1,nb2).asp_lline=sqrt((xd-xu).^2+(yd-yu).^2);
+      blk(1).bound(nb1,nb2).asp_xd = xd;
+      blk(1).bound(nb1,nb2).asp_yd = yd;
+      blk(1).bound(nb1,nb2).asp_xu = xu;
+      blk(1).bound(nb1,nb2).asp_yu = yu;
     end
   end
 end
@@ -919,6 +918,7 @@ b                               = temp;
 end
 
 %% Make Green's function of halfspace elastic strain for triangular meshes
+%% TO DO: Reconstruct the Coefficient matrix to calculate the strain response to any other boundaries.
 function [tri] = GreenTri(blk,obs,prm)
 % Coded by Hiroshi Kimura 2019/01/28 (ver 1.0)
 pr = 0.25;
@@ -1494,6 +1494,7 @@ id = inpolygon(trix,triy,edgex,edgey);
 
 
 % Accept or reject
+asp.smp = edgex;
 
 end
 
