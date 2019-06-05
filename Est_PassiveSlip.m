@@ -1365,12 +1365,19 @@ rwd        = prm.rwd      ;
 nb         = blk(1).nblock;
 passivelim = 1            ;  % [mm], TODO : How to determine?
 
-mc.int = 1e-2 ;
 mp.int = 1e-10;
 mi.int = 1e-10;
-mc.n   = blk(1).nb;
+ma.int = 1e-5;
+la.int = 1e+1;
 mp.n   = 3.*blk(1).nblock;
 mi.n   = 3.*blk(1).nblock;
+% ma.n   = size();
+la.n   = 1;
+
+mp.std = mp.int.*ones(mp.n,1,precision);
+mi.std = mi.int.*ones(mi.n,1,precision);
+ma.std = ma.int.*ones(ma.n,1,precision);
+la.std = la.int.*ones(la.n,1,precision);
 
 % substitute euler pole vectors
 mp.old         = double(blk(1).pole);
@@ -1379,7 +1386,16 @@ mp.old         = mp.old+eul.fixw    ;
 % substitute internal strain tensors
 mi.old = 1e-10.*(-0.5+rand(mi.n,1,precision));
 mi.old = mi.old.*blk(1).idinter              ;
+% substitute coordinates of up- and down-dip limit
+ma.old(id_upper) = rand(ma.n,1,precision);
+ma.old(id_lower) = rand(ma.n,1,precition);
 
+la.old= zeros(la.n,1,precision);
+
+cha.mp = zeros(mp.n,prm.kep,precision);
+cha.mi = zeros(mi.n,prm.kep,precision);
+cha.ma = zeros(ma.n,prm,kep,precision);
+cha.la = zeros(la.n,prm,kep,precision);
 % substitude index of locking patches
 id_lock = logical(d(1).id_lock);
 id_crep = logical(d(1).id_crep);
