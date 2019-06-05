@@ -1365,15 +1365,19 @@ rwd        = prm.rwd      ;
 nb         = blk(1).nblock;
 passivelim = 1            ;  % [mm], TODO : How to determine?
 
+% initial value
 mp.int = 1e-10;
 mi.int = 1e-10;
 ma.int = 1e-5;
 la.int = 1e+1;
+
+% number of unknown parameter
 mp.n   = 3.*blk(1).nblock;
 mi.n   = 3.*blk(1).nblock;
 % ma.n   = size();
 la.n   = 1;
 
+% initial std
 mp.std = mp.int.*ones(mp.n,1,precision);
 mi.std = mi.int.*ones(mi.n,1,precision);
 ma.std = ma.int.*ones(ma.n,1,precision);
@@ -1392,6 +1396,7 @@ ma.old(id_lower) = rand(ma.n,1,precition);
 
 la.old= zeros(la.n,1,precision);
 
+% initial chains
 cha.mp = zeros(mp.n,prm.kep,precision);
 cha.mi = zeros(mi.n,prm.kep,precision);
 cha.ma = zeros(ma.n,prm,kep,precision);
@@ -1400,8 +1405,17 @@ cha.la = zeros(la.n,prm,kep,precision);
 id_lock = logical(d(1).id_lock);
 id_crep = logical(d(1).id_crep);
 
+
 % Calculate back-slip on locked patches.
 cal.slip             = (G(1).tb*mp.old).*d(1).cfinv.*id_lock;
+
+% calc velocities on surface
+Gpassive           = zeros(3*nflt);
+Gcc                = G(~idl,~idl);    % creep -> creep
+Gcl                = G(~idl, idl);    % lock  -> creep
+Gpassive(~idl,idl) = Gcc\Gcl;
+% d_bslip = (G(1).c - G(1).c*Gpassive) * cal.slip;
+d_bslip = G(1).c * (eye(3*nflt) - Gpassive) * cal.slip;
 
 count = 1;
 while 1
