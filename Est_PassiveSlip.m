@@ -1411,9 +1411,10 @@ cal.slip             = (G(1).tb*mp.old).*d(1).cfinv.*id_lock;
 
 % calc velocities on surface
 Gpassive           = zeros(3*nflt);
-Gcc                = G(~idl,~idl);    % creep -> creep
-Gcl                = G(~idl, idl);    % lock  -> creep
-Gpassive(~idl,idl) = Gcc\Gcl;
+% Gcc                = G(~idl,~idl);    % creep -> creep
+% Gcl                = G(~idl, idl);    % lock  -> creep
+% Gpassive(~idl,idl) = Gcc\Gcl;
+Gpassive(~idl,idl) = G(~idl,~idl)\G(~idl, idl);
 % d_bslip = (G(1).c - G(1).c*Gpassive) * cal.slip;
 d_bslip = G(1).c * (eye(3*nflt) - Gpassive) * cal.slip;
 
