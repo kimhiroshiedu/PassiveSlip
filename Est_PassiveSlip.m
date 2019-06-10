@@ -1528,41 +1528,6 @@ cal.smp = cal.rig+cal.ela+cal.ine;
 % Make figure
 MakeFigs(blk,tri,cal,obs);
 
-% 
-%{  
-%  TO DO
-%  MCMC inversion
-%  calculate velocities
-cal.rig = G.p*mp.smp;
-cal.ela = G.c*((G.tb*mp.smp).*d(1).cfinv.*mc.smpmat);
-cal.ine = G.i*mi.smp;
-cal.smp = cal.rig+cal.ela+cal.ine;
-
-mc.std=mc.int.*ones(mc.n,1,precision);
-mp.std=mp.int.*ones(mp.n,1,precision);
-mi.std=mi.int.*ones(mi.n,1,precision);
-mp.old= double(blk(1).pole);
-mi.old= 1e-10.*(-0.5+rand(mi.n,1,precision));
-cha.mc= zeros(mc.n,prm.kep,precision);
-cha.mp= zeros(mp.n,prm.kep,precision);
-cha.mi= zeros(mi.n,prm.kep,precision);
-% set fix poles if pol.fixflag=1
-mp.old(pol.id)=0; mp.old=mp.old+pol.fixw;
-mp.std(pol.id)=0;
-%
-mi.old=mi.old.*blk(1).idinter;
-mi.std=mi.std.*blk(1).idinter;
-% 
-res.old=inf(1,1,precision);
-rwdscale=1000*rwd/(prm.cha);
-mcscale=rwdscale*0.13;
-mpscale=rwdscale*(1.3e-9).*ones(mp.n,1,precision).*~pol.id;
-miscale=rwdscale*1e-10;
-
-mc.smpmat=repmat(mc.smp,3,d.cnt);
-mc.smpmat=mc.smpmat(d.mid);
-%}
-
 % Generate next sample
 % ratiosmp=0~1
 lx = blk(1).bound(nb1,nb2).xu - blk(1).bound(nb1,nb2).xd;
@@ -1599,46 +1564,46 @@ while not(count==prm.THR)
     rmi =randn(mi.N,prm.CHA,precision);
     rla =randn(la.N,prm.CHA,precision);
   end
-  rmp(pol.ID,:)=0;
-  rmi(~blk(1).IDinter,:)=0;
-  for iT=1:prm.CHA
+  rmp(pol.ID,:) = 0;
+  rmi(~blk(1).IDinter,:) = 0;
+  for iT = 1:prm.CHA
 % SAMPLE SECTION
-%     McUp=min(UP_Mc,Mc.OLD+0.5.*RWD.*Mc.STD);
-%     McLo=max(LO_Mc,Mc.OLD-0.5.*RWD.*Mc.STD);
-%     Mc.SMP=McLo+(McUp-McLo).*rMc(:,iT);
-    McTMP=mc.OLD+0.5.*RWD.*McScale.*rmc(:,iT);
-    McREJID=McTMP>UP_Mc | McTMP<LO_Mc;
-    McTMP(McREJID)=mc.OLD(McREJID);
-    mc.SMP=McTMP;
-%     Mc.SMP=max(min(McTMP,UP_Mc),LO_Mc);
-%     Mp.SMP=Mp.OLD+RWD.*Mp.STD.*rMp(:,iT);
-    mp.SMP=mp.OLD+RWD.*MpScale.*rmp(:,iT);
-    mi.SMP=mi.OLD+RWD.*MiScale.*rmi(:,iT);
-    la.SMP=la.OLD+RWD.*la.STD.*rla(:,iT);
+%     McUp = min(UP_Mc,Mc.OLD+0.5.*RWD.*Mc.STD);
+%     McLo = max(LO_Mc,Mc.OLD-0.5.*RWD.*Mc.STD);
+%     Mc.SMP = McLo+(McUp-McLo).*rMc(:,iT);
+    McTMP = mc.OLD+0.5.*RWD.*McScale.*rmc(:,iT);
+    McREJID = McTMP>UP_Mc | McTMP<LO_Mc;
+    McTMP(McREJID) = mc.OLD(McREJID);
+    mc.SMP = McTMP;
+%     Mc.SMP = max(min(McTMP,UP_Mc),LO_Mc);
+%     Mp.SMP = Mp.OLD+RWD.*Mp.STD.*rMp(:,iT);
+    mp.SMP = mp.OLD+RWD.*MpScale.*rmp(:,iT);
+    mi.SMP = mi.OLD+RWD.*MiScale.*rmi(:,iT);
+    la.SMP = la.OLD+RWD.*la.STD.*rla(:,iT);
 % MAKE Mc.SMPMAT
-    mc.SMPMAT=repmat(mc.SMP,3,D.CNT);
-    mc.SMPMAT=mc.SMPMAT(D.MID);
+    mc.SMPMAT = repmat(mc.SMP,3,D.CNT);
+    mc.SMPMAT = mc.SMPMAT(D.MID);
 % Calc GPU memory free capacity
-    if prm.GPU~=99
-      Byte1=whos('G');
-      Byte2=whos('Mp');
-      b=waitGPU(Byte1.bytes+Byte2.bytes);
+    if prm.GPU ~= 99
+      Byte1 = whos('G');
+      Byte2 = whos('Mp');
+      b = waitGPU(Byte1.bytes+Byte2.bytes);
     end
 % CALC APRIORI AND RESIDUAL COUPLING RATE SECTION
-    cal.RIG=G.P*mp.SMP;
-    cal.ELA=G.C*((G.TB*mp.SMP).*D(1).CFINV.*mc.SMPMAT);
-    cal.INE=G.I*mi.SMP;
-%     CAL.SMP=CAL.RIG+CAL.ELA;
-    cal.SMP=cal.RIG+cal.ELA+cal.INE;   % including internal deformation
-    if prm.GPU~=99
+    cal.RIG = G.P*mp.SMP;
+    cal.ELA = G.C*((G.TB*mp.SMP).*D(1).CFINV.*mc.SMPMAT);
+    cal.INE = G.I*mi.SMP;
+%     CAL.SMP = CAL.RIG+CAL.ELA;
+    cal.SMP = cal.RIG+cal.ELA+cal.INE;   % including internal deformation
+    if prm.GPU ~= 99
       clear('CAL.RIG','CAL,ELA','CAL.INE');
     end
-%   CAL.SMP=G.C*((G.TB*Mp.SMP).*Mc.SMPMAT)+G.P*Mp.SMP;
-%   CAL.SMP=G.P*Mp.SMP;
+%   CAL.SMP = G.C*((G.TB*Mp.SMP).*Mc.SMPMAT)+G.P*Mp.SMP;
+%   CAL.SMP = G.P*Mp.SMP;
 % CALC RESIDUAL SECTION
-    RES.SMP=sum(((D(1).OBS-cal.SMP)./D(1).ERR).^2,1);
+    res.SMP = sum(((D(1).OBS-cal.SMP)./D(1).ERR).^2,1);
 % Mc is better Zero 
-%     PRI.SMP=sum(abs(Mc.SMP),1);
+%     PRI.SMP = sum(abs(Mc.SMP),1);
 %% MAKE Probably Density Function
 % $$ PDF_{post}=\frac{\frac{1}{\sqrt{2\pi\exp(L)}\times\frac{1}{\sqrt{2\pi}\times\exp{\frac{-Re^{2}}{2}}\exp{\frac{-M^{2}}{2\times\exp{L}}}{\frac{1}{\sqrt{2\pi\exp(L_{old})}\times\frac{1}{\sqrt{2\pi}\times\exp{\frac{-Re^{2}_{old}}{2}}\exp{\frac{-M^{2}_{old}}{2\times\exp{L_{old}}}} $$%%
 %  log(x(x>0));
@@ -1647,121 +1612,121 @@ while not(count==prm.THR)
 % this is a generic formula.
 %   rho = (q1+logpdf(y))-(q2+logpdf(x0));  
     Pdf = -0.5.*...
-         ((RES.SMP+la.SMP+exp(-la.SMP))...
-         -(RES.OLD+la.OLD+exp(-la.OLD)));
+         ((res.SMP+la.SMP+exp(-la.SMP))...
+         -(res.OLD+la.OLD+exp(-la.OLD)));
 %   Pdf = -0.5.*(RES.SMP-RES.OLD);
-    ACC=Pdf > logU(iT);
+    ACC = Pdf > logU(iT);
     if ACC
       mc.OLD  = mc.SMP;
       mp.OLD  = mp.SMP;
       mi.OLD  = mi.SMP;
       la.OLD  = la.SMP;
-      RES.OLD = RES.SMP;
+      res.OLD = res.SMP;
 %       PRI.OLD = PRI.SMP;
     end
 
 % Keep section
     if iT > prm.CHA-prm.KEP
       if prm.GPU~=99
-        CHA.Mc(:,iT-(prm.CHA-prm.KEP))=gather(mc.SMP);
-        CHA.Mp(:,iT-(prm.CHA-prm.KEP))=gather(mp.SMP);
-        CHA.Mi(:,iT-(prm.CHA-prm.KEP))=gather(mi.SMP);
-        CHA.La(:,iT-(prm.CHA-prm.KEP))=gather(la.SMP);
+        cha.Mc(:,iT-(prm.CHA-prm.KEP)) = gather(mc.SMP);
+        cha.Mp(:,iT-(prm.CHA-prm.KEP)) = gather(mp.SMP);
+        cha.Mi(:,iT-(prm.CHA-prm.KEP)) = gather(mi.SMP);
+        cha.La(:,iT-(prm.CHA-prm.KEP)) = gather(la.SMP);
       else
-        CHA.Mc(:,iT-(prm.CHA-prm.KEP))=mc.SMP;
-        CHA.Mp(:,iT-(prm.CHA-prm.KEP))=mp.SMP;
-        CHA.Mi(:,iT-(prm.CHA-prm.KEP))=mi.SMP;
-        CHA.La(:,iT-(prm.CHA-prm.KEP))=la.SMP;
+        cha.Mc(:,iT-(prm.CHA-prm.KEP)) = mc.SMP;
+        cha.Mp(:,iT-(prm.CHA-prm.KEP)) = mp.SMP;
+        cha.Mi(:,iT-(prm.CHA-prm.KEP)) = mi.SMP;
+        cha.La(:,iT-(prm.CHA-prm.KEP)) = la.SMP;
       end
       if ACC; nacc=nacc+1; end
     end
   end
   
 % Compress data into int16 format
-  CompressData(CHA,prm,rt,nacc);
+  CompressData(cha,prm,rt,nacc);
 %
-  CHA.AJR=nacc./prm.CHA;
+  cha.AJR = nacc./prm.CHA;
   
 % Calc STDs from samples
-  mc.STD=std(CHA.Mc,1,2);
-  mp.STD=std(CHA.Mp,1,2); 
-  mi.STD=std(CHA.Mi,1,2); 
-  la.STD=std(CHA.La,1,2);
+  mc.STD = std(cha.Mc,1,2);
+  mp.STD = std(cha.Mp,1,2); 
+  mi.STD = std(cha.Mi,1,2); 
+  la.STD = std(cha.La,1,2);
   
 % Log and display
   fprintf('T=%3d Res=%6.3f Accept=%5.1f RWD=%5.2f Time=%5.1fsec\n',...
-           rt,1-RES.OLD./RR,100*CHA.AJR,RWD,toc)
+           rt,1-res.OLD./RR,100*cha.AJR,RWD,toc)
   fprintf(logFID,'T=%3d Res=%6.3f Accept=%5.1f RWD=%5.2f Time=%5.1fsec\n',...
-           rt,1-RES.OLD./RR,100*CHA.AJR,RWD,toc);
+           rt,1-res.OLD./RR,100*cha.AJR,RWD,toc);
   for BK=1:blk(1).NBlock
-    [latp,lonp,ang]=xyzp2lla(CHA.Mp(3.*BK-2,:),CHA.Mp(3.*BK-1,:),CHA.Mp(3.*BK,:));
+    [latp,lonp,ang]=xyzp2lla(cha.Mp(3.*BK-2,:),cha.Mp(3.*BK-1,:),cha.Mp(3.*BK,:));
     fprintf('POLE OF BLOCK %2i = lat:%7.2f deg. lon:%8.2f deg. ang:%9.2e deg./m.y. \n',...
       BK,mean(latp),mean(lonp),mean(ang));
     fprintf(logFID,'POLE OF BLOCK %2i = lat:%7.2f deg. lon:%8.2f deg. ang:%9.2e deg./m.y. \n',...
       BK,mean(latp),mean(lonp),mean(ang));
   end
-  fprintf('Lamda = %7.2f \n',mean(CHA.La));
-  fprintf(logFID,'Lamda = %7.2f \n',mean(CHA.La));
+  fprintf('Lamda = %7.2f \n',mean(cha.La));
+  fprintf(logFID,'Lamda = %7.2f \n',mean(cha.La));
 
 % Adjust random walk distance
-  if burn==0
-    if CHA.AJR > 0.24
-      RWD=RWD*1.1;
-    elseif CHA.AJR < 0.22
-      RWD=RWD*0.9;
+  if burn == 0
+    if cha.AJR > 0.24
+      RWD = RWD*1.1;
+    elseif cha.AJR < 0.22
+      RWD = RWD*0.9;
     end
-    count=count+1;
+    count = count+1;
   else
-    if CHA.AJR > 0.24
-      RWD=RWD*1.1;
-    elseif CHA.AJR < 0.22
-      RWD=RWD*0.9;
+    if cha.AJR > 0.24
+      RWD = RWD*1.1;
+    elseif cha.AJR < 0.22
+      RWD = RWD*0.9;
     else
-      count=count+1;
-      burn=0;
+      count = count+1;
+      burn = 0;
     end
   end
   
-  CHA.SMP=cal.SMP;
+  cha.SMP = cal.SMP;
   % debug-----------
-  Mpmean=mean(CHA.Mp,2);
-  Mcmean=mean(CHA.Mc,2);
-  Mimean=mean(CHA.Mi,2);
-  Mcmeanrep=repmat(Mcmean,3,D.CNT);Mcmeanrep=Mcmeanrep(D.MID);
-  VEC.RIG=G.P*Mpmean;
-  VEC.ELA=G.C*((G.TB*Mpmean).*D(1).CFINV.*Mcmeanrep);
-  VEC.INE=G.I*Mimean;
-%   VEC.SUM=VEC.RIG+VEC.ELA;
-  VEC.SUM=VEC.RIG+VEC.ELA+VEC.INE;   % including internal deformation
-%   vec.rel=G.C*((G.TB*poltmp).*CF);
+  Mpmean = mean(cha.Mp,2);
+  Mcmean = mean(cha.Mc,2);
+  Mimean = mean(cha.Mi,2);
+  Mcmeanrep = repmat(Mcmean,3,D.CNT);Mcmeanrep = Mcmeanrep(D.MID);
+  vec.RIG = G.P*Mpmean;
+  vec.ELA = G.C*((G.TB*Mpmean).*D(1).CFINV.*Mcmeanrep);
+  vec.INE = G.I*Mimean;
+%   VEC.SUM = VEC.RIG+VEC.ELA;
+  vec.SUM = vec.RIG+vec.ELA+vec.INE;   % including internal deformation
+%   vec.rel = G.C*((G.TB*poltmp).*CF);
   % debug-----------
-  if prm.GPU~=99
-    cCHA.Mc=gather(CHA.Mc);
-    cCHA.Mp=gather(CHA.Mp);
-    cCHA.Mi=gather(CHA.Mi);
-    cCHA.La=gather(CHA.La);
-    cCHA.SMP=gather(CHA.SMP);
-    MAKE_FIG(cCHA,blk,OBS,rt,gather(LO_Mc),gather(UP_Mc),VEC,Mimean)
+  if prm.GPU ~= 99
+    cCHA.Mc = gather(cha.Mc);
+    cCHA.Mp = gather(cha.Mp);
+    cCHA.Mi = gather(cha.Mi);
+    cCHA.La = gather(cha.La);
+    cCHA.SMP = gather(cha.SMP);
+    MAKE_FIG(cCHA,blk,OBS,rt,gather(LO_Mc),gather(UP_Mc),vec,Mimean)
   else
-    MAKE_FIG(CHA,blk,OBS,rt,LO_Mc,UP_Mc,VEC,Mimean)
+    MAKE_FIG(cha,blk,OBS,rt,LO_Mc,UP_Mc,vec,Mimean)
   end
   if rt > prm.ITR; break; end;
 end
 
 % GPU to CPU
-if prm.GPU~=99
-  CHA.Mc=gather(CHA.Mc);
-  CHA.Mp=gather(CHA.Mp);
-  CHA.Mi=gather(CHA.Mi);
-  CHA.La=gather(CHA.La);
-  CHA.SMP=gather(CHA.SMP);
+if prm.GPU ~= 99
+  cha.Mc = gather(cha.Mc);
+  cha.Mp = gather(cha.Mp);
+  cha.Mi = gather(cha.Mi);
+  cha.La = gather(cha.La);
+  cha.SMP = gather(cha.SMP);
 end
 
 % Desplay
-CHA.Res=RES.SMP;
-fprintf('RMS=: %8.3f\n',CHA.Res)
+cha.Res = res.SMP;
+fprintf('RMS=: %8.3f\n',cha.Res)
 fprintf('=== FINISHED MH_MCMC ===\n')
-fprintf(logFID,'RMS=: %8.3f\n',CHA.Res);
+fprintf(logFID,'RMS=: %8.3f\n',cha.Res);
 fprintf(logFID,'=== FINISHED MH_MCMC ===\n');
 fclose(logFID);
 end
@@ -1772,86 +1737,86 @@ function CompressData(cha,prm,itr,nacc)
 % sfactor = 2^8 ;  % int8
 sfactor = 2^16;  % int16
 % 
-cha.Mc=single(cha.Mc);
-cha.Mp=single(cha.Mp);
-cha.Mi=single(cha.Mi);
+cha.Mc = single(cha.Mc);
+cha.Mp = single(cha.Mp);
+cha.Mi = single(cha.Mi);
 % if PRM.GPU==99&&gpuDeviceCount==0
 if prm.GPU==99
-  MEANMc=mean(cha.Mc,2);
-  MEANMp=mean(cha.Mp,2);
-  MEANMi=mean(cha.Mi,2);
-  COVMc=cov(cha.Mc');
-  COVMp=cov(cha.Mp');
-  COVMi=cov(cha.Mi');
+  MEANMc = mean(cha.Mc,2);
+  MEANMp = mean(cha.Mp,2);
+  MEANMi = mean(cha.Mi,2);
+  COVMc  =   cov(cha.Mc');
+  COVMp  =   cov(cha.Mp');
+  COVMi  =   cov(cha.Mi');
 else
-  gCHA.Mc=gpuArray(cha.Mc);
-  gCHA.Mp=gpuArray(cha.Mp);
-  gCHA.Mi=gpuArray(cha.Mi);
-  MEANMc=mean(gCHA.Mc,2);
-  MEANMp=mean(gCHA.Mp,2);
-  MEANMi=mean(gCHA.Mi,2);
-  COVMc=cov(gCHA.Mc');
-  COVMp=cov(gCHA.Mp');
-  COVMi=cov(gCHA.Mi');
-  MEANMc=gather(MEANMc);
-  MEANMp=gather(MEANMp);
-  MEANMi=gather(MEANMi);
-  COVMc=gather(COVMc);
-  COVMp=gather(COVMp);
-  COVMi=gather(COVMi);
+  gCHA.Mc = gpuArray(cha.Mc);
+  gCHA.Mp = gpuArray(cha.Mp);
+  gCHA.Mi = gpuArray(cha.Mi);
+  MEANMc  =  mean(gCHA.Mc,2);
+  MEANMp  =  mean(gCHA.Mp,2);
+  MEANMi  =  mean(gCHA.Mi,2);
+  COVMc   =    cov(gCHA.Mc');
+  COVMp   =    cov(gCHA.Mp');
+  COVMi   =    cov(gCHA.Mi');
+  MEANMc  =   gather(MEANMc);
+  MEANMp  =   gather(MEANMp);
+  MEANMi  =   gather(MEANMi);
+  COVMc   =    gather(COVMc);
+  COVMp   =    gather(COVMp);
+  COVMi   =    gather(COVMi);
 end
 % 
-McMAX=max(cha.Mc,[],2);
-McMIN=min(cha.Mc,[],2);
-MpMAX=max(cha.Mp,[],2);
-MpMIN=min(cha.Mp,[],2);
-MiMAX=max(cha.Mi,[],2);
-MiMIN=min(cha.Mi,[],2);
+McMAX = max(cha.Mc,[],2);
+McMIN = min(cha.Mc,[],2);
+MpMAX = max(cha.Mp,[],2);
+MpMIN = min(cha.Mp,[],2);
+MiMAX = max(cha.Mi,[],2);
+MiMIN = min(cha.Mi,[],2);
 % 
-Mcscale=1./(McMAX-McMIN);
-McBASE=bsxfun(@minus,bsxfun(@times,bsxfun(@minus,cha.Mc,McMIN),Mcscale.*(sfactor-1)),sfactor/2);
-% Mcint=int8(McBASE);
-Mcint=int16(McBASE);
-Mpscale=1./(MpMAX-MpMIN);
-MpBASE=bsxfun(@minus,bsxfun(@times,bsxfun(@minus,cha.Mp,MpMIN),Mpscale.*(sfactor-1)),sfactor/2);
-% Mpint=int8(MpBASE);
-Mpint=int16(MpBASE);
-Miscale=1./(MiMAX-MiMIN);
-MiBASE=bsxfun(@minus,bsxfun(@times,bsxfun(@minus,cha.Mi,MiMIN),Miscale.*(sfactor-1)),sfactor/2);
-% Miint=int8(MiBASE);
-Miint=int16(MiBASE);
+Mcscale = 1./(McMAX-McMIN);
+McBASE  = bsxfun(@minus,bsxfun(@times,bsxfun(@minus,cha.Mc,McMIN),Mcscale.*(sfactor-1)),sfactor/2);
+% Mcint = int8(McBASE);
+Mcint   = int16(McBASE);
+Mpscale = 1./(MpMAX-MpMIN);
+MpBASE  = bsxfun(@minus,bsxfun(@times,bsxfun(@minus,cha.Mp,MpMIN),Mpscale.*(sfactor-1)),sfactor/2);
+% Mpint = int8(MpBASE);
+Mpint   = int16(MpBASE);
+Miscale = 1./(MiMAX-MiMIN);
+MiBASE  = bsxfun(@minus,bsxfun(@times,bsxfun(@minus,cha.Mi,MiMIN),Miscale.*(sfactor-1)),sfactor/2);
+% Miint = int8(MiBASE);
+Miint   = int16(MiBASE);
 % 
-for ii=1:size(Mcint,1)
-  cha.McCOMPRESS.NFLT(ii).Mcscale=Mcscale(ii);
-  cha.McCOMPRESS.NFLT(ii).McMAX=McMAX(ii);
-  cha.McCOMPRESS.NFLT(ii).McMIN=McMIN(ii);
+for ii = 1:size(Mcint,1)
+  cha.McCOMPRESS.NFLT(ii).Mcscale = Mcscale(ii);
+  cha.McCOMPRESS.NFLT(ii).McMAX   =   McMAX(ii);
+  cha.McCOMPRESS.NFLT(ii).McMIN   =   McMIN(ii);
 end
-cha.McCOMPRESS.COVMc=COVMc;
-cha.McCOMPRESS.MEANMc=MEANMc;
-% cha.McCOMPRESS.SMPMc=int8(McBASE);
-cha.McCOMPRESS.SMPMc=int16(McBASE);
+cha.McCOMPRESS.COVMc   =         COVMc;
+cha.McCOMPRESS.MEANMc  =        MEANMc;
+% cha.McCOMPRESS.SMPMc =  int8(McBASE);
+cha.McCOMPRESS.SMPMc   = int16(McBASE);
 % 
-for ii=1:size(Mpint,1)
-  cha.MpCOMPRESS.NPOL(ii).Mpscale=Mpscale(ii);
-  cha.MpCOMPRESS.NPOL(ii).MpMAX=MpMAX(ii);
-  cha.MpCOMPRESS.NPOL(ii).MpMIN=MpMIN(ii);
+for ii = 1:size(Mpint,1)
+  cha.MpCOMPRESS.NPOL(ii).Mpscale = Mpscale(ii);
+  cha.MpCOMPRESS.NPOL(ii).MpMAX   =   MpMAX(ii);
+  cha.MpCOMPRESS.NPOL(ii).MpMIN   =   MpMIN(ii);
 end
-cha.MpCOMPRESS.COVMp=COVMp;
-cha.MpCOMPRESS.MEANMp=MEANMp;
-% cha.MpCOMPRESS.SMPMp=int8(MpBASE);
-cha.MpCOMPRESS.SMPMp=int16(MpBASE);
+cha.MpCOMPRESS.COVMp   =         COVMp;
+cha.MpCOMPRESS.MEANMp  =        MEANMp;
+% cha.MpCOMPRESS.SMPMp =  int8(MpBASE);
+cha.MpCOMPRESS.SMPMp   = int16(MpBASE);
 % 
-for ii=1:size(Miint,1)
-  cha.MiCOMPRESS.NINE(ii).Miscale=Miscale(ii);
-  cha.MiCOMPRESS.NINE(ii).MiMAX=MiMAX(ii);
-  cha.MiCOMPRESS.NINE(ii).MiMIN=MiMIN(ii);
+for ii = 1:size(Miint,1)
+  cha.MiCOMPRESS.NINE(ii).Miscale = Miscale(ii);
+  cha.MiCOMPRESS.NINE(ii).MiMAX   =   MiMAX(ii);
+  cha.MiCOMPRESS.NINE(ii).MiMIN   =   MiMIN(ii);
 end
-cha.MiCOMPRESS.COVMi=COVMi;
-cha.MiCOMPRESS.MEANMi=MEANMi;
-% cha.MiCOMPRESS.SMPMi=int8(MiBASE);
-cha.MiCOMPRESS.SMPMi=int16(MiBASE);
+cha.MiCOMPRESS.COVMi   =         COVMi;
+cha.MiCOMPRESS.MEANMi  =        MEANMi;
+% cha.MiCOMPRESS.SMPMi =  int8(MiBASE);
+cha.MiCOMPRESS.SMPMi   = int16(MiBASE);
 % 
-cha.AJR=nacc./prm.CHA;
+cha.AJR = nacc./prm.CHA;
 save(fullfile(prm.DirResult,['CHA_test',num2str(itr,'%03i')]),'cha','-v7.3');
 %
 end
