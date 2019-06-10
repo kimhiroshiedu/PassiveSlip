@@ -1392,7 +1392,7 @@ function [cal] = MechCoupling_MCMC_MH(blk,tri,prm,obs,eul,d,G)
 % Combined by Hiroshi Kimura in 2019/4/22
 
 % Logging
-logfile = fullfile(PRM.DirResult,'log.txt');
+logfile = fullfile(prm.DirResult,'log.txt');
 logFID  = fopen(logfile,'a');
 RR = (D(1).OBS./D(1).ERR)'*(D(1).OBS./D(1).ERR);
 fprintf('Residual=%9.3f \n',RR);
@@ -1579,12 +1579,281 @@ edgey = [yd,trim(yu)];
 % edgey = [yqd,trim(yqu)];
 id = inpolygon(trix,triy,edgex,edgey);
 
-% Estimate passive slip
+% MCMC iteration
+rt    = 0;
+count = 0;
+burn  = 1;
+while not(count==prm.THR)
+  rt   = rt+1;
+  nacc = 0;tic
+  if prm.GPU~=99
+    logU=log(rand(prm.CHA,1,precision,'gpuArray'));
+    rmc = randn(mc.N,prm.CHA,precision,'gpuArray');
+    rmp = randn(mp.N,prm.CHA,precision,'gpuArray');
+    rmi = randn(mi.N,prm.CHA,precision,'gpuArray');
+    rla = randn(la.N,prm.CHA,precision,'gpuArray');
+  else
+    logU=log(rand(prm.CHA,1,precision));
+    rmc =randn(mc.N,prm.CHA,precision);
+    rmp =randn(mp.N,prm.CHA,precision);
+    rmi =randn(mi.N,prm.CHA,precision);
+    rla =randn(la.N,prm.CHA,precision);
+  end
+  rmp(pol.ID,:)=0;
+  rmi(~blk(1).IDinter,:)=0;
+  for iT=1:prm.CHA
+% SAMPLE SECTION
+%     McUp=min(UP_Mc,Mc.OLD+0.5.*RWD.*Mc.STD);
+%     McLo=max(LO_Mc,Mc.OLD-0.5.*RWD.*Mc.STD);
+%     Mc.SMP=McLo+(McUp-McLo).*rMc(:,iT);
+    McTMP=mc.OLD+0.5.*RWD.*McScale.*rmc(:,iT);
+    McREJID=McTMP>UP_Mc | McTMP<LO_Mc;
+    McTMP(McREJID)=mc.OLD(McREJID);
+    mc.SMP=McTMP;
+%     Mc.SMP=max(min(McTMP,UP_Mc),LO_Mc);
+%     Mp.SMP=Mp.OLD+RWD.*Mp.STD.*rMp(:,iT);
+    mp.SMP=mp.OLD+RWD.*MpScale.*rmp(:,iT);
+    mi.SMP=mi.OLD+RWD.*MiScale.*rmi(:,iT);
+    la.SMP=la.OLD+RWD.*la.STD.*rla(:,iT);
+% MAKE Mc.SMPMAT
+    mc.SMPMAT=repmat(mc.SMP,3,D.CNT);
+    mc.SMPMAT=mc.SMPMAT(D.MID);
+% Calc GPU memory free capacity
+    if prm.GPU~=99
+      Byte1=whos('G');
+      Byte2=whos('Mp');
+      b=waitGPU(Byte1.bytes+Byte2.bytes);
+    end
+% CALC APRIORI AND RESIDUAL COUPLING RATE SECTION
+    cal.RIG=G.P*mp.SMP;
+    cal.ELA=G.C*((G.TB*mp.SMP).*D(1).CFINV.*mc.SMPMAT);
+    cal.INE=G.I*mi.SMP;
+%     CAL.SMP=CAL.RIG+CAL.ELA;
+    cal.SMP=cal.RIG+cal.ELA+cal.INE;   % including internal deformation
+    if prm.GPU~=99
+      clear('CAL.RIG','CAL,ELA','CAL.INE');
+    end
+%   CAL.SMP=G.C*((G.TB*Mp.SMP).*Mc.SMPMAT)+G.P*Mp.SMP;
+%   CAL.SMP=G.P*Mp.SMP;
+% CALC RESIDUAL SECTION
+    RES.SMP=sum(((D(1).OBS-cal.SMP)./D(1).ERR).^2,1);
+% Mc is better Zero 
+%     PRI.SMP=sum(abs(Mc.SMP),1);
+%% MAKE Probably Density Function
+% $$ PDF_{post}=\frac{\frac{1}{\sqrt{2\pi\exp(L)}\times\frac{1}{\sqrt{2\pi}\times\exp{\frac{-Re^{2}}{2}}\exp{\frac{-M^{2}}{2\times\exp{L}}}{\frac{1}{\sqrt{2\pi\exp(L_{old})}\times\frac{1}{\sqrt{2\pi}\times\exp{\frac{-Re^{2}_{old}}{2}}\exp{\frac{-M^{2}_{old}}{2\times\exp{L_{old}}}} $$%%
+%  log(x(x>0));
+%   q1 = logproppdf(x0,y);
+%   q2 = logproppdf(y,x0);
+% this is a generic formula.
+%   rho = (q1+logpdf(y))-(q2+logpdf(x0));  
+    Pdf = -0.5.*...
+         ((RES.SMP+la.SMP+exp(-la.SMP))...
+         -(RES.OLD+la.OLD+exp(-la.OLD)));
+%   Pdf = -0.5.*(RES.SMP-RES.OLD);
+    ACC=Pdf > logU(iT);
+    if ACC
+      mc.OLD  = mc.SMP;
+      mp.OLD  = mp.SMP;
+      mi.OLD  = mi.SMP;
+      la.OLD  = la.SMP;
+      RES.OLD = RES.SMP;
+%       PRI.OLD = PRI.SMP;
+    end
 
+% Keep section
+    if iT > prm.CHA-prm.KEP
+      if prm.GPU~=99
+        CHA.Mc(:,iT-(prm.CHA-prm.KEP))=gather(mc.SMP);
+        CHA.Mp(:,iT-(prm.CHA-prm.KEP))=gather(mp.SMP);
+        CHA.Mi(:,iT-(prm.CHA-prm.KEP))=gather(mi.SMP);
+        CHA.La(:,iT-(prm.CHA-prm.KEP))=gather(la.SMP);
+      else
+        CHA.Mc(:,iT-(prm.CHA-prm.KEP))=mc.SMP;
+        CHA.Mp(:,iT-(prm.CHA-prm.KEP))=mp.SMP;
+        CHA.Mi(:,iT-(prm.CHA-prm.KEP))=mi.SMP;
+        CHA.La(:,iT-(prm.CHA-prm.KEP))=la.SMP;
+      end
+      if ACC; nacc=nacc+1; end
+    end
+  end
+  
+% Compress data into int16 format
+  CompressData(CHA,prm,rt,nacc);
+%
+  CHA.AJR=nacc./prm.CHA;
+  
+% Calc STDs from samples
+  mc.STD=std(CHA.Mc,1,2);
+  mp.STD=std(CHA.Mp,1,2); 
+  mi.STD=std(CHA.Mi,1,2); 
+  la.STD=std(CHA.La,1,2);
+  
+% Log and display
+  fprintf('T=%3d Res=%6.3f Accept=%5.1f RWD=%5.2f Time=%5.1fsec\n',...
+           rt,1-RES.OLD./RR,100*CHA.AJR,RWD,toc)
+  fprintf(logFID,'T=%3d Res=%6.3f Accept=%5.1f RWD=%5.2f Time=%5.1fsec\n',...
+           rt,1-RES.OLD./RR,100*CHA.AJR,RWD,toc);
+  for BK=1:blk(1).NBlock
+    [latp,lonp,ang]=xyzp2lla(CHA.Mp(3.*BK-2,:),CHA.Mp(3.*BK-1,:),CHA.Mp(3.*BK,:));
+    fprintf('POLE OF BLOCK %2i = lat:%7.2f deg. lon:%8.2f deg. ang:%9.2e deg./m.y. \n',...
+      BK,mean(latp),mean(lonp),mean(ang));
+    fprintf(logFID,'POLE OF BLOCK %2i = lat:%7.2f deg. lon:%8.2f deg. ang:%9.2e deg./m.y. \n',...
+      BK,mean(latp),mean(lonp),mean(ang));
+  end
+  fprintf('Lamda = %7.2f \n',mean(CHA.La));
+  fprintf(logFID,'Lamda = %7.2f \n',mean(CHA.La));
 
-% Accept or reject
-asp.smp = edgex;
+% Adjust random walk distance
+  if burn==0
+    if CHA.AJR > 0.24
+      RWD=RWD*1.1;
+    elseif CHA.AJR < 0.22
+      RWD=RWD*0.9;
+    end
+    count=count+1;
+  else
+    if CHA.AJR > 0.24
+      RWD=RWD*1.1;
+    elseif CHA.AJR < 0.22
+      RWD=RWD*0.9;
+    else
+      count=count+1;
+      burn=0;
+    end
+  end
+  
+  CHA.SMP=cal.SMP;
+  % debug-----------
+  Mpmean=mean(CHA.Mp,2);
+  Mcmean=mean(CHA.Mc,2);
+  Mimean=mean(CHA.Mi,2);
+  Mcmeanrep=repmat(Mcmean,3,D.CNT);Mcmeanrep=Mcmeanrep(D.MID);
+  VEC.RIG=G.P*Mpmean;
+  VEC.ELA=G.C*((G.TB*Mpmean).*D(1).CFINV.*Mcmeanrep);
+  VEC.INE=G.I*Mimean;
+%   VEC.SUM=VEC.RIG+VEC.ELA;
+  VEC.SUM=VEC.RIG+VEC.ELA+VEC.INE;   % including internal deformation
+%   vec.rel=G.C*((G.TB*poltmp).*CF);
+  % debug-----------
+  if prm.GPU~=99
+    cCHA.Mc=gather(CHA.Mc);
+    cCHA.Mp=gather(CHA.Mp);
+    cCHA.Mi=gather(CHA.Mi);
+    cCHA.La=gather(CHA.La);
+    cCHA.SMP=gather(CHA.SMP);
+    MAKE_FIG(cCHA,blk,OBS,rt,gather(LO_Mc),gather(UP_Mc),VEC,Mimean)
+  else
+    MAKE_FIG(CHA,blk,OBS,rt,LO_Mc,UP_Mc,VEC,Mimean)
+  end
+  if rt > prm.ITR; break; end;
+end
 
+% GPU to CPU
+if prm.GPU~=99
+  CHA.Mc=gather(CHA.Mc);
+  CHA.Mp=gather(CHA.Mp);
+  CHA.Mi=gather(CHA.Mi);
+  CHA.La=gather(CHA.La);
+  CHA.SMP=gather(CHA.SMP);
+end
+
+% Desplay
+CHA.Res=RES.SMP;
+fprintf('RMS=: %8.3f\n',CHA.Res)
+fprintf('=== FINISHED MH_MCMC ===\n')
+fprintf(logFID,'RMS=: %8.3f\n',CHA.Res);
+fprintf(logFID,'=== FINISHED MH_MCMC ===\n');
+fclose(logFID);
+end
+
+%% Compress CHA sampling
+function CompressData(cha,prm,itr,nacc)
+% Compressing CHA sampled parameter to int
+% sfactor = 2^8 ;  % int8
+sfactor = 2^16;  % int16
+% 
+cha.Mc=single(cha.Mc);
+cha.Mp=single(cha.Mp);
+cha.Mi=single(cha.Mi);
+% if PRM.GPU==99&&gpuDeviceCount==0
+if prm.GPU==99
+  MEANMc=mean(cha.Mc,2);
+  MEANMp=mean(cha.Mp,2);
+  MEANMi=mean(cha.Mi,2);
+  COVMc=cov(cha.Mc');
+  COVMp=cov(cha.Mp');
+  COVMi=cov(cha.Mi');
+else
+  gCHA.Mc=gpuArray(cha.Mc);
+  gCHA.Mp=gpuArray(cha.Mp);
+  gCHA.Mi=gpuArray(cha.Mi);
+  MEANMc=mean(gCHA.Mc,2);
+  MEANMp=mean(gCHA.Mp,2);
+  MEANMi=mean(gCHA.Mi,2);
+  COVMc=cov(gCHA.Mc');
+  COVMp=cov(gCHA.Mp');
+  COVMi=cov(gCHA.Mi');
+  MEANMc=gather(MEANMc);
+  MEANMp=gather(MEANMp);
+  MEANMi=gather(MEANMi);
+  COVMc=gather(COVMc);
+  COVMp=gather(COVMp);
+  COVMi=gather(COVMi);
+end
+% 
+McMAX=max(cha.Mc,[],2);
+McMIN=min(cha.Mc,[],2);
+MpMAX=max(cha.Mp,[],2);
+MpMIN=min(cha.Mp,[],2);
+MiMAX=max(cha.Mi,[],2);
+MiMIN=min(cha.Mi,[],2);
+% 
+Mcscale=1./(McMAX-McMIN);
+McBASE=bsxfun(@minus,bsxfun(@times,bsxfun(@minus,cha.Mc,McMIN),Mcscale.*(sfactor-1)),sfactor/2);
+% Mcint=int8(McBASE);
+Mcint=int16(McBASE);
+Mpscale=1./(MpMAX-MpMIN);
+MpBASE=bsxfun(@minus,bsxfun(@times,bsxfun(@minus,cha.Mp,MpMIN),Mpscale.*(sfactor-1)),sfactor/2);
+% Mpint=int8(MpBASE);
+Mpint=int16(MpBASE);
+Miscale=1./(MiMAX-MiMIN);
+MiBASE=bsxfun(@minus,bsxfun(@times,bsxfun(@minus,cha.Mi,MiMIN),Miscale.*(sfactor-1)),sfactor/2);
+% Miint=int8(MiBASE);
+Miint=int16(MiBASE);
+% 
+for ii=1:size(Mcint,1)
+  cha.McCOMPRESS.NFLT(ii).Mcscale=Mcscale(ii);
+  cha.McCOMPRESS.NFLT(ii).McMAX=McMAX(ii);
+  cha.McCOMPRESS.NFLT(ii).McMIN=McMIN(ii);
+end
+cha.McCOMPRESS.COVMc=COVMc;
+cha.McCOMPRESS.MEANMc=MEANMc;
+% cha.McCOMPRESS.SMPMc=int8(McBASE);
+cha.McCOMPRESS.SMPMc=int16(McBASE);
+% 
+for ii=1:size(Mpint,1)
+  cha.MpCOMPRESS.NPOL(ii).Mpscale=Mpscale(ii);
+  cha.MpCOMPRESS.NPOL(ii).MpMAX=MpMAX(ii);
+  cha.MpCOMPRESS.NPOL(ii).MpMIN=MpMIN(ii);
+end
+cha.MpCOMPRESS.COVMp=COVMp;
+cha.MpCOMPRESS.MEANMp=MEANMp;
+% cha.MpCOMPRESS.SMPMp=int8(MpBASE);
+cha.MpCOMPRESS.SMPMp=int16(MpBASE);
+% 
+for ii=1:size(Miint,1)
+  cha.MiCOMPRESS.NINE(ii).Miscale=Miscale(ii);
+  cha.MiCOMPRESS.NINE(ii).MiMAX=MiMAX(ii);
+  cha.MiCOMPRESS.NINE(ii).MiMIN=MiMIN(ii);
+end
+cha.MiCOMPRESS.COVMi=COVMi;
+cha.MiCOMPRESS.MEANMi=MEANMi;
+% cha.MiCOMPRESS.SMPMi=int8(MiBASE);
+cha.MiCOMPRESS.SMPMi=int16(MiBASE);
+% 
+cha.AJR=nacc./prm.CHA;
+save(fullfile(prm.DirResult,['CHA_test',num2str(itr,'%03i')]),'cha','-v7.3');
+%
 end
 
 %% Define random walk lines
@@ -1596,7 +1865,7 @@ alon = mean(obs(1).alon(:));
 for nb1 = 1:blk(1).nblock
   for nb2 = nb1+1:blk(1).nblock
     blk(1).bound(nb1,nb2).rwlid = 0;
-    rwlfile = fullfile(prm.dirblock_rwl,['rwlb_',num2str(nb1),'_',num2str(nb2),'.txt']);
+    rwlfile = fullfile(prm.dirblock_patch,['udlineb_',num2str(nb1),'_',num2str(nb2),'.txt']);
     fid       = fopen(rwlfile,'r');
     if fid >= 0
       blk(1).bound(nb1,nb2).rwlid = 1;
@@ -1651,6 +1920,34 @@ quiver(obs(1).alon,obs(1).alat,obs(1).evec,obs(1).nvec,'green')
 hold on
 quiver(obs(1).alon,obs(1).alat,cal.smp(1:3:end)',cal.smp(2:3:end)','blue')
 % 
+end
+
+%% Wait GPU program
+function free=waitGPU(varargin)
+% Coded by Zhang Xuelei
+a=true;
+d=gpuDevice;
+if isempty(varargin)
+  limit=30;
+else
+  limit=varargin{1};
+end
+% tic
+while a
+  if limit<=100
+    free=d.FreeMemory/d.TotalMemory*100;
+    if free>limit; break; end
+    pause(0.5);
+  elseif limit>100
+    free=d.FreeMemory;
+    if free>limit; break; end
+    pause(0.5)
+  end
+end
+% waittime=toc;
+% if waittime>0.5
+%     disp(['waiting time' num2str(waittime)])
+% end
 end
 
 %% PLTXY
