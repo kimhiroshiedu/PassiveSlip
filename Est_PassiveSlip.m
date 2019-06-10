@@ -24,7 +24,7 @@ prm.optfile='PARAMETER/opt_bound_par_forward.txt';
 % Read locked patches definition.
 [blk]     = ReadLockedPatch(blk,prm);
 % Read random walk line definitions.
-[blk]     = DefRandomWalkLine(blk,prm);
+[blk]     = DefRandomWalkLine(blk,prm,obs);
 % Estimate rigid motion and calculate AIC.
 [blk,obs] = CalcAIC(blk,obs,eul,prm);
 % Generate Green's functions.
@@ -1588,7 +1588,7 @@ asp.smp = edgex;
 end
 
 %% Define random walk lines
-function [blk] = DefRandomWalkLine(blk,obs,prm)
+function [blk] = DefRandomWalkLine(blk,prm,obs)
 
 alat = mean(obs(1).alat(:));
 alon = mean(obs(1).alon(:));
