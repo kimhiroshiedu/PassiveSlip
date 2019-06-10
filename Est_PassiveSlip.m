@@ -4,7 +4,7 @@ function Est_PassiveSlip
 % Combined by Hiroshi Kimura     2018/11/12
 % Revise by Hiroshi Kimura       2019/2/16
 %--- 
-prm.input = 'PARAMETER/parameter_forward.txt';
+prm.input = 'PARAMETER/parameter_inversiontest.txt';
 prm.optfile='PARAMETER/opt_bound_par_forward.txt';
 %--
 % Read Parameters.
@@ -56,7 +56,7 @@ dirblock           = fscanf(fid,'%s \n',[1,1]); [~] = fgetl(fid);
 dirblock_interface = fscanf(fid,'%s \n',[1,1]); [~] = fgetl(fid);
 dirblock_patch     = fscanf(fid,'%s \n',[1,1]); [~] = fgetl(fid);
 filepole           = fscanf(fid,'%s \n',[1,1]); [~] = fgetl(fid);
-filedipb           = fscanf(fid,'%s \n',[1,1]); [~] = fgetl(fid);
+filebound          = fscanf(fid,'%s \n',[1,1]); [~] = fgetl(fid);
 fileinternal       = fscanf(fid,'%s \n',[1,1]); [~] = fgetl(fid);
 dirresult          = fscanf(fid,'%s \n',[1,1]); [~] = fgetl(fid);
 prm.home_d = pwd;
@@ -65,7 +65,7 @@ prm.dirblock           = fullfile(prm.home_d,dirblock);
 prm.dirblock_interface = fullfile(prm.home_d,dirblock_interface);
 prm.dirblock_patch     = fullfile(prm.home_d,dirblock_patch);
 prm.filepole           = fullfile(prm.home_d,filepole);
-prm.filedipb           = fullfile(prm.home_d,filedipb);
+prm.filebound          = fullfile(prm.home_d,filebound);
 prm.fileinternal       = fullfile(prm.home_d,fileinternal);
 prm.dirresult          = fullfile(prm.home_d,dirresult);
 %
@@ -89,7 +89,7 @@ fprintf('FileOBS                   : %s \n',prm.fileobs)
 fprintf('DIRBlock                  : %s \n',prm.dirblock)
 fprintf('DIRBlock_Interface        : %s \n',prm.dirblock_interface) 
 fprintf('File fixed epole          : %s \n',prm.filepole) 
-fprintf('File Rigid boundary       : %s \n',prm.filedipb) 
+fprintf('File Rigid boundary       : %s \n',prm.filebound) 
 fprintf('File Internal deformation : %s \n',prm.fileinternal) 
 fprintf('DIRResult                 : %s \n',prm.dirresult) 
 fprintf('GPUdev (CPU:99)           : %i \n',prm.gpu) 
@@ -348,38 +348,6 @@ end
 fprintf('=== Read Locked Patches=== \n');
 end
 
-%% Define random walk lines
-function [blk] = DefRandomWalkLine(blk,obs,prm)
-
-alat = mean(obs(1).alat(:));
-alon = mean(obs(1).alon(:));
-
-for nb1 = 1:blk(1).nblock
-  for nb2 = nb1+1:blk(1).nblock
-    blk(1).bound(nb1,nb2).rwlid = 0;
-    rwlfile = fullfile(prm.dirblock_rwl,['rwlb_',num2str(nb1),'_',num2str(nb2),'.txt']);
-    fid       = fopen(rwlfile,'r');
-    if fid >= 0
-      blk(1).bound(nb1,nb2).rwlid = 1;
-      tmp = fscanf(fid,'%f %f %f %f \n',[4, Inf]);
-      blk(1).bound(nb1,nb2).asp_lond = tmp(:,1);
-      blk(1).bound(nb1,nb2).asp_latd = tmp(:,2);
-      blk(1).bound(nb1,nb2).asp_lonu = tmp(:,3);
-      blk(1).bound(nb1,nb2).asp_latu = tmp(:,4);
-      [xd,yd] = PLTXY(blk(1).bound(nb1,nb2).asp_latd,blk(1).bound(nb1,nb2).asp_lond,alat,alon);
-      [xu,yu] = PLTXY(blk(1).bound(nb1,nb2).asp_latu,blk(1).bound(nb1,nb2).asp_lonu,alat,alon);
-      blk(1).bound(nb1,nb2).asp_lline=sqrt((xd-xu).^2+(yd-yu).^2);
-      blk(1).bound(nb1,nb2).asp_xd = xd;
-      blk(1).bound(nb1,nb2).asp_yd = yd;
-      blk(1).bound(nb1,nb2).asp_xu = xu;
-      blk(1).bound(nb1,nb2).asp_yu = yu;
-    end
-  end
-end
-
-fprintf('=== Read Random Walk Lines === \n');
-end
-
 %% Save data
 function SaveData(prm,blk,obs,tri,d,G,cal)
 
@@ -558,25 +526,16 @@ end
 %% Read dipping block boundary
 %% TO DO: dipping, asperities, vertical,
 function [blk,prm] = ReadBoundaryTypes(blk,prm)
-%{ old version
-blk(1).dipbo = zeros(1,3);
-if exist(prm.filedipb,'file') ~= 2; return; end  % File not exist
-fid = fopen(prm.filedipb,'r');
-tmp = fscanf(fid,'%d %d %d\n',[3 Inf]);
-blk(1).dipbo = tmp';
-%}
-
 % Note:
 % Prepare the export parameter file in the 'PARAMETER' folder as bellows,
 %--example from here--
 % # Dipping boundaries
-% 7 8
-% 8 11
-% 8 9
-% 9 10
-% 10 12
+% 8 7 8
+% 11 8 11
+% 9 8 9
+% 10 9 10
+% 12 10 12
 % Mechanical coupled boundaries
-% 8 11
 % 8 11
 % 8 9
 % 9 10
@@ -584,39 +543,41 @@ blk(1).dipbo = tmp';
 % --- END HERE ---
 %--end of example--
 
-fid = fopen(prm.filedipb,'r');
+fid = fopen(prm.filebound,'r');
 blk(1).dipbo  = [];
 blk(1).mechbo = [];
 if fid ~= 0
-  tline = fgetl(fid);
+  tline = char(fgetl(fid));
   while 1
     switch tline
       case '# Mechanical coupled boundaries'
-        tline = fgetl(fid);
         while 1
-          tline = fgetl(fid);
-          tline = strtrim(strsplit(tline));
-          tline = str2num(char(tline));
-          if ~isempty(tline)
-            blk(1).dipbo = [blk(1).dipbo; tline'];
+          tline = char(fgetl(fid));
+          Tline = strtrim(strsplit(tline));
+          if ~or(strcmpi(Tline(1),'---'),or(strcmpi(Tline(1),'#'),strcmpi(Tline(1),'')))
+            Tline=str2num(char(Tline));
+            if ~isempty(Tline)
+              blk(1).dipbo = [blk(1).dipbo; Tline'];
+            end
           else
             break
           end
         end
       case '# Dipping boundaries'
-        tline = fgetl(fid);
         while 1
-          tline = fgetl(fid);
-          tline = strtrim(strsplit(tline));
-          tline = str2num(char(tline));
-          if ~isempty(tline)
-            blk(1).mechbo = [blk(1).mechbo; tline'];
+          tline = char(fgetl(fid));
+          Tline = strtrim(strsplit(tline));
+          if ~or(strcmpi(Tline(1),'---'),or(strcmpi(Tline(1),'#'),strcmpi(Tline(1),'')))
+            Tline=str2num(char(Tline));
+            if ~isempty(Tline)
+              blk(1).mechbo = [blk(1).mechbo; Tline'];
+            end
           else
             break
           end
         end
       otherwise
-        tline = fgetl(fid);
+        tline = char(fgetl(fid));
     end
     if strcmpi(tline,'--- END HERE ---'); break; end
   end
@@ -1431,11 +1392,15 @@ function [cal] = MechCoupling_MCMC_MH(blk,tri,prm,obs,eul,d,G)
 % Combined by Hiroshi Kimura in 2019/4/22
 
 % Logging
-logfile=fullfile(PRM.DirResult,'log.txt');
-logFID=fopen(logfile,'a');
-RR=(D(1).OBS./D(1).ERR)'*(D(1).OBS./D(1).ERR);
+logfile = fullfile(PRM.DirResult,'log.txt');
+logFID  = fopen(logfile,'a');
+RR = (D(1).OBS./D(1).ERR)'*(D(1).OBS./D(1).ERR);
 fprintf('Residual=%9.3f \n',RR);
 fprintf(logFID,'Residual=%9.3f \n',RR);
+
+% center of observation network
+alat = mean(obs(1).alat(:));
+alon = mean(obs(1).alon(:));
 
 % Initial value
 precision  = 'double'     ;
@@ -1444,6 +1409,7 @@ nb         = blk(1).nblock;
 passivelim = 1            ;  % [mm], TODO : How to determine?
 
 % initial value
+mc.int = 1e+1;
 mp.int = 1e-10;
 mi.int = 1e-10;
 ma.int = 1e-5;
@@ -1452,6 +1418,7 @@ la.int = 1e+1;
 % number of unknown parameter
 mp.n   = 3.*blk(1).nblock;
 mi.n   = 3.*blk(1).nblock;
+mc.n   = tri(1).nb;
 % ma.n   = size();
 la.n   = 1;
 
@@ -1461,6 +1428,8 @@ mi.std = mi.int.*ones(mi.n,1,precision);
 ma.std = ma.int.*ones(ma.n,1,precision);
 la.std = la.int.*ones(la.n,1,precision);
 
+% substitute coupling ratio
+mc.old = randn(tri(1).nb,1);
 % substitute euler pole vectors
 mp.old         = double(blk(1).pole);
 mp.old(eul.id) = 0                  ;
@@ -1478,6 +1447,7 @@ la.old= zeros(la.n,1,precision);
 cha.mp = zeros(mp.n,prm.kep,precision);
 cha.mi = zeros(mi.n,prm.kep,precision);
 cha.ma = zeros(ma.n,prm,kep,precision);
+cha.mc = zeros(mc.n,prm,kep,precision);
 cha.la = zeros(la.n,prm,kep,precision);
 % substitude index of locking patches
 id_lock = logical(d(1).id_lock);
@@ -1487,6 +1457,16 @@ id_crep = logical(d(1).id_crep);
 % Calculate back-slip on locked patches.
 cal.slip             = (G(1).tb*mp.old).*d(1).cfinv.*id_lock;
 
+% derive locked meshes from up- and down-dip limit of asperities
+for na = 1:tri(1).na
+  edge_x = blk(1).bound(nb1,nb2).asp_xd + (ma.smp(mt:1:mt+np-1)./blk(1).bound(nb1,nb2).asp_lline).*(blk(1).bound(nb1,nb2).asp_xu - blk(1).bound(nb1,nb2).asp_xd);
+  edge_y = blk(1).bound(nb1,nb2).asp_yd + (ma.smp(mt:1:mt+np-1)./blk(1).bound(nb1,nb2).asp_lline).*(blk(1).bound(nb1,nb2).asp_yu - blk(1).bound(nb1,nb2).asp_yd);
+  edge = [edge_x(mt       : 1:mt+np-1), edge_y(mt       : 1:mt+np-1);...
+          edge_x(mt+2*np-1:-1:mt+np  ), edge_y(mt+2*np-1:-1:mt+np  )];
+  [edge_lat,edge_lon] = XYTPL(edge(:,1),edge(:,2),alat,alon);
+  idl = [idl; inpolygon(tricx,tricy,edge_lon,edge_lat)];
+end
+
 % calc velocities on surface
 Gpassive           = zeros(3*nflt);
 % Gcc                = G(~idl,~idl);    % creep -> creep
@@ -1494,7 +1474,7 @@ Gpassive           = zeros(3*nflt);
 % Gpassive(~idl,idl) = Gcc\Gcl;
 Gpassive(~idl,idl) = G(~idl,~idl)\G(~idl, idl);
 % d_bslip = (G(1).c - G(1).c*Gpassive) * cal.slip;
-d_bslip = G(1).c * (eye(3*nflt) - Gpassive) * cal.slip;
+d_bslip = G(1).c(:,idl) * (eye(3*nflt) - Gpassive) * cal.slip;
 
 count = 1;
 while 1
@@ -1605,6 +1585,38 @@ id = inpolygon(trix,triy,edgex,edgey);
 % Accept or reject
 asp.smp = edgex;
 
+end
+
+%% Define random walk lines
+function [blk] = DefRandomWalkLine(blk,obs,prm)
+
+alat = mean(obs(1).alat(:));
+alon = mean(obs(1).alon(:));
+
+for nb1 = 1:blk(1).nblock
+  for nb2 = nb1+1:blk(1).nblock
+    blk(1).bound(nb1,nb2).rwlid = 0;
+    rwlfile = fullfile(prm.dirblock_rwl,['rwlb_',num2str(nb1),'_',num2str(nb2),'.txt']);
+    fid       = fopen(rwlfile,'r');
+    if fid >= 0
+      blk(1).bound(nb1,nb2).rwlid = 1;
+      tmp = fscanf(fid,'%f %f %f %f \n',[4, Inf]);
+      blk(1).bound(nb1,nb2).asp_lond = tmp(:,1);
+      blk(1).bound(nb1,nb2).asp_latd = tmp(:,2);
+      blk(1).bound(nb1,nb2).asp_lonu = tmp(:,3);
+      blk(1).bound(nb1,nb2).asp_latu = tmp(:,4);
+      [xd,yd] = PLTXY(blk(1).bound(nb1,nb2).asp_latd,blk(1).bound(nb1,nb2).asp_lond,alat,alon);
+      [xu,yu] = PLTXY(blk(1).bound(nb1,nb2).asp_latu,blk(1).bound(nb1,nb2).asp_lonu,alat,alon);
+      blk(1).bound(nb1,nb2).asp_lline=sqrt((xd-xu).^2+(yd-yu).^2);
+      blk(1).bound(nb1,nb2).asp_xd = xd;
+      blk(1).bound(nb1,nb2).asp_yd = yd;
+      blk(1).bound(nb1,nb2).asp_xu = xu;
+      blk(1).bound(nb1,nb2).asp_yu = yu;
+    end
+  end
+end
+
+fprintf('=== Read Random Walk Lines === \n');
 end
 
 %% Make figures
