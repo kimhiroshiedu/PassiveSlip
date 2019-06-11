@@ -988,12 +988,6 @@ for nb1 = 1:blk(1).nblock
         %
         fprintf('==================\n Block %2i : Block %2i \n Number of TRI sub-faults : %4i \n',nb1,nb2,nf)
         %
-%         triclon = mean(blk(1).bound(nb1,nb2).blon,2);
-%         triclat = mean(blk(1).bound(nb1,nb2).blat,2);
-%         tricdep = mean(blk(1).bound(nb1,nb2).bdep,2);
-%         [tricx,tricy] = PLTXY(triclat,triclon,alat,alon);
-%         tricz = -tricdep;
-        %
         blk(1).bound(nb1,nb2).flag1 = 0;
         for ii = 1:size(blk(1).dipbo,1)
           dippingid = ismember([nb1 nb2],blk(1).dipbo(ii,2:3));
@@ -1604,13 +1598,17 @@ while not(count == prm.thr)
     cal.slip             = (G(1).tb*mp.old).*d(1).cfinv.*id_lock;
 
     % Derive locked meshes from up- and down-dip limit of asperities
-    for na = 1:tri(1).na
+    idl = zeros(size);
+    for na = 1:size(asp,2)
+      nb1 = asp(na).nb1;
+      nb2 = asp(na).nb2;
+      nf  = size(blk(1).bound(nb1,nb2).blon,1);
       edge_x = blk(1).bound(nb1,nb2).asp_xd + (ma.smp(mt:1:mt+np-1)./blk(1).bound(nb1,nb2).asp_lline).*(blk(1).bound(nb1,nb2).asp_xu - blk(1).bound(nb1,nb2).asp_xd);
       edge_y = blk(1).bound(nb1,nb2).asp_yd + (ma.smp(mt:1:mt+np-1)./blk(1).bound(nb1,nb2).asp_lline).*(blk(1).bound(nb1,nb2).asp_yu - blk(1).bound(nb1,nb2).asp_yd);
       edge = [edge_x(mt       : 1:mt+np-1), edge_y(mt       : 1:mt+np-1);...
               edge_x(mt+2*np-1:-1:mt+np  ), edge_y(mt+2*np-1:-1:mt+np  )];
       [edge_lat,edge_lon] = XYTPL(edge(:,1),edge(:,2),alat,alon);
-      idl = [idl; inpolygon(tricx,tricy,edge_lon,edge_lat)];
+      idl = [idl; inpolygon(blk(1).clat,blk(1).clon,edge_lon,edge_lat)];
     end
 
     % Calc velocities on surface
