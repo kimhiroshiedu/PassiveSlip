@@ -12,6 +12,7 @@ PAC*
 *.fig
 *.m
 *.txt
+*.asv
 
 # Maintain folders
 !subfunction/*
