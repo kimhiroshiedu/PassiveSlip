@@ -306,9 +306,9 @@ for nb1 = 1:blk(1).nblock
       end
     end
     blk(1).nb = blk(1).nb+size(blk(1).bound(nb1,nb2).blon,1);
-    blk(1).clon = [blk(1).clon; mean(blk(1).bound(nb1,nb2).blon)];
-    blk(1).clat = [blk(1).clat; mean(blk(1).bound(nb1,nb2).blat)];
-    blk(1).cdep = [blk(1).cdep; mean(blk(1).bound(nb1,nb2).bdep)];
+    blk(1).clon = [blk(1).clon; mean(blk(1).bound(nb1,nb2).blon,2)];
+    blk(1).clat = [blk(1).clat; mean(blk(1).bound(nb1,nb2).blat,2)];
+    blk(1).cdep = [blk(1).cdep; mean(blk(1).bound(nb1,nb2).bdep,2)];
   end
 end
 end
@@ -427,10 +427,10 @@ for n = 1:blk(1).nblock
   blk(1).pole = [blk(1).pole;blk(n).pol];
   obs(n).eev  = evne(1:2:end);
   obs(n).env  = evne(2:2:end);
-  fprintf('BLOCK=%2d NUM_OBS=%2d Sigma^2=%5.2f ',n,obs(n).nblk,sig)
+  fprintf(       'BLOCK=%2d NUM_OBS=%2d Sigma^2=%5.2f ',n,obs(n).nblk,sig)
   fprintf(logfid,'BLOCK=%2d NUM_OBS=%2d Sigma^2=%5.2f ',n,obs(n).nblk,sig);
   [latp,lonp,ang] = xyzp2lla(pole(1),pole(2),pole(3));
-  fprintf('Lat:%7.2f deg. Lon:%8.2f deg. Ang:%9.2e deg./m.y. \n',latp,lonp,ang);    
+  fprintf(       'Lat:%7.2f deg. Lon:%8.2f deg. Ang:%9.2e deg./m.y. \n',latp,lonp,ang);    
   fprintf(logfid,'Lat:%7.2f deg. Lon:%8.2f deg. Ang:%9.2e deg./m.y. \n',latp,lonp,ang);    
 end
 aic=(obs(1).nobs.*2).*log(t_sig./(obs(1).nobs.*2))+2.*num_b.*3;
@@ -980,6 +980,9 @@ for nb1 = 1:blk(1).nblock
         tri(1).bound(nb1,nb2).gustr = zeros(3*nd,nfall);
         tri(1).bound(nb1,nb2).gudip = zeros(3*nd,nfall);
         tri(1).bound(nb1,nb2).gutns = zeros(3*nd,nfall);
+        tri(1).bound(nb1,nb2).gsstr = zeros(6*nfall,nf);
+        tri(1).bound(nb1,nb2).gsdip = zeros(6*nfall,nf);
+        tri(1).bound(nb1,nb2).gstns = zeros(6*nfall,nf);
         tri(1).bound(nb1,nb2).cf   =  ones(3*nf,1);
         tri(1).bound(nb1,nb2).inv  = zeros(3*nf,1);
         %
@@ -1578,35 +1581,65 @@ while not(count == prm.thr)
   rmp(         pol.id,:) = 0;
   rmi(~blk(1).idinter,:) = 0;
   for it = 1:prm.cha
-% Sample section
+    % Sample section
     mctmp            = mc.old+0.5.*rwd.*mcscale.*rmc(:,it);
     id_reject        = mctmp>up_mc | mctmp<lo_mc;
     mctmp(id_reject) = mc.old(id_reject);
-    mc.smp =                          mctmp;
+    mc.smp = mctmp                               ;
     mp.smp = mp.old + rwd .* mpscale .* rmp(:,it);
     mi.smp = mi.old + rwd .* miscale .* rmi(:,it);
     la.smp = la.old + rwd .*  la.std .* rla(:,it);
-% Make mc.smpmat
+    % Make mc.smpmat
     mc.smpmat = repmat(mc.smp,3,d.cnt);
     mc.smpmat = mc.smpmat(d.mid);
-% Calc gpu memory free capacity
+    % Calc gpu memory free capacity
     if prm.gpu ~= 99
       byte1 = whos('g');
       byte2 = whos('mp');
       b = waitgpu(byte1.bytes+byte2.bytes);
     end
-% Calc apriori and residual coupling rate section
-    cal.rig = g.p*mp.smp;
-    cal.ela = g.c*((g.tb*mp.smp).*d(1).cfinv.*mc.smpmat);
-    cal.ine = g.i*mi.smp;
-%   cal.smp = cal.rig+cal.ela;
-    cal.smp = cal.rig+cal.ela+cal.ine;
-    if prm.gpu ~= 99
-      clear('cal.rig','cal,ela','cal.ine');
+    % Calc apriori and residual coupling rate section
+
+    % Calculate back-slip on locked patches.
+    cal.slip             = (G(1).tb*mp.old).*d(1).cfinv.*id_lock;
+
+    % Derive locked meshes from up- and down-dip limit of asperities
+    for na = 1:tri(1).na
+      edge_x = blk(1).bound(nb1,nb2).asp_xd + (ma.smp(mt:1:mt+np-1)./blk(1).bound(nb1,nb2).asp_lline).*(blk(1).bound(nb1,nb2).asp_xu - blk(1).bound(nb1,nb2).asp_xd);
+      edge_y = blk(1).bound(nb1,nb2).asp_yd + (ma.smp(mt:1:mt+np-1)./blk(1).bound(nb1,nb2).asp_lline).*(blk(1).bound(nb1,nb2).asp_yu - blk(1).bound(nb1,nb2).asp_yd);
+      edge = [edge_x(mt       : 1:mt+np-1), edge_y(mt       : 1:mt+np-1);...
+              edge_x(mt+2*np-1:-1:mt+np  ), edge_y(mt+2*np-1:-1:mt+np  )];
+      [edge_lat,edge_lon] = XYTPL(edge(:,1),edge(:,2),alat,alon);
+      idl = [idl; inpolygon(tricx,tricy,edge_lon,edge_lat)];
     end
-% Calc residual section
+
+    % Calc velocities on surface
+    Gpassive           = zeros(3*nflt);
+    % Gcc                = G(~idl,~idl);    % creep -> creep
+    % Gcl                = G(~idl, idl);    % lock  -> creep
+    % Gpassive(~idl,idl) = Gcc\Gcl;
+    Gpassive(~idl,idl) = G(~idl,~idl)\G(~idl, idl);
+    % d_bslip = (G(1).c - G(1).c*Gpassive) * cal.slip;
+    d_bslip = G(1).c(:,idl) * (eye(3*nflt) - Gpassive) * cal.slip;
+
+    
+    % Due to Rigid motion
+    cal.rig = g.p*mp.smp;
+    % Due to Kinematic coupling
+    cal.kin = g.c*((g.tb*mp.smp).*d(1).cfinv.*mc.smpmat);
+    % Due to Mechanical coupling
+    cal.mec = G(1).c(:,idl) * (eye(3*nflt) - Gpassive) * cal.slip;
+    % Due to Internal strain
+    cal.ine = g.i*mi.smp;
+    % Total velocities
+    cal.smp = cal.rig + cal.kin + cal.mec + cal.ine;
+    
+    if prm.gpu ~= 99
+      clear('cal.rig','cal,kin','cal.mec','cal.ine');
+    end
+    % Calc residual section
     res.smp = sum(((d(1).obs-cal.smp)./d(1).err).^2,1);
-% Mc is better Zero 
+    % Mc is better Zero
 %     PRI.SMP = sum(abs(Mc.SMP),1);
 %% MAKE Probably Density Function
 % $$ PDF_{post}=\frac{\frac{1}{\sqrt{2\pi\exp(L)}\times\frac{1}{\sqrt{2\pi}\times\exp{\frac{-Re^{2}}{2}}\exp{\frac{-M^{2}}{2\times\exp{L}}}{\frac{1}{\sqrt{2\pi\exp(L_{old})}\times\frac{1}{\sqrt{2\pi}\times\exp{\frac{-Re^{2}_{old}}{2}}\exp{\frac{-M^{2}_{old}}{2\times\exp{L_{old}}}} $$%%
@@ -1622,6 +1655,7 @@ while not(count == prm.thr)
     acc = pdf > logu(it);
     if acc
       mc.old  =  mc.smp;
+      ma.old  =  ma.smp;
       mp.old  =  mp.smp;
       mi.old  =  mi.smp;
       la.old  =  la.smp;
@@ -1629,15 +1663,17 @@ while not(count == prm.thr)
 %     pri.old = pri.smp;
     end
 
-% Keep section
+    % Keep section
     if it > prm.cha - prm.kep
       if prm.gpu ~= 99
         cha.mc(:,it-(prm.cha-prm.kep)) = gather(mc.smp);
+        cha.ma(:,it-(prm.cha-prm.kep)) = gather(ma.smp);
         cha.mp(:,it-(prm.cha-prm.kep)) = gather(mp.smp);
         cha.mi(:,it-(prm.cha-prm.kep)) = gather(mi.smp);
         cha.la(:,it-(prm.cha-prm.kep)) = gather(la.smp);
       else
         cha.mc(:,it-(prm.cha-prm.kep)) =        mc.smp;
+        cha.ma(:,it-(prm.cha-prm.kep)) =        ma.smp;
         cha.mp(:,it-(prm.cha-prm.kep)) =        mp.smp;
         cha.mi(:,it-(prm.cha-prm.kep)) =        mi.smp;
         cha.la(:,it-(prm.cha-prm.kep)) =        la.smp;
@@ -1653,6 +1689,7 @@ while not(count == prm.thr)
   
 % Calc stds from samples
   mc.std = std(cha.mc,1,2);
+  ma.std = std(cha.ma,1,2);
   mp.std = std(cha.mp,1,2); 
   mi.std = std(cha.mi,1,2); 
   la.std = std(cha.la,1,2);
@@ -1695,17 +1732,19 @@ while not(count == prm.thr)
   % Debug-----------
   mpmean = mean(cha.mp,2);
   mcmean = mean(cha.mc,2);
+  mamean = mean(cha.ma,2);
   mimean = mean(cha.mi,2);
   mcmeanrep = repmat(mcmean,3,d.cnt);mcmeanrep = mcmeanrep(d.mid);
-  vec.rig = g.p*mpmean;
-  vec.ela = g.c*((g.tb*mpmean).*d(1).cfinv.*mcmeanrep);
-  vec.ine = g.i*mimean;
-% vec.sum = vec.rig+vec.ela;
-  vec.sum = vec.rig+vec.ela+vec.ine;   % including internal deformation
+  vec.rig = g(1).p*mpmean;
+  vec.kin = g(1).c*((g.tb*mpmean).*d(1).cfinv.*mcmeanrep);
+  vec.mec = g(1).c(:,idl) * (eye(3*nflt) - Gpassive) * cal.slip;
+  vec.ine = g(1).i*mimean;
+  vec.sum = vec.rig + vec.kin + vec.mec + vec.ine;
 % vec.rel = g.c*((g.tb*poltmp).*cf);
   % Debug-----------
   if prm.gpu ~= 99
     ccha.mc  = gather(cha.mc );
+    ccha.ma  = gather(cha.ma );
     ccha.mp  = gather(cha.mp );
     ccha.mi  = gather(cha.mi );
     ccha.la  = gather(cha.la );
@@ -1720,6 +1759,7 @@ end
 % GPU to CPU
 if prm.gpu ~= 99
   cha.mc  = gather(cha.mc );
+  cha.ma  = gather(cha.ma );
   cha.mp  = gather(cha.mp );
   cha.mi  = gather(cha.mi );
   cha.la  = gather(cha.la );
