@@ -24,7 +24,7 @@ prm.optfile='PARAMETER/opt_bound_par_forward.txt';
 % Read locked patches definition.
 [blk]     = ReadLockedPatch(blk,prm);
 % Read random walk line definitions.
-[blk]     = DefRandomWalkLine(blk,prm,obs);
+[blk,asp] = DefRandomWalkLine(blk,prm,obs);
 % Estimate rigid motion and calculate AIC.
 [blk,obs] = CalcAIC(blk,obs,eul,prm);
 % Generate Green's functions.
@@ -34,9 +34,9 @@ prm.optfile='PARAMETER/opt_bound_par_forward.txt';
 % Define locking patches.
 [d]       = InitialLockingPatch(blk,tri,d);
 % Calculate pasive slip and response to surface.
-[cal]     = MechCoupling_MCMC_MH(blk,tri,prm,obs,eul,d,G);
+[cal,cha] = MechCoupling_MCMC_MH(blk,asp,tri,prm,obs,eul,d,G);
 % Save data.
-% SaveData(prm,blk,obs,tri,d,G,cal)
+% SaveData(prm,blk,obs,tri,d,G,cal,cha)
 
 end
 
@@ -349,7 +349,7 @@ fprintf('=== Read Locked Patches=== \n');
 end
 
 %% Save data
-function SaveData(prm,blk,obs,tri,d,G,cal)
+function SaveData(prm,blk,obs,tri,d,G,cal,cha)
 
 logfile=fullfile(prm.dirresult,'log.txt');
 log_fid=fopen(logfile,'a');
@@ -1387,7 +1387,7 @@ d(1).id_crep = logical(d(1).id_crep);
 end
 
 %% Estimate mechanical coupled area by MCMC (Metropolis-Hasting)
-function [cal] = MechCoupling_MCMC_MH(blk,tri,prm,obs,eul,d,G)
+function [cal,cha] = MechCoupling_MCMC_MH(blk,asp,tri,prm,obs,eul,d,G)
 % Test version coded by Hiroshi Kimura in 2019/2/1
 % Combined by Hiroshi Kimura in 2019/4/22
 
@@ -1398,7 +1398,7 @@ RR = (D(1).OBS./D(1).ERR)'*(D(1).OBS./D(1).ERR);
 fprintf('Residual=%9.3f \n',RR);
 fprintf(logFID,'Residual=%9.3f \n',RR);
 
-% center of observation network
+% Center of observation network
 alat = mean(obs(1).alat(:));
 alon = mean(obs(1).alon(:));
 
@@ -1408,48 +1408,57 @@ rwd        = prm.rwd      ;
 nb         = blk(1).nblock;
 passivelim = 1            ;  % [mm], TODO : How to determine?
 
-% initial value
+% Initial value
 mc.int = 1e+1;
 mp.int = 1e-10;
 mi.int = 1e-10;
 ma.int = 1e-5;
 la.int = 1e+1;
 
-% number of unknown parameter
+% Number of unknown parameter
 mp.n   = 3.*blk(1).nblock;
 mi.n   = 3.*blk(1).nblock;
 mc.n   = tri(1).nb;
 % ma.n   = size();
 la.n   = 1;
 
-% initial std
+% Initial std
 mp.std = mp.int.*ones(mp.n,1,precision);
 mi.std = mi.int.*ones(mi.n,1,precision);
 ma.std = ma.int.*ones(ma.n,1,precision);
 la.std = la.int.*ones(la.n,1,precision);
 
-% substitute coupling ratio
+% Substitute coupling ratio
 mc.old = randn(tri(1).nb,1);
-% substitute euler pole vectors
+% Substitute euler pole vectors
 mp.old         = double(blk(1).pole);
 mp.old(eul.id) = 0                  ;
 mp.old         = mp.old+eul.fixw    ;
-% substitute internal strain tensors
+% Substitute internal strain tensors
 mi.old = 1e-10.*(-0.5+rand(mi.n,1,precision));
 mi.old = mi.old.*blk(1).idinter              ;
-% substitute coordinates of up- and down-dip limit
+% Substitute coordinates of up- and down-dip limit
 ma.old(id_upper) = rand(ma.n,1,precision);
 ma.old(id_lower) = rand(ma.n,1,precition);
 
-la.old= zeros(la.n,1,precision);
+la.old    = zeros(la.n,1,precision);
+res.old   =   inf(   1,1,precision);
+% pri.old =   inf(   1,1,precision);
 
-% initial chains
+% Scale adjastment of rwd
+rwdscale =     1000 * rwd / prm.cha;
+mcscale  = rwdscale * 0.13;
+mpscale  = rwdscale * (1.3e-9) .* ones(mp.n,1,precision) .* ~pol.id;
+miscale  = rwdscale * 1e-10;
+
+
+% Initial chains
 cha.mp = zeros(mp.n,prm.kep,precision);
 cha.mi = zeros(mi.n,prm.kep,precision);
 cha.ma = zeros(ma.n,prm,kep,precision);
 cha.mc = zeros(mc.n,prm,kep,precision);
 cha.la = zeros(la.n,prm,kep,precision);
-% substitude index of locking patches
+% Substitude index of locking patches
 id_lock = logical(d(1).id_lock);
 id_crep = logical(d(1).id_crep);
 
@@ -1457,7 +1466,7 @@ id_crep = logical(d(1).id_crep);
 % Calculate back-slip on locked patches.
 cal.slip             = (G(1).tb*mp.old).*d(1).cfinv.*id_lock;
 
-% derive locked meshes from up- and down-dip limit of asperities
+% Derive locked meshes from up- and down-dip limit of asperities
 for na = 1:tri(1).na
   edge_x = blk(1).bound(nb1,nb2).asp_xd + (ma.smp(mt:1:mt+np-1)./blk(1).bound(nb1,nb2).asp_lline).*(blk(1).bound(nb1,nb2).asp_xu - blk(1).bound(nb1,nb2).asp_xd);
   edge_y = blk(1).bound(nb1,nb2).asp_yd + (ma.smp(mt:1:mt+np-1)./blk(1).bound(nb1,nb2).asp_lline).*(blk(1).bound(nb1,nb2).asp_yu - blk(1).bound(nb1,nb2).asp_yd);
@@ -1467,7 +1476,7 @@ for na = 1:tri(1).na
   idl = [idl; inpolygon(tricx,tricy,edge_lon,edge_lat)];
 end
 
-% calc velocities on surface
+% Calc velocities on surface
 Gpassive           = zeros(3*nflt);
 % Gcc                = G(~idl,~idl);    % creep -> creep
 % Gcl                = G(~idl, idl);    % lock  -> creep
@@ -1548,60 +1557,55 @@ id = inpolygon(trix,triy,edgex,edgey);
 rt    = 0;
 count = 0;
 burn  = 1;
-while not(count==prm.THR)
+up_mc = 1;
+lo_mc = 0;
+while not(count == prm.thr)
   rt   = rt+1;
   nacc = 0;tic
-  if prm.GPU~=99
-    logU=log(rand(prm.CHA,1,precision,'gpuArray'));
-    rmc = randn(mc.N,prm.CHA,precision,'gpuArray');
-    rmp = randn(mp.N,prm.CHA,precision,'gpuArray');
-    rmi = randn(mi.N,prm.CHA,precision,'gpuArray');
-    rla = randn(la.N,prm.CHA,precision,'gpuArray');
+  if prm.gpu~=99
+    logu=log(rand(prm.cha,1,precision,'gpuarray'));
+    rmc = randn(mc.n,prm.cha,precision,'gpuarray');
+    rmp = randn(mp.n,prm.cha,precision,'gpuarray');
+    rmi = randn(mi.n,prm.cha,precision,'gpuarray');
+    rla = randn(la.n,prm.cha,precision,'gpuarray');
   else
-    logU=log(rand(prm.CHA,1,precision));
-    rmc =randn(mc.N,prm.CHA,precision);
-    rmp =randn(mp.N,prm.CHA,precision);
-    rmi =randn(mi.N,prm.CHA,precision);
-    rla =randn(la.N,prm.CHA,precision);
+    logu=log(rand(prm.cha,1,precision));
+    rmc =randn(mc.n,prm.cha,precision);
+    rmp =randn(mp.n,prm.cha,precision);
+    rmi =randn(mi.n,prm.cha,precision);
+    rla =randn(la.n,prm.cha,precision);
   end
-  rmp(pol.ID,:) = 0;
-  rmi(~blk(1).IDinter,:) = 0;
-  for iT = 1:prm.CHA
-% SAMPLE SECTION
-%     McUp = min(UP_Mc,Mc.OLD+0.5.*RWD.*Mc.STD);
-%     McLo = max(LO_Mc,Mc.OLD-0.5.*RWD.*Mc.STD);
-%     Mc.SMP = McLo+(McUp-McLo).*rMc(:,iT);
-    McTMP = mc.OLD+0.5.*RWD.*McScale.*rmc(:,iT);
-    McREJID = McTMP>UP_Mc | McTMP<LO_Mc;
-    McTMP(McREJID) = mc.OLD(McREJID);
-    mc.SMP = McTMP;
-%     Mc.SMP = max(min(McTMP,UP_Mc),LO_Mc);
-%     Mp.SMP = Mp.OLD+RWD.*Mp.STD.*rMp(:,iT);
-    mp.SMP = mp.OLD+RWD.*MpScale.*rmp(:,iT);
-    mi.SMP = mi.OLD+RWD.*MiScale.*rmi(:,iT);
-    la.SMP = la.OLD+RWD.*la.STD.*rla(:,iT);
-% MAKE Mc.SMPMAT
-    mc.SMPMAT = repmat(mc.SMP,3,D.CNT);
-    mc.SMPMAT = mc.SMPMAT(D.MID);
-% Calc GPU memory free capacity
-    if prm.GPU ~= 99
-      Byte1 = whos('G');
-      Byte2 = whos('Mp');
-      b = waitGPU(Byte1.bytes+Byte2.bytes);
+  rmp(         pol.id,:) = 0;
+  rmi(~blk(1).idinter,:) = 0;
+  for it = 1:prm.cha
+% Sample section
+    mctmp            = mc.old+0.5.*rwd.*mcscale.*rmc(:,it);
+    id_reject        = mctmp>up_mc | mctmp<lo_mc;
+    mctmp(id_reject) = mc.old(id_reject);
+    mc.smp =                          mctmp;
+    mp.smp = mp.old + rwd .* mpscale .* rmp(:,it);
+    mi.smp = mi.old + rwd .* miscale .* rmi(:,it);
+    la.smp = la.old + rwd .*  la.std .* rla(:,it);
+% Make mc.smpmat
+    mc.smpmat = repmat(mc.smp,3,d.cnt);
+    mc.smpmat = mc.smpmat(d.mid);
+% Calc gpu memory free capacity
+    if prm.gpu ~= 99
+      byte1 = whos('g');
+      byte2 = whos('mp');
+      b = waitgpu(byte1.bytes+byte2.bytes);
     end
-% CALC APRIORI AND RESIDUAL COUPLING RATE SECTION
-    cal.RIG = G.P*mp.SMP;
-    cal.ELA = G.C*((G.TB*mp.SMP).*D(1).CFINV.*mc.SMPMAT);
-    cal.INE = G.I*mi.SMP;
-%     CAL.SMP = CAL.RIG+CAL.ELA;
-    cal.SMP = cal.RIG+cal.ELA+cal.INE;   % including internal deformation
-    if prm.GPU ~= 99
-      clear('CAL.RIG','CAL,ELA','CAL.INE');
+% Calc apriori and residual coupling rate section
+    cal.rig = g.p*mp.smp;
+    cal.ela = g.c*((g.tb*mp.smp).*d(1).cfinv.*mc.smpmat);
+    cal.ine = g.i*mi.smp;
+%   cal.smp = cal.rig+cal.ela;
+    cal.smp = cal.rig+cal.ela+cal.ine;
+    if prm.gpu ~= 99
+      clear('cal.rig','cal,ela','cal.ine');
     end
-%   CAL.SMP = G.C*((G.TB*Mp.SMP).*Mc.SMPMAT)+G.P*Mp.SMP;
-%   CAL.SMP = G.P*Mp.SMP;
-% CALC RESIDUAL SECTION
-    res.SMP = sum(((D(1).OBS-cal.SMP)./D(1).ERR).^2,1);
+% Calc residual section
+    res.smp = sum(((d(1).obs-cal.smp)./d(1).err).^2,1);
 % Mc is better Zero 
 %     PRI.SMP = sum(abs(Mc.SMP),1);
 %% MAKE Probably Density Function
@@ -1609,126 +1613,126 @@ while not(count==prm.THR)
 %  log(x(x>0));
 %   q1 = logproppdf(x0,y);
 %   q2 = logproppdf(y,x0);
-% this is a generic formula.
+% This is a generic formula.
 %   rho = (q1+logpdf(y))-(q2+logpdf(x0));  
-    Pdf = -0.5.*...
-         ((res.SMP+la.SMP+exp(-la.SMP))...
-         -(res.OLD+la.OLD+exp(-la.OLD)));
-%   Pdf = -0.5.*(RES.SMP-RES.OLD);
-    ACC = Pdf > logU(iT);
-    if ACC
-      mc.OLD  = mc.SMP;
-      mp.OLD  = mp.SMP;
-      mi.OLD  = mi.SMP;
-      la.OLD  = la.SMP;
-      res.OLD = res.SMP;
-%       PRI.OLD = PRI.SMP;
+    pdf = -0.5.*...
+         ((res.smp+la.smp+exp(-la.smp))...
+         -(res.old+la.old+exp(-la.old)));
+%   pdf = -0.5.*(res.smp-res.old);
+    acc = pdf > logu(it);
+    if acc
+      mc.old  =  mc.smp;
+      mp.old  =  mp.smp;
+      mi.old  =  mi.smp;
+      la.old  =  la.smp;
+      res.old = res.smp;
+%     pri.old = pri.smp;
     end
 
 % Keep section
-    if iT > prm.CHA-prm.KEP
-      if prm.GPU~=99
-        cha.Mc(:,iT-(prm.CHA-prm.KEP)) = gather(mc.SMP);
-        cha.Mp(:,iT-(prm.CHA-prm.KEP)) = gather(mp.SMP);
-        cha.Mi(:,iT-(prm.CHA-prm.KEP)) = gather(mi.SMP);
-        cha.La(:,iT-(prm.CHA-prm.KEP)) = gather(la.SMP);
+    if it > prm.cha - prm.kep
+      if prm.gpu ~= 99
+        cha.mc(:,it-(prm.cha-prm.kep)) = gather(mc.smp);
+        cha.mp(:,it-(prm.cha-prm.kep)) = gather(mp.smp);
+        cha.mi(:,it-(prm.cha-prm.kep)) = gather(mi.smp);
+        cha.la(:,it-(prm.cha-prm.kep)) = gather(la.smp);
       else
-        cha.Mc(:,iT-(prm.CHA-prm.KEP)) = mc.SMP;
-        cha.Mp(:,iT-(prm.CHA-prm.KEP)) = mp.SMP;
-        cha.Mi(:,iT-(prm.CHA-prm.KEP)) = mi.SMP;
-        cha.La(:,iT-(prm.CHA-prm.KEP)) = la.SMP;
+        cha.mc(:,it-(prm.cha-prm.kep)) =        mc.smp;
+        cha.mp(:,it-(prm.cha-prm.kep)) =        mp.smp;
+        cha.mi(:,it-(prm.cha-prm.kep)) =        mi.smp;
+        cha.la(:,it-(prm.cha-prm.kep)) =        la.smp;
       end
-      if ACC; nacc=nacc+1; end
+      if acc; nacc=nacc+1; end
     end
   end
   
 % Compress data into int16 format
   CompressData(cha,prm,rt,nacc);
 %
-  cha.AJR = nacc./prm.CHA;
+  cha.ajr = nacc./prm.cha;
   
-% Calc STDs from samples
-  mc.STD = std(cha.Mc,1,2);
-  mp.STD = std(cha.Mp,1,2); 
-  mi.STD = std(cha.Mi,1,2); 
-  la.STD = std(cha.La,1,2);
+% Calc stds from samples
+  mc.std = std(cha.mc,1,2);
+  mp.std = std(cha.mp,1,2); 
+  mi.std = std(cha.mi,1,2); 
+  la.std = std(cha.la,1,2);
   
 % Log and display
-  fprintf('T=%3d Res=%6.3f Accept=%5.1f RWD=%5.2f Time=%5.1fsec\n',...
-           rt,1-res.OLD./RR,100*cha.AJR,RWD,toc)
-  fprintf(logFID,'T=%3d Res=%6.3f Accept=%5.1f RWD=%5.2f Time=%5.1fsec\n',...
-           rt,1-res.OLD./RR,100*cha.AJR,RWD,toc);
-  for BK=1:blk(1).NBlock
-    [latp,lonp,ang]=xyzp2lla(cha.Mp(3.*BK-2,:),cha.Mp(3.*BK-1,:),cha.Mp(3.*BK,:));
-    fprintf('POLE OF BLOCK %2i = lat:%7.2f deg. lon:%8.2f deg. ang:%9.2e deg./m.y. \n',...
-      BK,mean(latp),mean(lonp),mean(ang));
-    fprintf(logFID,'POLE OF BLOCK %2i = lat:%7.2f deg. lon:%8.2f deg. ang:%9.2e deg./m.y. \n',...
-      BK,mean(latp),mean(lonp),mean(ang));
+  fprintf(       't=%3d res=%6.3f accept=%5.1f rwd=%5.2f time=%5.1fsec\n',...
+           rt,1-res.old./rr,100*cha.ajr,rwd,toc)
+  fprintf(logfid,'t=%3d res=%6.3f accept=%5.1f rwd=%5.2f time=%5.1fsec\n',...
+           rt,1-res.old./rr,100*cha.ajr,rwd,toc);
+  for bk=1:blk(1).nblock
+    [latp,lonp,ang]=xyzp2lla(cha.mp(3.*bk-2,:),cha.mp(3.*bk-1,:),cha.mp(3.*bk,:));
+    fprintf(       'pole of block %2i = lat:%7.2f deg. lon:%8.2f deg. ang:%9.2e deg./m.y. \n',...
+      bk,mean(latp),mean(lonp),mean(ang));
+    fprintf(logfid,'pole of block %2i = lat:%7.2f deg. lon:%8.2f deg. ang:%9.2e deg./m.y. \n',...
+      bk,mean(latp),mean(lonp),mean(ang));
   end
-  fprintf('Lamda = %7.2f \n',mean(cha.La));
-  fprintf(logFID,'Lamda = %7.2f \n',mean(cha.La));
+  fprintf(       'lamda = %7.2f \n',mean(cha.la));
+  fprintf(logfid,'lamda = %7.2f \n',mean(cha.la));
 
 % Adjust random walk distance
   if burn == 0
-    if cha.AJR > 0.24
-      RWD = RWD*1.1;
-    elseif cha.AJR < 0.22
-      RWD = RWD*0.9;
+    if cha.ajr > 0.24
+      rwd = rwd * 1.1;
+    elseif cha.ajr < 0.22
+      rwd = rwd * 0.9;
     end
-    count = count+1;
+    count = count + 1;
   else
-    if cha.AJR > 0.24
-      RWD = RWD*1.1;
-    elseif cha.AJR < 0.22
-      RWD = RWD*0.9;
+    if cha.ajr > 0.24
+      rwd = rwd * 1.1;
+    elseif cha.ajr < 0.22
+      rwd = rwd * 0.9;
     else
-      count = count+1;
+      count = count + 1;
       burn = 0;
     end
   end
   
-  cha.SMP = cal.SMP;
-  % debug-----------
-  Mpmean = mean(cha.Mp,2);
-  Mcmean = mean(cha.Mc,2);
-  Mimean = mean(cha.Mi,2);
-  Mcmeanrep = repmat(Mcmean,3,D.CNT);Mcmeanrep = Mcmeanrep(D.MID);
-  vec.RIG = G.P*Mpmean;
-  vec.ELA = G.C*((G.TB*Mpmean).*D(1).CFINV.*Mcmeanrep);
-  vec.INE = G.I*Mimean;
-%   VEC.SUM = VEC.RIG+VEC.ELA;
-  vec.SUM = vec.RIG+vec.ELA+vec.INE;   % including internal deformation
-%   vec.rel = G.C*((G.TB*poltmp).*CF);
-  % debug-----------
-  if prm.GPU ~= 99
-    cCHA.Mc = gather(cha.Mc);
-    cCHA.Mp = gather(cha.Mp);
-    cCHA.Mi = gather(cha.Mi);
-    cCHA.La = gather(cha.La);
-    cCHA.SMP = gather(cha.SMP);
-    MAKE_FIG(cCHA,blk,OBS,rt,gather(LO_Mc),gather(UP_Mc),vec,Mimean)
+  cha.smp = cal.smp;
+  % Debug-----------
+  mpmean = mean(cha.mp,2);
+  mcmean = mean(cha.mc,2);
+  mimean = mean(cha.mi,2);
+  mcmeanrep = repmat(mcmean,3,d.cnt);mcmeanrep = mcmeanrep(d.mid);
+  vec.rig = g.p*mpmean;
+  vec.ela = g.c*((g.tb*mpmean).*d(1).cfinv.*mcmeanrep);
+  vec.ine = g.i*mimean;
+% vec.sum = vec.rig+vec.ela;
+  vec.sum = vec.rig+vec.ela+vec.ine;   % including internal deformation
+% vec.rel = g.c*((g.tb*poltmp).*cf);
+  % Debug-----------
+  if prm.gpu ~= 99
+    ccha.mc  = gather(cha.mc );
+    ccha.mp  = gather(cha.mp );
+    ccha.mi  = gather(cha.mi );
+    ccha.la  = gather(cha.la );
+    ccha.smp = gather(cha.smp);
+    make_fig(ccha,blk,obs,rt,gather(lo_mc),gather(up_mc),vec,mimean)
   else
-    MAKE_FIG(cha,blk,OBS,rt,LO_Mc,UP_Mc,vec,Mimean)
+    make_fig( cha,blk,obs,rt,       lo_mc ,       up_mc ,vec,mimean)
   end
-  if rt > prm.ITR; break; end;
+  if rt > prm.itr; break; end
 end
 
 % GPU to CPU
-if prm.GPU ~= 99
-  cha.Mc = gather(cha.Mc);
-  cha.Mp = gather(cha.Mp);
-  cha.Mi = gather(cha.Mi);
-  cha.La = gather(cha.La);
-  cha.SMP = gather(cha.SMP);
+if prm.gpu ~= 99
+  cha.mc  = gather(cha.mc );
+  cha.mp  = gather(cha.mp );
+  cha.mi  = gather(cha.mi );
+  cha.la  = gather(cha.la );
+  cha.smp = gather(cha.smp);
 end
 
-% Desplay
-cha.Res = res.SMP;
-fprintf('RMS=: %8.3f\n',cha.Res)
-fprintf('=== FINISHED MH_MCMC ===\n')
-fprintf(logFID,'RMS=: %8.3f\n',cha.Res);
-fprintf(logFID,'=== FINISHED MH_MCMC ===\n');
-fclose(logFID);
+% Display
+cha.res = res.smp;
+fprintf(       'RMS=: %8.3f\n',cha.res)
+fprintf(logfid,'RMS=: %8.3f\n',cha.res);
+fprintf(       '=== Finished MCMC part ===\n')
+fprintf(logfid,'=== finished MCMC part ===\n');
+fclose(logfid);
 end
 
 %% Compress CHA sampling
@@ -1737,104 +1741,109 @@ function CompressData(cha,prm,itr,nacc)
 % sfactor = 2^8 ;  % int8
 sfactor = 2^16;  % int16
 % 
-cha.Mc = single(cha.Mc);
-cha.Mp = single(cha.Mp);
-cha.Mi = single(cha.Mi);
-% if PRM.GPU==99&&gpuDeviceCount==0
-if prm.GPU==99
-  MEANMc = mean(cha.Mc,2);
-  MEANMp = mean(cha.Mp,2);
-  MEANMi = mean(cha.Mi,2);
-  COVMc  =   cov(cha.Mc');
-  COVMp  =   cov(cha.Mp');
-  COVMi  =   cov(cha.Mi');
+cha.mc = single(cha.mc);
+cha.mp = single(cha.mp);
+cha.mi = single(cha.mi);
+% if prm.gpu==99&&gpudevicecount==0
+if prm.gpu == 99
+  meanmc = mean(cha.mc,2);
+  meanmp = mean(cha.mp,2);
+  meanmi = mean(cha.mi,2);
+  covmc  =   cov(cha.mc');
+  covmp  =   cov(cha.mp');
+  covmi  =   cov(cha.mi');
 else
-  gCHA.Mc = gpuArray(cha.Mc);
-  gCHA.Mp = gpuArray(cha.Mp);
-  gCHA.Mi = gpuArray(cha.Mi);
-  MEANMc  =  mean(gCHA.Mc,2);
-  MEANMp  =  mean(gCHA.Mp,2);
-  MEANMi  =  mean(gCHA.Mi,2);
-  COVMc   =    cov(gCHA.Mc');
-  COVMp   =    cov(gCHA.Mp');
-  COVMi   =    cov(gCHA.Mi');
-  MEANMc  =   gather(MEANMc);
-  MEANMp  =   gather(MEANMp);
-  MEANMi  =   gather(MEANMi);
-  COVMc   =    gather(COVMc);
-  COVMp   =    gather(COVMp);
-  COVMi   =    gather(COVMi);
+  gcha.mc = gpuarray(cha.mc);
+  gcha.mp = gpuarray(cha.mp);
+  gcha.mi = gpuarray(cha.mi);
+  meanmc  =  mean(gcha.mc,2);
+  meanmp  =  mean(gcha.mp,2);
+  meanmi  =  mean(gcha.mi,2);
+  covmc   =    cov(gcha.mc');
+  covmp   =    cov(gcha.mp');
+  covmi   =    cov(gcha.mi');
+  meanmc  =   gather(meanmc);
+  meanmp  =   gather(meanmp);
+  meanmi  =   gather(meanmi);
+  covmc   =    gather(covmc);
+  covmp   =    gather(covmp);
+  covmi   =    gather(covmi);
 end
 % 
-McMAX = max(cha.Mc,[],2);
-McMIN = min(cha.Mc,[],2);
-MpMAX = max(cha.Mp,[],2);
-MpMIN = min(cha.Mp,[],2);
-MiMAX = max(cha.Mi,[],2);
-MiMIN = min(cha.Mi,[],2);
+mcmax = max(cha.mc,[],2);
+mcmin = min(cha.mc,[],2);
+mpmax = max(cha.mp,[],2);
+mpmin = min(cha.mp,[],2);
+mimax = max(cha.mi,[],2);
+mimin = min(cha.mi,[],2);
 % 
-Mcscale = 1./(McMAX-McMIN);
-McBASE  = bsxfun(@minus,bsxfun(@times,bsxfun(@minus,cha.Mc,McMIN),Mcscale.*(sfactor-1)),sfactor/2);
-% Mcint = int8(McBASE);
-Mcint   = int16(McBASE);
-Mpscale = 1./(MpMAX-MpMIN);
-MpBASE  = bsxfun(@minus,bsxfun(@times,bsxfun(@minus,cha.Mp,MpMIN),Mpscale.*(sfactor-1)),sfactor/2);
-% Mpint = int8(MpBASE);
-Mpint   = int16(MpBASE);
-Miscale = 1./(MiMAX-MiMIN);
-MiBASE  = bsxfun(@minus,bsxfun(@times,bsxfun(@minus,cha.Mi,MiMIN),Miscale.*(sfactor-1)),sfactor/2);
-% Miint = int8(MiBASE);
-Miint   = int16(MiBASE);
+mcscale = 1./(mcmax-mcmin);
+mcbase  = bsxfun(@minus,bsxfun(@times,bsxfun(@minus,cha.mc,mcmin),mcscale.*(sfactor-1)),sfactor/2);
+% mcint = int8(mcbase);
+mcint   = int16(mcbase);
+mpscale = 1./(mpmax-mpmin);
+mpbase  = bsxfun(@minus,bsxfun(@times,bsxfun(@minus,cha.mp,mpmin),mpscale.*(sfactor-1)),sfactor/2);
+% mpint = int8(mpbase);
+mpint   = int16(mpbase);
+miscale = 1./(mimax-mimin);
+mibase  = bsxfun(@minus,bsxfun(@times,bsxfun(@minus,cha.mi,mimin),miscale.*(sfactor-1)),sfactor/2);
+% miint = int8(mibase);
+miint   = int16(mibase);
 % 
-for ii = 1:size(Mcint,1)
-  cha.McCOMPRESS.NFLT(ii).Mcscale = Mcscale(ii);
-  cha.McCOMPRESS.NFLT(ii).McMAX   =   McMAX(ii);
-  cha.McCOMPRESS.NFLT(ii).McMIN   =   McMIN(ii);
+for ii = 1:size(mcint,1)
+  cha.mccompress.nflt(ii).mcscale = mcscale(ii);
+  cha.mccompress.nflt(ii).mcmax   =   mcmax(ii);
+  cha.mccompress.nflt(ii).mcmin   =   mcmin(ii);
 end
-cha.McCOMPRESS.COVMc   =         COVMc;
-cha.McCOMPRESS.MEANMc  =        MEANMc;
-% cha.McCOMPRESS.SMPMc =  int8(McBASE);
-cha.McCOMPRESS.SMPMc   = int16(McBASE);
+cha.mccompress.covmc   =         covmc;
+cha.mccompress.meanmc  =        meanmc;
+% cha.mccompress.smpmc =  int8(mcbase);
+cha.mccompress.smpmc   = int16(mcbase);
 % 
-for ii = 1:size(Mpint,1)
-  cha.MpCOMPRESS.NPOL(ii).Mpscale = Mpscale(ii);
-  cha.MpCOMPRESS.NPOL(ii).MpMAX   =   MpMAX(ii);
-  cha.MpCOMPRESS.NPOL(ii).MpMIN   =   MpMIN(ii);
+for ii = 1:size(mpint,1)
+  cha.mpcompress.npol(ii).mpscale = mpscale(ii);
+  cha.mpcompress.npol(ii).mpmax   =   mpmax(ii);
+  cha.mpcompress.npol(ii).mpmin   =   mpmin(ii);
 end
-cha.MpCOMPRESS.COVMp   =         COVMp;
-cha.MpCOMPRESS.MEANMp  =        MEANMp;
-% cha.MpCOMPRESS.SMPMp =  int8(MpBASE);
-cha.MpCOMPRESS.SMPMp   = int16(MpBASE);
+cha.mpcompress.covmp   =         covmp;
+cha.mpcompress.meanmp  =        meanmp;
+% cha.mpcompress.smpmp =  int8(mpbase);
+cha.mpcompress.smpmp   = int16(mpbase);
 % 
-for ii = 1:size(Miint,1)
-  cha.MiCOMPRESS.NINE(ii).Miscale = Miscale(ii);
-  cha.MiCOMPRESS.NINE(ii).MiMAX   =   MiMAX(ii);
-  cha.MiCOMPRESS.NINE(ii).MiMIN   =   MiMIN(ii);
+for ii = 1:size(miint,1)
+  cha.micompress.nine(ii).miscale = miscale(ii);
+  cha.micompress.nine(ii).mimax   =   mimax(ii);
+  cha.micompress.nine(ii).mimin   =   mimin(ii);
 end
-cha.MiCOMPRESS.COVMi   =         COVMi;
-cha.MiCOMPRESS.MEANMi  =        MEANMi;
-% cha.MiCOMPRESS.SMPMi =  int8(MiBASE);
-cha.MiCOMPRESS.SMPMi   = int16(MiBASE);
+cha.micompress.covmi   =         covmi;
+cha.micompress.meanmi  =        meanmi;
+% cha.micompress.smpmi =  int8(mibase);
+cha.micompress.smpmi   = int16(mibase);
 % 
-cha.AJR = nacc./prm.CHA;
-save(fullfile(prm.DirResult,['CHA_test',num2str(itr,'%03i')]),'cha','-v7.3');
+cha.ajr = nacc./prm.cha;
+save(fullfile(prm.dirresult,['cha_test',num2str(itr,'%03i')]),'cha','-v7.3');
 %
 end
 
 %% Define random walk lines
-function [blk] = DefRandomWalkLine(blk,prm,obs)
+function [blk,asp] = DefRandomWalkLine(blk,prm,obs)
 
+asp  = [];
 alat = mean(obs(1).alat(:));
 alon = mean(obs(1).alon(:));
 
+np = 1;
 for nb1 = 1:blk(1).nblock
   for nb2 = nb1+1:blk(1).nblock
     blk(1).bound(nb1,nb2).rwlid = 0;
     rwlfile = fullfile(prm.dirblock_patch,['udlineb_',num2str(nb1),'_',num2str(nb2),'.txt']);
     fid       = fopen(rwlfile,'r');
     if fid >= 0
+      asp(np).nb1 = nb1;
+      asp(np).nb2 = nb2;
       blk(1).bound(nb1,nb2).rwlid = 1;
       tmp = fscanf(fid,'%f %f %f %f \n',[4, Inf]);
+      blk(1).bound(nb1,nb2).np = size(tmp,1);
       blk(1).bound(nb1,nb2).asp_lond = tmp(:,1);
       blk(1).bound(nb1,nb2).asp_latd = tmp(:,2);
       blk(1).bound(nb1,nb2).asp_lonu = tmp(:,3);
@@ -1846,6 +1855,7 @@ for nb1 = 1:blk(1).nblock
       blk(1).bound(nb1,nb2).asp_yd = yd;
       blk(1).bound(nb1,nb2).asp_xu = xu;
       blk(1).bound(nb1,nb2).asp_yu = yu;
+      np = np + 1;
     end
   end
 end
