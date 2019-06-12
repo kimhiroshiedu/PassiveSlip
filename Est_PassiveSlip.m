@@ -28,7 +28,7 @@ prm.optfile='PARAMETER/opt_bound_par_forward.txt';
 % Estimate rigid motion and calculate AIC.
 [blk,obs] = CalcAIC(blk,obs,eul,prm);
 % Generate Green's functions.
-[tri]     = GreenTri(blk,obs,prm);
+[blk,tri] = GreenTri(blk,obs,prm);
 % Arrange Green's functions.
 [d,G]     = GreenFunctionMatrix(blk,obs,tri);
 % Define locking patches.
@@ -205,9 +205,9 @@ dirblk        = prm.dirblock_interface;
 blk(1).clon  = [];
 blk(1).clat  = [];
 blk(1).cdep  = [];
-blk(1).nb    =  0;
-blk(1).nbmec =  0;
-blk(1).nbkin =  0;
+blk(1).nt    =  0; % Number of trimeshes
+blk(1).ntmec =  0;
+blk(1).ntkin =  0;
 for nb1 = 1:blk(1).nblock
   for nb2 = nb1+1:blk(1).nblock
     blk(1).bound(nb1,nb2).type = 1;
@@ -331,14 +331,14 @@ for nb1 = 1:blk(1).nblock
       end
     end
 
-    blk(1).nb = blk(1).nb + size(blk(1).bound(nb1,nb2).blon,1);
-    if blk.(1).bound(nb1,nb2).flag2 == 1
+    blk(1).nt = blk(1).nt + size(blk(1).bound(nb1,nb2).blon,1);
+    if blk(1).bound(nb1,nb2).flag2 == 1
       blk(1).clon = [blk(1).clon; mean(blk(1).bound(nb1,nb2).blon,2)];
       blk(1).clat = [blk(1).clat; mean(blk(1).bound(nb1,nb2).blat,2)];
       blk(1).cdep = [blk(1).cdep; mean(blk(1).bound(nb1,nb2).bdep,2)];
-      blk(1).nbmec = blk(1).nbmec + size(blk(1).bound(nb1,nb2).blon,1);
+      blk(1).ntmec = blk(1).ntmec + size(blk(1).bound(nb1,nb2).blon,1);
     else
-      blk(1).nbkin = blk(1).nbkin + size(blk(1).bound(nb1,nb2).blon,1);
+      blk(1).ntkin = blk(1).ntkin + size(blk(1).bound(nb1,nb2).blon,1);
     end
   end
 end
@@ -977,13 +977,13 @@ end
 
 %% Make Green's function of halfspace elastic strain for triangular meshes
 %% TO DO: Reconstruct the Coefficient matrix to calculate the strain response to any other boundaries.
-function [tri] = GreenTri(blk,obs,prm)
+function [blk,tri] = GreenTri(blk,obs,prm)
 % Coded by Hiroshi Kimura 2019/01/28 (ver 1.0)
 pr = 0.25;
 nd = size(obs(1).alat,2);
-nfall = blk(1).nb;
-nfkin = blk(1).nbkin;
-nfmec = blk(1).nbmec;
+nfall = blk(1).nt;
+nfkin = blk(1).ntkin;
+nfmec = blk(1).ntmec;
 %
 alat = mean(obs(1).alat(:));
 alon = mean(obs(1).alon(:));
@@ -995,12 +995,14 @@ tricz = -blk(1).cdep;
 % 
 mc           = 1;
 tri(1).obsdis= [];
-tri(1).nb    = 0;
+blk(1).nb    = 0;
+blk(1).nbmec = 0;
+blk(1).nbkin = 0;
 tri(1).idstr = false(3*nfall,1);
 tri(1).iddip = false(3*nfall,1);
 tri(1).idtns = false(3*nfall,1);
 for nb1 = 1:blk(1).nblock
-  [blk(nb1).localx,blk(nb1).localy] = PLTXY(blk(nb1).lat,blk(nb1).lon,alat,alon);
+  [tri(nb1).localx,tri(nb1).localy] = PLTXY(blk(nb1).lat,blk(nb1).lon,alat,alon);
   for nb2 = nb1+1:blk(1).nblock
     nf = size(blk(1).bound(nb1,nb2).blon,1);
     if nf ~= 0
@@ -1040,60 +1042,59 @@ for nb1 = 1:blk(1).nblock
           tri(1).bound(nb1,nb2).oxyz(n,:) = conv2ell(tri(1).bound(nb1,nb2).clat(n),tri(1).bound(nb1,nb2).clon(n),1e3.*tri(1).bound(nb1,nb2).cdep(n));
           % Green's function relates to strike slip
           u = CalcTriDisps(obsx,obsy,obsz,trix,triy,triz,pr,1,0,0);
+          s = CalcTriStrains(tricx,tricy,tricz,trix,triy,triz,pr,1,0,0);
           tri(1).bound(nb1,nb2).gustr(1:3:3*nd,n) =  u.x;  % E
           tri(1).bound(nb1,nb2).gustr(2:3:3*nd,n) =  u.y;  % N
           tri(1).bound(nb1,nb2).gustr(3:3:3*nd,n) = -u.z;  % U
-          if blk(1).bound(nb1,nb2).flag2 == 1
-            s = CalcTriStrains(tricx,tricy,tricz,trix,triy,triz,pr,1,0,0);
-            tri(1).bound(nb1,nb2).gsstr(1:6:6*nfall,n) =  s.xx;  % exx
-            tri(1).bound(nb1,nb2).gsstr(2:6:6*nfall,n) =  s.xy;  % exy
-            tri(1).bound(nb1,nb2).gsstr(3:6:6*nfall,n) = -s.xz;  % exz
-            tri(1).bound(nb1,nb2).gsstr(4:6:6*nfall,n) =  s.yy;  % eyy
-            tri(1).bound(nb1,nb2).gsstr(5:6:6*nfall,n) = -s.yz;  % eyz
-            tri(1).bound(nb1,nb2).gsstr(6:6:6*nfall,n) = -s.zz;  % ezz
-          end
+          tri(1).bound(nb1,nb2).gsstr(1:6:6*nfall,n) =  s.xx;  % exx
+          tri(1).bound(nb1,nb2).gsstr(2:6:6*nfall,n) =  s.xy;  % exy
+          tri(1).bound(nb1,nb2).gsstr(3:6:6*nfall,n) = -s.xz;  % exz
+          tri(1).bound(nb1,nb2).gsstr(4:6:6*nfall,n) =  s.yy;  % eyy
+          tri(1).bound(nb1,nb2).gsstr(5:6:6*nfall,n) = -s.yz;  % eyz
+          tri(1).bound(nb1,nb2).gsstr(6:6:6*nfall,n) = -s.zz;  % ezz
           % Green's function relates to tensile slip
           u = CalcTriDisps(obsx,obsy,obsz,trix,triy,triz,pr,0,1,0);
+          s = CalcTriStrains(tricx,tricy,tricz,trix,triy,triz,pr,0,1,0);
           tri(1).bound(nb1,nb2).gutns(1:3:3*nd,n) =  u.x;  % E
           tri(1).bound(nb1,nb2).gutns(2:3:3*nd,n) =  u.y;  % N
           tri(1).bound(nb1,nb2).gutns(3:3:3*nd,n) = -u.z;  % U 
-          if blk(1).bound(nb1,nb2).flag2 == 1
-            s = CalcTriStrains(tricx,tricy,tricz,trix,triy,triz,pr,0,1,0);
-            tri(1).bound(nb1,nb2).gstns(1:6:6*nfall,n) =  s.xx;  % exx
-            tri(1).bound(nb1,nb2).gstns(2:6:6*nfall,n) =  s.xy;  % exy
-            tri(1).bound(nb1,nb2).gstns(3:6:6*nfall,n) = -s.xz;  % exz
-            tri(1).bound(nb1,nb2).gstns(4:6:6*nfall,n) =  s.yy;  % eyy
-            tri(1).bound(nb1,nb2).gstns(5:6:6*nfall,n) = -s.yz;  % eyz
-            tri(1).bound(nb1,nb2).gstns(6:6:6*nfall,n) = -s.zz;  % ezz
-          end
+          tri(1).bound(nb1,nb2).gstns(1:6:6*nfall,n) =  s.xx;  % exx
+          tri(1).bound(nb1,nb2).gstns(2:6:6*nfall,n) =  s.xy;  % exy
+          tri(1).bound(nb1,nb2).gstns(3:6:6*nfall,n) = -s.xz;  % exz
+          tri(1).bound(nb1,nb2).gstns(4:6:6*nfall,n) =  s.yy;  % eyy
+          tri(1).bound(nb1,nb2).gstns(5:6:6*nfall,n) = -s.yz;  % eyz
+          tri(1).bound(nb1,nb2).gstns(6:6:6*nfall,n) = -s.zz;  % ezz
           % Green's function relates to dip slip
           u = CalcTriDisps(obsx,obsy,obsz,trix,triy,triz,pr,0,0,1);
+          s = CalcTriStrains(tricx,tricy,tricz,trix,triy,triz,pr,0,0,1);
           tri(1).bound(nb1,nb2).gudip(1:3:3*nd,n) =  u.x;  % E
           tri(1).bound(nb1,nb2).gudip(2:3:3*nd,n) =  u.y;  % N
           tri(1).bound(nb1,nb2).gudip(3:3:3*nd,n) = -u.z;  % U
-          if blk(1).bound(nb1,nb2).flag2 == 1
-            s = CalcTriStrains(tricx,tricy,tricz,trix,triy,triz,pr,0,0,1);
-            tri(1).bound(nb1,nb2).gsdip(1:6:6*nfall,n) =  s.xx;  % exx
-            tri(1).bound(nb1,nb2).gsdip(2:6:6*nfall,n) =  s.xy;  % exy
-            tri(1).bound(nb1,nb2).gsdip(3:6:6*nfall,n) = -s.xz;  % exz
-            tri(1).bound(nb1,nb2).gsdip(4:6:6*nfall,n) =  s.yy;  % eyy
-            tri(1).bound(nb1,nb2).gsdip(5:6:6*nfall,n) = -s.yz;  % eyz
-            tri(1).bound(nb1,nb2).gsdip(6:6:6*nfall,n) = -s.zz;  % ezz
-          end
+          tri(1).bound(nb1,nb2).gsdip(1:6:6*nfall,n) =  s.xx;  % exx
+          tri(1).bound(nb1,nb2).gsdip(2:6:6*nfall,n) =  s.xy;  % exy
+          tri(1).bound(nb1,nb2).gsdip(3:6:6*nfall,n) = -s.xz;  % exz
+          tri(1).bound(nb1,nb2).gsdip(4:6:6*nfall,n) =  s.yy;  % eyy
+          tri(1).bound(nb1,nb2).gsdip(5:6:6*nfall,n) = -s.yz;  % eyz
+          tri(1).bound(nb1,nb2).gsdip(6:6:6*nfall,n) = -s.zz;  % ezz
           if mod(n,ceil(nf/3)) == 1
             fprintf('MAKE GREEN at TRI sub-faults : %4i / %4i \n',n,nf)
           end
-          [tri]     = CorrectFactor(blk,tri,nb1,nb2,dp,n,nf);
-          [blk,tri] = DiscriminateDirection(blk,tri,nb1,nb2,trix,triy,n,nf);
-          [tri]     = trans_xyz2strdip(tri,nb1,nb2,n,nfall);
+          [tri] = CorrectFactor(blk,tri,nb1,nb2,dp,n,nf);
+          [tri] = DiscriminateDirection(blk,tri,nb1,nb2,trix,triy,n,nf);
+          [tri] = trans_xyz2strdip(tri,nb1,nb2,n,nfall);
         end
         trisave = tri(1).bound(nb1,nb2);
         save(trimat,'trisave','-v7.3');
       end
-      tri(1).nb = tri(1).nb+nf;
       tri(1).idstr(mc     :mc+  nf-1) = true;
       tri(1).iddip(mc+  nf:mc+2*nf-1) = true;
       tri(1).idtns(mc+2*nf:mc+3*nf-1) = true;
+      blk(1).nb = blk(1).nb + 1;
+      if blk(1).bound(nb1,nb2).flag2 == 1
+        blk(1).nbmec = blk(1).nbmec + 1;
+      else
+        blk(1).nbkin = blk(1).nbkin + 1;
+      end
       mc = mc + 3*nf;
     else
       tri(1).bound(nb1,nb2).clat = [];
@@ -1121,7 +1122,7 @@ end
 end
 
 %% DISCRIMINATE BOUNDARY TYPE AND SUBFAULT SURFACE DIRECTION
-function [blk,tri] = DiscriminateDirection(blk,tri,nb1,nb2,trix,triy,n,nf)
+function [tri] = DiscriminateDirection(blk,tri,nb1,nb2,trix,triy,n,nf)
 % Coded by H.Kimura 2017/4/28 (test ver.)
 % Modified by H.Kimura 2018/2/6
 switch blk(1).bound(nb1,nb2).flag1
@@ -1136,7 +1137,7 @@ switch blk(1).bound(nb1,nb2).flag1
   case 0
     trixc   = mean(trix);
     triyc   = mean(triy);
-    [in,on] = inpolygon(trixc,triyc,blk(nb1).localx,blk(nb1).localy);
+    [in,on] = inpolygon(trixc,triyc,tri(nb1).localx,tri(nb1).localy);
     if in==1 && on~=1
       tri(1).bound(nb1,nb2).inv(     n) = 1;
       tri(1).bound(nb1,nb2).inv(  nf+n) = 0;
@@ -1146,7 +1147,7 @@ switch blk(1).bound(nb1,nb2).flag1
       uv   = [0 0 1];
       nv   = cross(uv,tri(1).bound(nb1,nb2).st(n,:));
       cnv  = tric+nv;
-      if inpolygon(cnv(1),cnv(2),blk(nb1).localx,blk(nb1).localy)==1
+      if inpolygon(cnv(1),cnv(2),tri(nb1).localx,tri(nb1).localy)==1
         tri(1).bound(nb1,nb2).inv(     n) = 1;
         tri(1).bound(nb1,nb2).inv(  nf+n) = 0;
         tri(1).bound(nb1,nb2).inv(2*nf+n) = 1;
@@ -1285,43 +1286,35 @@ tmp.err(3:3:3*nobs) = obs(1).herr;
 d(1).ind   = find(tmp.err ~= 0)';
 d(1).obs   = tmp.obs(d(1).ind)';
 d(1).err   = tmp.err(d(1).ind)';
-d(1).mID   = [];
-d(1).IDmec = [];
-d(1).IDkin = [];
-d(1).cnt   = 0;
+d(1).mcid  = false(  blk(1).ntkin,blk(1).nbkin);
+d(1).idmec = false(3*blk(1).ntmec,           1);
 %
 % (G(1).C * (( G(1).T * ( G(1).B1 - G(1).B2 ) * Mp)*Mc ) + G(1).P * Mp
 % 
 % (G(1).C * (( G(1).T * ( G(1).B1 - G(1).B2 ) * Mp)*Mc ) + G(1).P * Mp +
 % G(1).I * Mi  % including internal deformation
 %
-G(1).t  = zeros(3*blk(1).nb,2.*blk(1).nb);
-G(1).b  = zeros(2*blk(1).nb,3.*blk(1).nblock);
-G(1).s  = zeros(3*blk(1).nb,3.*blk(1).nb);
+G(1).t  = zeros(3*blk(1).nt,2.*blk(1).nt);
+G(1).b  = zeros(2*blk(1).nt,3.*blk(1).nblock);
 tmp.p   = zeros(3*nobs,3.*blk(1).nblock);
 tmp.i   = zeros(3*nobs,3.*blk(1).nblock);
-tmp.cf  = ones(3*blk(1).nb,1);
-tmp.inv = zeros(3*blk(1).nb,1);
+tmo.s   = zeros(3*blk(1).nt,3*blk(1).nt);
+tmp.cf  = ones(3*blk(1).nt,1);
+tmp.inv = zeros(3*blk(1).nt,1);
 % 
 mc = 1;
 mt = 1;
 mr = 1;
+nk = 1;
 for nb1 = 1:blk(1).nblock
   for nb2 = nb1+1:blk(1).nblock
     nf = size(tri(1).bound(nb1,nb2).clon,2);
     if nf ~= 0
-      d(1).cnt             = d(1).cnt+1;
-      d(1).mid             = zeros(blk(1).nb,1);
-      d(1).mid(mr:mr+nf-1) = 1;
-      d(1).mID             = [d(1).mID d(1).mid];
       if blk(1).bound(nb1,nb2).flag2 == 1
-        d(1).idmec             = zeros(blk(1).nbkin,1);
-        d(1).idmec(mr:mr+nf-1) = 1;
-        d(1).IDmec             = [d(1).IDmec, d(1).idmec];
+        d(1).idmec(mc:mc+3*nf-1) = true;
       else
-        d(1).idkin             = zeros(blk(1).nbkin,1);
-        d(1).idkin(mr:mr+nf-1) = 1;
-        d(1).IDkin             = [d(1).IDkin, d(1).idkin];
+        d(1).mcid(mr:mr+nf-1,nk) = true;
+        nk = nk + 1;
       end
       tmp.c(1:3*nobs,mc     :mc+  nf-1) = tri(1).bound(nb1,nb2).gustr;
       tmp.c(1:3*nobs,mc+  nf:mc+2*nf-1) = tri(1).bound(nb1,nb2).gudip;
@@ -1348,15 +1341,15 @@ for nb1 = 1:blk(1).nblock
       G(1).b(mt+nf:mt+2*nf-1,3*nb2-2) = -G(1).b(mt+nf:mt+2*nf-1,3*nb1-2);
       G(1).b(mt+nf:mt+2*nf-1,3*nb2-1) = -G(1).b(mt+nf:mt+2*nf-1,3*nb1-1);
       G(1).b(mt+nf:mt+2*nf-1,3*nb2  ) = -G(1).b(mt+nf:mt+2*nf-1,3*nb1  );
-      G(1).s(tri(1).idstr,mc     :mc+  nf-1) = tri(1).bound(nb1,nb2).gsstrT(1:3:end,:);
-      G(1).s(tri(1).idstr,mc+  nf:mc+2*nf-1) = tri(1).bound(nb1,nb2).gsdipT(1:3:end,:);
-      G(1).s(tri(1).idstr,mc+2*nf:mc+3*nf-1) = tri(1).bound(nb1,nb2).gstnsT(1:3:end,:);
-      G(1).s(tri(1).iddip,mc     :mc+  nf-1) = tri(1).bound(nb1,nb2).gsstrT(2:3:end,:);
-      G(1).s(tri(1).iddip,mc+  nf:mc+2*nf-1) = tri(1).bound(nb1,nb2).gsdipT(2:3:end,:);
-      G(1).s(tri(1).iddip,mc+2*nf:mc+3*nf-1) = tri(1).bound(nb1,nb2).gstnsT(2:3:end,:);
-      G(1).s(tri(1).idtns,mc     :mc+  nf-1) = tri(1).bound(nb1,nb2).gsstrT(3:3:end,:);
-      G(1).s(tri(1).idtns,mc+  nf:mc+2*nf-1) = tri(1).bound(nb1,nb2).gsdipT(3:3:end,:);
-      G(1).s(tri(1).idtns,mc+2*nf:mc+3*nf-1) = tri(1).bound(nb1,nb2).gstnsT(3:3:end,:);
+      tmp.s(tri(1).idstr,mc     :mc+  nf-1) = tri(1).bound(nb1,nb2).gsstrT(1:3:end,:);
+      tmp.s(tri(1).idstr,mc+  nf:mc+2*nf-1) = tri(1).bound(nb1,nb2).gsdipT(1:3:end,:);
+      tmp.s(tri(1).idstr,mc+2*nf:mc+3*nf-1) = tri(1).bound(nb1,nb2).gstnsT(1:3:end,:);
+      tmp.s(tri(1).iddip,mc     :mc+  nf-1) = tri(1).bound(nb1,nb2).gsstrT(2:3:end,:);
+      tmp.s(tri(1).iddip,mc+  nf:mc+2*nf-1) = tri(1).bound(nb1,nb2).gsdipT(2:3:end,:);
+      tmp.s(tri(1).iddip,mc+2*nf:mc+3*nf-1) = tri(1).bound(nb1,nb2).gstnsT(2:3:end,:);
+      tmp.s(tri(1).idtns,mc     :mc+  nf-1) = tri(1).bound(nb1,nb2).gsstrT(3:3:end,:);
+      tmp.s(tri(1).idtns,mc+  nf:mc+2*nf-1) = tri(1).bound(nb1,nb2).gsdipT(3:3:end,:);
+      tmp.s(tri(1).idtns,mc+2*nf:mc+3*nf-1) = tri(1).bound(nb1,nb2).gstnsT(3:3:end,:);
 %
       mc = mc + 3*nf;
       mt = mt + 2*nf;
@@ -1381,12 +1374,19 @@ for nb1 = 1:blk(1).nblock
   tmp.i(nind,3*nb1  ) =  (blk(nb1).yinter).*10^6;
 end
 % 
-G(1).c     = tmp.c(d(1).ind,:);
-G(1).p     = tmp.p(d(1).ind,:);
-G(1).i     = tmp.i(d(1).ind,:);
-G(1).tb    = sparse(G(1).t*G(1).b);
-d(1).mid   = logical(repmat(d(1).mid,3,1));
-d(1).cfinv = tmp.cf.*tmp.inv;
+tmp.c     = tmp.c(d(1).ind,:);
+tmp.tb    = G(1).t*G(1).b;
+tmp.cfinv = tmp.cf.*tmp.inv;
+G(1).tb_kin = sparse(tmp.tb(~d(1).idmec,:));
+G(1).tb_mec = sparse(tmp.tb( d(1).idmec,:));
+G(1).c_kin  = tmp.c(:,~d(1).idmec);
+G(1).c_mec  = tmp.c(:, d(1).idmec);
+G(1).p      = tmp.p(d(1).ind,:);
+G(1).i      = tmp.i(d(1).ind,:);
+G(1).s      = tmp.s(d(1).idmec,d(1).idmec);
+d(1).mcid   = repmat(d(1).mcid,3,1);
+d(1).cfinv_kin = tmp.cfinv(~d(1).idmec);
+d(1).cfinv_mec = tmp.cfinv( d(1).idmec);
 end
 
 %% Define initial locking patches
@@ -1395,8 +1395,8 @@ function [d] = InitialLockingPatch(blk,tri,d)
 % d(1).id_lock : Locking, give back-slip  (coupling = 1)
 % d(1).id_crep : Creeping, slip passively (coupling = 0)
 % 
-d(1).id_lock = zeros(3*tri(1).nb,1);
-d(1).id_crep = zeros(3*tri(1).nb,1);
+d(1).id_lock = zeros(3*blk(1).nt,1);
+d(1).id_crep = zeros(3*blk(1).nt,1);
 mc = 1;
 for nb1 = 1:blk(1).nblock
   for nb2 = nb1+1:blk(1).nblock
@@ -1454,8 +1454,8 @@ la.int = 1e+1;
 % Number of unknown parameter
 mp.n   = 3.*blk(1).nblock;
 mi.n   = 3.*blk(1).nblock;
-mc.n   = tri(1).nb;
-% ma.n   = size();
+mc.n   = blk(1).nt_kin;
+ma.n   = 2.*blk(1).naspline;
 la.n   = 1;
 
 % Initial std
@@ -1465,7 +1465,7 @@ ma.std = ma.int.*ones(ma.n,1,precision);
 la.std = la.int.*ones(la.n,1,precision);
 
 % Substitute coupling ratio
-mc.old = randn(tri(1).nb,1);
+mc.old = randn(blk(1).nt_kin,1);
 % Substitute euler pole vectors
 mp.old         = double(blk(1).pole);
 mp.old(eul.id) = 0                  ;
@@ -1474,8 +1474,10 @@ mp.old         = mp.old+eul.fixw    ;
 mi.old = 1e-10.*(-0.5+rand(mi.n,1,precision));
 mi.old = mi.old.*blk(1).idinter              ;
 % Substitute coordinates of up- and down-dip limit
-ma.old(id_upper) = rand(ma.n,1,precision);
-ma.old(id_lower) = rand(ma.n,1,precition);
+ma.old = zeros(ma.n./2,2);
+ma.old(:,1) = blk(1).asp_lline'.*(0.0 + rand(ma.n./2,1)./2);
+ma.old(:,2) = blk(1).asp_lline'.*(0.5 + rand(ma.n./2,1)./2);
+ma.old = reshape(ma.old,ma.n,1);
 
 la.old    = zeros(la.n,1,precision);
 res.old   =   inf(   1,1,precision);
@@ -1484,6 +1486,7 @@ res.old   =   inf(   1,1,precision);
 % Scale adjastment of rwd
 rwdscale =     1000 * rwd / prm.cha;
 mcscale  = rwdscale * 0.13;
+mascale  = rwdscale * 1;
 mpscale  = rwdscale * (1.3e-9) .* ones(mp.n,1,precision) .* ~pol.id;
 miscale  = rwdscale * 1e-10;
 
@@ -1506,12 +1509,14 @@ while not(count == prm.thr)
   if prm.gpu~=99
     logu=log(rand(prm.cha,1,precision,'gpuarray'));
     rmc = randn(mc.n,prm.cha,precision,'gpuarray');
+    rma = randn(ma.n,prm.cha,precision,'gpuarray');
     rmp = randn(mp.n,prm.cha,precision,'gpuarray');
     rmi = randn(mi.n,prm.cha,precision,'gpuarray');
     rla = randn(la.n,prm.cha,precision,'gpuarray');
   else
     logu=log(rand(prm.cha,1,precision));
     rmc =randn(mc.n,prm.cha,precision);
+    rma =randn(ma.n,prm.cha,precision);
     rmp =randn(mp.n,prm.cha,precision);
     rmi =randn(mi.n,prm.cha,precision);
     rla =randn(la.n,prm.cha,precision);
@@ -1528,24 +1533,28 @@ while not(count == prm.thr)
     mi.smp = mi.old + rwd .* miscale .* rmi(:,it);
     la.smp = la.old + rwd .*  la.std .* rla(:,it);
     % Make mc.smpmat
-    mc.smpmat = repmat(mc.smp,3,d(1).cnt);
-    mc.smpmat = mc.smpmat(d(1).mID);
+    mc.smpmat = repmat(mc.smp,3,blk(1).nb_kin);
+    mc.smpmat = mc.smpmat(d(1).mcid);
     % Calc gpu memory free capacity
     if prm.gpu ~= 99
       byte1 = whos('g');
       byte2 = whos('mp');
       b = waitgpu(byte1.bytes+byte2.bytes);
     end
-    % Calc apriori and residual coupling rate section
-
-    % Calculate back-slip on locked patches.
-    cal.slip             = (G(1).tb*mp.old).*d(1).cfinv.*id_lock;
+    matmp = ma.old * rwd .* mascale .* rma(:,it);
+    matmp = reshape(matmp,ma.n./2,2);
+    id_reject = matmp(:,1)>matmp(:,2);
+    id_reject = [id_reject; zeros(size(id_reject))];
+    matmp(id_reject) = ma.old(id_reject);
+    
 
     % Derive locked meshes from up- and down-dip limit of asperities
     idl = zeros(size);
+    mt = 1;
     for na = 1:size(asp,2)
       nb1 = asp(na).nb1;
       nb2 = asp(na).nb2;
+      np  = 2.*blk(1).bound(nb1,nb2).naspline;
       nf  = size(blk(1).bound(nb1,nb2).blon,1);
       edge_x = blk(1).bound(nb1,nb2).asp_xd + (ma.smp(mt:1:mt+np-1)./blk(1).bound(nb1,nb2).asp_lline).*(blk(1).bound(nb1,nb2).asp_xu - blk(1).bound(nb1,nb2).asp_xd);
       edge_y = blk(1).bound(nb1,nb2).asp_yd + (ma.smp(mt:1:mt+np-1)./blk(1).bound(nb1,nb2).asp_lline).*(blk(1).bound(nb1,nb2).asp_yu - blk(1).bound(nb1,nb2).asp_yd);
@@ -1553,7 +1562,11 @@ while not(count == prm.thr)
               edge_x(mt+2*np-1:-1:mt+np  ), edge_y(mt+2*np-1:-1:mt+np  )];
       [edge_lat,edge_lon] = XYTPL(edge(:,1),edge(:,2),alat,alon);
       idl = [idl; inpolygon(blk(1).clat,blk(1).clon,edge_lon,edge_lat)];
+      mt = mt + 2.*np;
     end
+    
+    % Calculate back-slip on locked patches.
+    cal.slip             = (G(1).tb*mp.smp).*d(1).cfinv.*id_lock;
 
     % Calc velocities on surface
     Gpassive           = zeros(3*nflt);
@@ -1562,17 +1575,17 @@ while not(count == prm.thr)
     Gpassive(~idl,idl) = Gcc\Gcl;
 %     Gpassive(~idl,idl) = G(~idl,~idl)\G(~idl, idl);
     % d_bslip = (G(1).c - G(1).c*Gpassive*Gcl) * cal.slip;
-    d_bslip = G(1).c(:,idl) * (eye(3*nflt) - Gpassive*Gcl) * cal.slip;
+    d_bslip = G(1).c(:,idl) * (eye(3*nflt) - Gpassive) * cal.slip;
 
     
     % Due to Rigid motion
-    cal.rig = g.p*mp.smp;
+    cal.rig = G.p*mp.smp;
     % Due to Kinematic coupling
-    cal.kin = g.c*((g.tb*mp.smp).*d(1).cfinv.*mc.smpmat);
+    cal.kin = G.c*((G.tb*mp.smp).*d(1).cfinv.*mc.smpmat);
     % Due to Mechanical coupling
     cal.mec = G(1).c(:,idl) * (eye(3*nflt) - Gpassive*Gcl) * cal.slip;
     % Due to Internal strain
-    cal.ine = g.i*mi.smp;
+    cal.ine = G.i*mi.smp;
     % Total velocities
     cal.smp = cal.rig + cal.kin + cal.mec + cal.ine;
     
@@ -1676,11 +1689,11 @@ while not(count == prm.thr)
   mcmean = mean(cha.mc,2);
   mamean = mean(cha.ma,2);
   mimean = mean(cha.mi,2);
-  mcmeanrep = repmat(mcmean,3,d.cnt);mcmeanrep = mcmeanrep(d.mid);
-  vec.rig = g(1).p*mpmean;
-  vec.kin = g(1).c*((g.tb*mpmean).*d(1).cfinv.*mcmeanrep);
-  vec.mec = g(1).c(:,idl) * (eye(3*nflt) - Gpassive) * cal.slip;
-  vec.ine = g(1).i*mimean;
+  mcmeanrep = repmat(mcmean,3,blk(1).nb);mcmeanrep = mcmeanrep(d(1).mcid);
+  vec.rig = G(1).p*mpmean;
+  vec.kin = G(1).c*((G.tb*mpmean).*d(1).cfinv.*mcmeanrep);
+  vec.mec = G(1).c(:,idl) * (eye(3*nflt) - Gpassive) * cal.slip;
+  vec.ine = G(1).i*mimean;
   vec.sum = vec.rig + vec.kin + vec.mec + vec.ine;
 % vec.rel = g.c*((g.tb*poltmp).*cf);
   % Debug-----------
@@ -1813,7 +1826,7 @@ function [blk,asp] = DefRandomWalkLine(blk,prm,obs)
 asp  = [];
 alat = mean(obs(1).alat(:));
 alon = mean(obs(1).alon(:));
-
+blk(1).naspline = 0;
 np = 1;
 for nb1 = 1:blk(1).nblock
   for nb2 = nb1+1:blk(1).nblock
@@ -1825,11 +1838,11 @@ for nb1 = 1:blk(1).nblock
       asp(np).nb2 = nb2;
       blk(1).bound(nb1,nb2).rwlid = 1;
       tmp = fscanf(fid,'%f %f %f %f \n',[4, Inf]);
-      blk(1).bound(nb1,nb2).np = size(tmp,1);
-      blk(1).bound(nb1,nb2).asp_lond = tmp(:,1);
-      blk(1).bound(nb1,nb2).asp_latd = tmp(:,2);
-      blk(1).bound(nb1,nb2).asp_lonu = tmp(:,3);
-      blk(1).bound(nb1,nb2).asp_latu = tmp(:,4);
+      blk(1).bound(nb1,nb2).naspline = size(tmp,2);
+      blk(1).bound(nb1,nb2).asp_lond = tmp(1,:);
+      blk(1).bound(nb1,nb2).asp_latd = tmp(2,:);
+      blk(1).bound(nb1,nb2).asp_lonu = tmp(3,:);
+      blk(1).bound(nb1,nb2).asp_latu = tmp(4,:);
       [xd,yd] = PLTXY(blk(1).bound(nb1,nb2).asp_latd,blk(1).bound(nb1,nb2).asp_lond,alat,alon);
       [xu,yu] = PLTXY(blk(1).bound(nb1,nb2).asp_latu,blk(1).bound(nb1,nb2).asp_lonu,alat,alon);
       blk(1).bound(nb1,nb2).asp_lline=sqrt((xd-xu).^2+(yd-yu).^2);
@@ -1838,6 +1851,8 @@ for nb1 = 1:blk(1).nblock
       blk(1).bound(nb1,nb2).asp_xu = xu;
       blk(1).bound(nb1,nb2).asp_yu = yu;
       np = np + 1;
+      blk(1).naspline  =  blk(1).naspline + blk(1).bound(nb1,nb2).naspline;
+      blk(1).asp_lline = [blk(1).asp_lline, blk(1).bound(nb1,nb2).asp_lline];
     end
   end
 end
