@@ -1384,6 +1384,7 @@ G(1).c_mec  = tmp.c(:, d(1).idmec);
 G(1).p      = tmp.p(d(1).ind,:);
 G(1).i      = tmp.i(d(1).ind,:);
 G(1).s      = tmp.s(d(1).idmec,d(1).idmec);
+G(1).E      = eye(3*blk(1).ntmec);
 d(1).mcid   = repmat(d(1).mcid,3,1);
 d(1).cfinv_kin = tmp.cfinv(~d(1).idmec);
 d(1).cfinv_mec = tmp.cfinv( d(1).idmec);
@@ -1428,7 +1429,7 @@ function [cal,cha] = MechCoupling_MCMC_MH(blk,asp,tri,prm,obs,eul,d,G)
 % Combined by Hiroshi Kimura in 2019/4/22
 
 % Logging
-logfile = fullfile(prm.DirResult,'log.txt');
+logfile = fullfile(prm.dirresult,'log.txt');
 logFID  = fopen(logfile,'a');
 RR = (D(1).OBS./D(1).ERR)'*(D(1).OBS./D(1).ERR);
 fprintf('Residual=%9.3f \n',RR);
@@ -1541,51 +1542,49 @@ while not(count == prm.thr)
       byte2 = whos('mp');
       b = waitgpu(byte1.bytes+byte2.bytes);
     end
-    matmp = ma.old * rwd .* mascale .* rma(:,it);
-    matmp = reshape(matmp,ma.n./2,2);
-    id_reject = matmp(:,1)>matmp(:,2);
-    id_reject = [id_reject; zeros(size(id_reject))];
-    matmp(id_reject) = ma.old(id_reject);
-    
+    ma.smp = ma.old * rwd .* mascale .* rma(:,it);
+    id_reject = [ma.smp(1:ma.n/2) > ma.smp(1:ma.n/2); zeros(ma.n/2,1)];
+    ma.smp(id_reject) = ma.old(id_reject);
 
     % Derive locked meshes from up- and down-dip limit of asperities
-    idl = zeros(size);
+    idasp = false(blk(1).ntmec);
     mt = 1;
+    md = 1;
     for na = 1:size(asp,2)
       nb1 = asp(na).nb1;
       nb2 = asp(na).nb2;
-      np  = 2.*blk(1).bound(nb1,nb2).naspline;
-      nf  = size(blk(1).bound(nb1,nb2).blon,1);
-      edge_x = blk(1).bound(nb1,nb2).asp_xd + (ma.smp(mt:1:mt+np-1)./blk(1).bound(nb1,nb2).asp_lline).*(blk(1).bound(nb1,nb2).asp_xu - blk(1).bound(nb1,nb2).asp_xd);
-      edge_y = blk(1).bound(nb1,nb2).asp_yd + (ma.smp(mt:1:mt+np-1)./blk(1).bound(nb1,nb2).asp_lline).*(blk(1).bound(nb1,nb2).asp_yu - blk(1).bound(nb1,nb2).asp_yd);
-      edge = [edge_x(mt       : 1:mt+np-1), edge_y(mt       : 1:mt+np-1);...
-              edge_x(mt+2*np-1:-1:mt+np  ), edge_y(mt+2*np-1:-1:mt+np  )];
+      np  =    2*blk(1).bound(nb1,nb2).naspline;
+      nf  = size(blk(1).bound(nb1,nb2).blon,1) ;
+      xd = blk(1).bound(nb1,nb2).asp_xd + (ma.smp(       mt:1:       mt+np-1)./blk(1).bound(nb1,nb2).asp_lline) .* blk(1).bound(nb1,nb2).asp_lx;
+      xu = blk(1).bound(nb1,nb2).asp_xd + (ma.smp(ma.n/2+mt:1:ma.n/2+mt+np-1)./blk(1).bound(nb1,nb2).asp_lline) .* blk(1).bound(nb1,nb2).asp_lx;
+      yd = blk(1).bound(nb1,nb2).asp_yd + (ma.smp(       mt:1:       mt+np-1)./blk(1).bound(nb1,nb2).asp_lline) .* blk(1).bound(nb1,nb2).asp_ly;
+      yu = blk(1).bound(nb1,nb2).asp_yd + (ma.smp(ma.n/2+mt:1:ma.n/2+mt+np-1)./blk(1).bound(nb1,nb2).asp_lline) .* blk(1).bound(nb1,nb2).asp_ly;
+      edge = [xd(  1: 1:end), yd(  1: 1:end);...
+              xu(end:-1:  1), yu(end:-1:  1)];
       [edge_lat,edge_lon] = XYTPL(edge(:,1),edge(:,2),alat,alon);
-      idl = [idl; inpolygon(blk(1).clat,blk(1).clon,edge_lon,edge_lat)];
+      idasp(md:md+3*nf-1,1) = repmat(inpolygon(tri(1).bound(nb1,nb2).clon,tri(1).bound(nb1,nb2).clat,edge_lon,edge_lat),3,1);
       mt = mt + 2.*np;
+      md = md + 3.*nf;
     end
     
     % Calculate back-slip on locked patches.
-    cal.slip             = (G(1).tb*mp.smp).*d(1).cfinv.*id_lock;
-
+    bslip             = (G(1).tb_mec * mp.smp) .* d(1).cfinv_mec .* idasp;
     % Calc velocities on surface
-    Gpassive           = zeros(3*nflt);
-    Gcc                = G(~idl,~idl);    % creep -> creep
-    Gcl                = G(~idl, idl);    % lock  -> creep
-    Gpassive(~idl,idl) = Gcc\Gcl;
+    Gpassive           = zeros(3.*blk(1).ntmec);
+    Gcc                = G(1).s(~idasp,~idasp);    % creep -> creep
+    Gcl                = G(1).s(~idasp, idasp);    % lock  -> creep
+    Gpassive(~idasp,idasp) = Gcc\Gcl;
 %     Gpassive(~idl,idl) = G(~idl,~idl)\G(~idl, idl);
     % d_bslip = (G(1).c - G(1).c*Gpassive*Gcl) * cal.slip;
-    d_bslip = G(1).c(:,idl) * (eye(3*nflt) - Gpassive) * cal.slip;
-
-    
+   
     % Due to Rigid motion
-    cal.rig = G.p*mp.smp;
+    cal.rig = G(1).p * mp.smp;
     % Due to Kinematic coupling
-    cal.kin = G.c*((G.tb*mp.smp).*d(1).cfinv.*mc.smpmat);
+    cal.kin = G(1).c_kin * ((G(1).tb_kin * mp.smp) .* d(1).cfinv_kin .* mc.smpmat);
     % Due to Mechanical coupling
-    cal.mec = G(1).c(:,idl) * (eye(3*nflt) - Gpassive*Gcl) * cal.slip;
+    cal.mec = G(1).c_mec * (G(1).E - Gpassive) * bslip;
     % Due to Internal strain
-    cal.ine = G.i*mi.smp;
+    cal.ine = G(1).i * mi.smp;
     % Total velocities
     cal.smp = cal.rig + cal.kin + cal.mec + cal.ine;
     
@@ -1689,10 +1688,10 @@ while not(count == prm.thr)
   mcmean = mean(cha.mc,2);
   mamean = mean(cha.ma,2);
   mimean = mean(cha.mi,2);
-  mcmeanrep = repmat(mcmean,3,blk(1).nb);mcmeanrep = mcmeanrep(d(1).mcid);
+  mcmeanrep = repmat(mcmean,3,blk(1).nbkin);mcmeanrep = mcmeanrep(d(1).mcid);
   vec.rig = G(1).p*mpmean;
   vec.kin = G(1).c*((G.tb*mpmean).*d(1).cfinv.*mcmeanrep);
-  vec.mec = G(1).c(:,idl) * (eye(3*nflt) - Gpassive) * cal.slip;
+  vec.mec = G(1).c(:,idasp) * (eye(3*nflt) - Gpassive) * cal.slip;
   vec.ine = G(1).i*mimean;
   vec.sum = vec.rig + vec.kin + vec.mec + vec.ine;
 % vec.rel = g.c*((g.tb*poltmp).*cf);
@@ -1826,23 +1825,22 @@ function [blk,asp] = DefRandomWalkLine(blk,prm,obs)
 asp  = [];
 alat = mean(obs(1).alat(:));
 alon = mean(obs(1).alon(:));
-blk(1).naspline = 0;
+blk(1).naspline  =  0;
+blk(1).asp_lline = [];
 np = 1;
 for nb1 = 1:blk(1).nblock
   for nb2 = nb1+1:blk(1).nblock
-    blk(1).bound(nb1,nb2).rwlid = 0;
     rwlfile = fullfile(prm.dirblock_patch,['udlineb_',num2str(nb1),'_',num2str(nb2),'.txt']);
     fid       = fopen(rwlfile,'r');
     if fid >= 0
       asp(np).nb1 = nb1;
       asp(np).nb2 = nb2;
-      blk(1).bound(nb1,nb2).rwlid = 1;
       tmp = fscanf(fid,'%f %f %f %f \n',[4, Inf]);
       blk(1).bound(nb1,nb2).naspline = size(tmp,2);
-      blk(1).bound(nb1,nb2).asp_lond = tmp(1,:);
-      blk(1).bound(nb1,nb2).asp_latd = tmp(2,:);
-      blk(1).bound(nb1,nb2).asp_lonu = tmp(3,:);
-      blk(1).bound(nb1,nb2).asp_latu = tmp(4,:);
+      blk(1).bound(nb1,nb2).asp_lond = tmp(1,:)';
+      blk(1).bound(nb1,nb2).asp_latd = tmp(2,:)';
+      blk(1).bound(nb1,nb2).asp_lonu = tmp(3,:)';
+      blk(1).bound(nb1,nb2).asp_latu = tmp(4,:)';
       [xd,yd] = PLTXY(blk(1).bound(nb1,nb2).asp_latd,blk(1).bound(nb1,nb2).asp_lond,alat,alon);
       [xu,yu] = PLTXY(blk(1).bound(nb1,nb2).asp_latu,blk(1).bound(nb1,nb2).asp_lonu,alat,alon);
       blk(1).bound(nb1,nb2).asp_lline=sqrt((xd-xu).^2+(yd-yu).^2);
@@ -1850,6 +1848,8 @@ for nb1 = 1:blk(1).nblock
       blk(1).bound(nb1,nb2).asp_yd = yd;
       blk(1).bound(nb1,nb2).asp_xu = xu;
       blk(1).bound(nb1,nb2).asp_yu = yu;
+      blk(1).bound(nb1,nb2).asp_lx = xu - xd;
+      blk(1).bound(nb1,nb2).asp_ly = yu - yd;
       np = np + 1;
       blk(1).naspline  =  blk(1).naspline + blk(1).bound(nb1,nb2).naspline;
       blk(1).asp_lline = [blk(1).asp_lline, blk(1).bound(nb1,nb2).asp_lline];
