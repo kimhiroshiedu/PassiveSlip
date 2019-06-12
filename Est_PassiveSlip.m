@@ -1430,10 +1430,10 @@ function [cal,cha] = MechCoupling_MCMC_MH(blk,asp,tri,prm,obs,eul,d,G)
 
 % Logging
 logfile = fullfile(prm.dirresult,'log.txt');
-logFID  = fopen(logfile,'a');
-RR = (D(1).OBS./D(1).ERR)'*(D(1).OBS./D(1).ERR);
-fprintf('Residual=%9.3f \n',RR);
-fprintf(logFID,'Residual=%9.3f \n',RR);
+logfid  = fopen(logfile,'a');
+rr = (d(1).obs./d(1).err)'*(d(1).obs./d(1).err);
+fprintf('Residual=%9.3f \n',rr);
+fprintf(logfid,'Residual=%9.3f \n',rr);
 
 % Center of observation network
 alat = mean(obs(1).alat(:));
@@ -1455,7 +1455,7 @@ la.int = 1e+1;
 % Number of unknown parameter
 mp.n   = 3.*blk(1).nblock;
 mi.n   = 3.*blk(1).nblock;
-mc.n   = blk(1).nt_kin;
+mc.n   = blk(1).ntkin;
 ma.n   = 2.*blk(1).naspline;
 la.n   = 1;
 
@@ -1466,7 +1466,7 @@ ma.std = ma.int.*ones(ma.n,1,precision);
 la.std = la.int.*ones(la.n,1,precision);
 
 % Substitute coupling ratio
-mc.old = randn(blk(1).nt_kin,1);
+mc.old = randn(blk(1).ntkin,1);
 % Substitute euler pole vectors
 mp.old         = double(blk(1).pole);
 mp.old(eul.id) = 0                  ;
@@ -1476,8 +1476,8 @@ mi.old = 1e-10.*(-0.5+rand(mi.n,1,precision));
 mi.old = mi.old.*blk(1).idinter              ;
 % Substitute coordinates of up- and down-dip limit
 ma.old = zeros(ma.n./2,2);
-ma.old(:,1) = blk(1).asp_lline'.*(0.0 + rand(ma.n./2,1)./2);
-ma.old(:,2) = blk(1).asp_lline'.*(0.5 + rand(ma.n./2,1)./2);
+ma.old(:,1) = blk(1).asp_lline.*(0.0 + rand(ma.n./2,1)./2);
+ma.old(:,2) = blk(1).asp_lline.*(0.5 + rand(ma.n./2,1)./2);
 ma.old = reshape(ma.old,ma.n,1);
 
 la.old    = zeros(la.n,1,precision);
@@ -1488,15 +1488,15 @@ res.old   =   inf(   1,1,precision);
 rwdscale =     1000 * rwd / prm.cha;
 mcscale  = rwdscale * 0.13;
 mascale  = rwdscale * 1;
-mpscale  = rwdscale * (1.3e-9) .* ones(mp.n,1,precision) .* ~pol.id;
+mpscale  = rwdscale * (1.3e-9) .* ones(mp.n,1,precision) .* ~eul.id;
 miscale  = rwdscale * 1e-10;
 
 % Initial chains
 cha.mp = zeros(mp.n,prm.kep,precision);
 cha.mi = zeros(mi.n,prm.kep,precision);
-cha.ma = zeros(ma.n,prm,kep,precision);
-cha.mc = zeros(mc.n,prm,kep,precision);
-cha.la = zeros(la.n,prm,kep,precision);
+cha.ma = zeros(ma.n,prm.kep,precision);
+cha.mc = zeros(mc.n,prm.kep,precision);
+cha.la = zeros(la.n,prm.kep,precision);
 
 % MCMC iteration
 rt    = 0;
@@ -1522,7 +1522,7 @@ while not(count == prm.thr)
     rmi =randn(mi.n,prm.cha,precision);
     rla =randn(la.n,prm.cha,precision);
   end
-  rmp(         pol.id,:) = 0;
+  rmp(         eul.id,:) = 0;
   rmi(~blk(1).idinter,:) = 0;
   for it = 1:prm.cha
     % Sample section
@@ -1534,7 +1534,7 @@ while not(count == prm.thr)
     mi.smp = mi.old + rwd .* miscale .* rmi(:,it);
     la.smp = la.old + rwd .*  la.std .* rla(:,it);
     % Make mc.smpmat
-    mc.smpmat = repmat(mc.smp,3,blk(1).nb_kin);
+    mc.smpmat = repmat(mc.smp,3,blk(1).nbkin);
     mc.smpmat = mc.smpmat(d(1).mcid);
     % Calc gpu memory free capacity
     if prm.gpu ~= 99
@@ -1543,17 +1543,17 @@ while not(count == prm.thr)
       b = waitgpu(byte1.bytes+byte2.bytes);
     end
     ma.smp = ma.old * rwd .* mascale .* rma(:,it);
-    id_reject = [ma.smp(1:ma.n/2) > ma.smp(1:ma.n/2); zeros(ma.n/2,1)];
+    id_reject = [ma.smp(1:ma.n/2) > ma.smp(1:ma.n/2); false(ma.n/2,1)];
     ma.smp(id_reject) = ma.old(id_reject);
 
     % Derive locked meshes from up- and down-dip limit of asperities
-    idasp = false(blk(1).ntmec);
+    idasp = false(blk(1).ntmec,1);
     mt = 1;
     md = 1;
     for na = 1:size(asp,2)
       nb1 = asp(na).nb1;
       nb2 = asp(na).nb2;
-      np  =    2*blk(1).bound(nb1,nb2).naspline;
+      np  =      blk(1).bound(nb1,nb2).naspline;
       nf  = size(blk(1).bound(nb1,nb2).blon,1) ;
       xd = blk(1).bound(nb1,nb2).asp_xd + (ma.smp(       mt:1:       mt+np-1)./blk(1).bound(nb1,nb2).asp_lline) .* blk(1).bound(nb1,nb2).asp_lx;
       xu = blk(1).bound(nb1,nb2).asp_xd + (ma.smp(ma.n/2+mt:1:ma.n/2+mt+np-1)./blk(1).bound(nb1,nb2).asp_lline) .* blk(1).bound(nb1,nb2).asp_lx;
@@ -1562,7 +1562,7 @@ while not(count == prm.thr)
       edge = [xd(  1: 1:end), yd(  1: 1:end);...
               xu(end:-1:  1), yu(end:-1:  1)];
       [edge_lat,edge_lon] = XYTPL(edge(:,1),edge(:,2),alat,alon);
-      idasp(md:md+3*nf-1,1) = repmat(inpolygon(tri(1).bound(nb1,nb2).clon,tri(1).bound(nb1,nb2).clat,edge_lon,edge_lat),3,1);
+      idasp(md:md+3*nf-1,1) = repmat(inpolygon(tri(1).bound(nb1,nb2).clon,tri(1).bound(nb1,nb2).clat,edge_lon,edge_lat)',3,1);
       mt = mt + 2.*np;
       md = md + 3.*nf;
     end
