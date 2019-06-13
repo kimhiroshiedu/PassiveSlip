@@ -36,7 +36,7 @@ prm.optfile='PARAMETER/opt_bound_par_forward.txt';
 % Calculate pasive slip and response to surface.
 [cal,cha] = MechCoupling_MCMC_MH(blk,asp,tri,prm,obs,eul,d,G);
 % Save data.
-% SaveData(prm,blk,obs,tri,d,G,cal,cha)
+SaveData(prm,blk,obs,tri,d,G,cal,cha)
 
 end
 
@@ -411,14 +411,15 @@ save(fullfile(a_dir,'obs.mat'),'obs','-v7.3')
 save(fullfile(a_dir,'cal.mat'),'cal','-v7.3')
 save(fullfile(a_dir,'grn.mat'),'d','G','-v7.3')
 % 
-savefig(100,fullfile(f_fir,'back_slip'))
-%{
+movefile([prm.dirresult,'/cha_test*.mat'],a_dir)
+% 
+savefig(100,fullfile(f_fir,'coupling'))
+savefig(101,fullfile(f_fir,'back_slip'))
 savefig(140,fullfile(f_fir,'vec_rig_ela'))
 savefig(130,fullfile(f_fir,'vector'))
 savefig(120,fullfile(f_fir,'pole'))
 savefig(110,fullfile(f_fir,'std'))
-savefig(100,fullfile(f_fir,'coupling'))
-%}
+
 fprintf(log_fid,'MODEL= %s\n',prm.dirblock);
 fprintf(log_fid,'OBSDATA= %s\n',prm.fileobs);
 fclose('all');
