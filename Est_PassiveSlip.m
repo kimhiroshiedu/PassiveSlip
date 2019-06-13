@@ -1384,7 +1384,7 @@ G(1).c_mec  = tmp.c(:, d(1).idmec);
 G(1).p      = tmp.p(d(1).ind,:);
 G(1).i      = tmp.i(d(1).ind,:);
 G(1).s      = tmp.s(d(1).idmec,d(1).idmec);
-G(1).E      = eye(3*blk(1).ntmec);
+G(1).E      = sparse(eye(3*blk(1).ntmec));
 d(1).mcid   = repmat(d(1).mcid,3,1);
 d(1).cfinv_kin = tmp.cfinv(~d(1).idmec);
 d(1).cfinv_mec = tmp.cfinv( d(1).idmec);
@@ -1440,10 +1440,14 @@ alat = mean(obs(1).alat(:));
 alon = mean(obs(1).alon(:));
 
 % Initial value
-precision  = 'double'     ;
-rwd        = prm.rwd      ;
-nb         = blk(1).nblock;
-passivelim = 1            ;  % [mm], TODO : How to determine?
+if prm.gpu ~= 99
+  precision = 'single'     ;
+else
+  precision = 'double'     ;
+end
+rwd         = prm.rwd      ;
+nb          = blk(1).nblock;
+passivelim  = 1            ;  % [mm], TODO : How to determine?
 
 % Initial value
 mc.int = 1e+1;
@@ -1476,8 +1480,8 @@ mi.old = 1e-10.*(-0.5+rand(mi.n,1,precision));
 mi.old = mi.old.*blk(1).idinter              ;
 % Substitute coordinates of up- and down-dip limit
 ma.old = zeros(ma.n./2,2);
-ma.old(:,1) = blk(1).asp_lline.*(0.0 + rand(ma.n./2,1)./2);
-ma.old(:,2) = blk(1).asp_lline.*(0.5 + rand(ma.n./2,1)./2);
+ma.old(:,1) = blk(1).asp_lline.*(0.3 + rand(ma.n./2,1) ./ 5  );
+ma.old(:,2) = blk(1).asp_lline.*(0.6 + rand(ma.n./2,1) ./ 2.5);
 ma.old = reshape(ma.old,ma.n,1);
 
 la.old    = zeros(la.n,1,precision);
@@ -1487,7 +1491,7 @@ res.old   =   inf(   1,1,precision);
 % Scale adjastment of rwd
 rwdscale =     1000 * rwd / prm.cha;
 mcscale  = rwdscale * 0.13;
-mascale  = rwdscale * 1;
+mascale  = rwdscale * 0.5;
 mpscale  = rwdscale * (1.3e-9) .* ones(mp.n,1,precision) .* ~eul.id;
 miscale  = rwdscale * 1e-10;
 
@@ -1497,6 +1501,20 @@ cha.mi = zeros(mi.n,prm.kep,precision);
 cha.ma = zeros(ma.n,prm.kep,precision);
 cha.mc = zeros(mc.n,prm.kep,precision);
 cha.la = zeros(la.n,prm.kep,precision);
+
+% GPU conversion
+if prm.gpu ~= 99
+  G(1).tb_mec    = gpuArray(single(full(G(1).tb_mec)));
+  G(1).tb_kin    = gpuArray(single(full(G(1).tb_kin)));
+  G(1).s         = gpuArray(single(full(G(1).s     )));
+  G(1).E         = gpuArray(single(full(G(1).E     )));
+  G(1).p         = gpuArray(single(     G(1).p      ));
+  G(1).c_kin     = gpuArray(single(     G(1).c_kin  ));
+  G(1).c_mec     = gpuArray(single(     G(1).c_mec  ));
+  G(1).i         = gpuArray(single(     G(1).i      ));
+  d(1).cfinv_mec = gpuArray(single(     d(1).cfinv_mec));
+  d(1).cfinv_kin = gpuArray(single(     d(1).cfinv_kin));
+end
 
 % MCMC iteration
 rt    = 0;
@@ -1508,19 +1526,21 @@ while not(count == prm.thr)
   rt   = rt+1;
   nacc = 0;tic
   if prm.gpu~=99
-    logu=log(rand(prm.cha,1,precision,'gpuarray'));
-    rmc = randn(mc.n,prm.cha,precision,'gpuarray');
-    rma = randn(ma.n,prm.cha,precision,'gpuarray');
-    rmp = randn(mp.n,prm.cha,precision,'gpuarray');
-    rmi = randn(mi.n,prm.cha,precision,'gpuarray');
-    rla = randn(la.n,prm.cha,precision,'gpuarray');
+    logu  = log(rand(prm.cha,1,precision,'gpuArray'));
+    rmc   =  randn(mc.n,prm.cha,precision,'gpuArray');
+    rma   =  randn(ma.n,prm.cha,precision,'gpuArray');
+    rmp   =  randn(mp.n,prm.cha,precision,'gpuArray');
+    rmi   =  randn(mi.n,prm.cha,precision,'gpuArray');
+    rla   =  randn(la.n,prm.cha,precision,'gpuArray');
+    idasp =          false(blk(1).ntmec,1,'gpuArray');
   else
-    logu=log(rand(prm.cha,1,precision));
-    rmc =randn(mc.n,prm.cha,precision);
-    rma =randn(ma.n,prm.cha,precision);
-    rmp =randn(mp.n,prm.cha,precision);
-    rmi =randn(mi.n,prm.cha,precision);
-    rla =randn(la.n,prm.cha,precision);
+    logu  = log(rand(prm.cha,1,precision));
+    rmc   =  randn(mc.n,prm.cha,precision);
+    rma   =  randn(ma.n,prm.cha,precision);
+    rmp   =  randn(mp.n,prm.cha,precision);
+    rmi   =  randn(mi.n,prm.cha,precision);
+    rla   =  randn(la.n,prm.cha,precision);
+    idasp =          false(blk(1).ntmec,1);
   end
   rmp(         eul.id,:) = 0;
   rmi(~blk(1).idinter,:) = 0;
@@ -1538,16 +1558,16 @@ while not(count == prm.thr)
     mc.smpmat = mc.smpmat(d(1).mcid);
     % Calc gpu memory free capacity
     if prm.gpu ~= 99
-      byte1 = whos('g');
+      byte1 = whos('G');
       byte2 = whos('mp');
-      b = waitgpu(byte1.bytes+byte2.bytes);
+      b = waitGPU(byte1.bytes+byte2.bytes);
     end
-    ma.smp = ma.old * rwd .* mascale .* rma(:,it);
-    id_reject = [ma.smp(1:ma.n/2) > ma.smp(1:ma.n/2); false(ma.n/2,1)];
+    ma.smp = ma.old + rwd .* mascale .* rma(:,it);
+    id_reject = [ma.smp(       1:ma.n/2) < 0 | ma.smp(1       :ma.n/2) > blk(1).asp_lline                                           ;...
+                 ma.smp(ma.n/2+1:   end) < 0 | ma.smp(ma.n/2+1:   end) > blk(1).asp_lline | ma.smp(1:ma.n/2) > ma.smp(ma.n/2+1:end)];
     ma.smp(id_reject) = ma.old(id_reject);
 
     % Derive locked meshes from up- and down-dip limit of asperities
-    idasp = false(blk(1).ntmec,1);
     mt = 1;
     md = 1;
     for na = 1:size(asp,2)
@@ -1561,16 +1581,20 @@ while not(count == prm.thr)
       yu = blk(1).bound(nb1,nb2).asp_yd + (ma.smp(ma.n/2+mt:1:ma.n/2+mt+np-1)./blk(1).bound(nb1,nb2).asp_lline) .* blk(1).bound(nb1,nb2).asp_ly;
       edge = [xd(  1: 1:end), yd(  1: 1:end);...
               xu(end:-1:  1), yu(end:-1:  1)];
-      [edge_lat,edge_lon] = XYTPL(edge(:,1),edge(:,2),alat,alon);
-      idasp(md:md+3*nf-1,1) = repmat(inpolygon(tri(1).bound(nb1,nb2).clon,tri(1).bound(nb1,nb2).clat,edge_lon,edge_lat)',3,1);
-      mt = mt + 2.*np;
+      [edg(na).lat,edg(na).lon] = XYTPL(edge(:,1),edge(:,2),alat,alon);
+      idasp(md:md+3*nf-1,1) = repmat(inpolygon(tri(1).bound(nb1,nb2).clon,tri(1).bound(nb1,nb2).clat,edg(na).lon,edg(na).lat)',3,1);
+      mt = mt +    np;
       md = md + 3.*nf;
     end
     
     % Calculate back-slip on locked patches.
     bslip              = (G(1).tb_mec * mp.smp) .* d(1).cfinv_mec .* idasp;
     % Calc velocities on surface
-    Gpassive           = zeros(3.*blk(1).ntmec);
+    if prm.gpu ~= 99
+      Gpassive         = zeros(3.*blk(1).ntmec,precision,'gpuArray');
+    else
+      Gpassive         = zeros(3.*blk(1).ntmec,precision);
+    end
     Gcc                = G(1).s(~idasp,~idasp);    % creep -> creep
     Gcl                = G(1).s(~idasp, idasp);    % lock  -> creep
     Gpassive(~idasp,idasp) = Gcc\Gcl;
@@ -1585,10 +1609,17 @@ while not(count == prm.thr)
     % Due to Internal strain
     cal.ine = G(1).i * mi.smp;
     % Zero padding
-    if isempty(cal.rig); cal.rig = zeros(size(d(1).ind)); end
-    if isempty(cal.kin); cal.kin = zeros(size(d(1).ind)); end
-    if isempty(cal.mec); cal.mec = zeros(size(d(1).ind)); end
-    if isempty(cal.ine); cal.ine = zeros(size(d(1).ind)); end
+    if prm.gpu ~= 99
+      if isempty(cal.rig); cal.rig = zeros(size(d(1).ind),precision,'gpuArray'); end
+      if isempty(cal.kin); cal.kin = zeros(size(d(1).ind),precision,'gpuArray'); end
+      if isempty(cal.mec); cal.mec = zeros(size(d(1).ind),precision,'gpuArray'); end
+      if isempty(cal.ine); cal.ine = zeros(size(d(1).ind),precision,'gpuArray'); end
+    else
+      if isempty(cal.rig); cal.rig = zeros(size(d(1).ind)); end
+      if isempty(cal.kin); cal.kin = zeros(size(d(1).ind)); end
+      if isempty(cal.mec); cal.mec = zeros(size(d(1).ind)); end
+      if isempty(cal.ine); cal.ine = zeros(size(d(1).ind)); end
+    end        
     % Total velocities
     cal.smp = cal.rig + cal.kin + cal.mec + cal.ine;
     
@@ -1695,7 +1726,6 @@ while not(count == prm.thr)
   mcmeanrep = repmat(mcmean,3,blk(1).nbkin);mcmeanrep = mcmeanrep(d(1).mcid);
 
   % Derive locked meshes from up- and down-dip limit of asperities
-  idasp = false(blk(1).ntmec,1);
   mt = 1;
   md = 1;
   for na = 1:size(asp,2)
@@ -1709,16 +1739,20 @@ while not(count == prm.thr)
     yu = blk(1).bound(nb1,nb2).asp_yd + (mamean(ma.n/2+mt:1:ma.n/2+mt+np-1)./blk(1).bound(nb1,nb2).asp_lline) .* blk(1).bound(nb1,nb2).asp_ly;
     edge = [xd(  1: 1:end), yd(  1: 1:end);...
             xu(end:-1:  1), yu(end:-1:  1)];
-    [edge_lat,edge_lon] = XYTPL(edge(:,1),edge(:,2),alat,alon);
-    idasp(md:md+3*nf-1,1) = repmat(inpolygon(tri(1).bound(nb1,nb2).clon,tri(1).bound(nb1,nb2).clat,edge_lon,edge_lat)',3,1);
-    mt = mt + 2.*np;
+    [edg(na).lat,edg(na).lon] = XYTPL(edge(:,1),edge(:,2),alat,alon);
+    idasp(md:md+3*nf-1,1) = repmat(inpolygon(tri(1).bound(nb1,nb2).clon,tri(1).bound(nb1,nb2).clat,edg(na).lon,edg(na).lat)',3,1);
+    mt = mt +    np;
     md = md + 3.*nf;
   end
   
   % Calculate back-slip on locked patches.
   bslip              = (G(1).tb_mec * mpmean) .* d(1).cfinv_mec .* idasp;
   % Calc velocities on surface
-  Gpassive           = zeros(3.*blk(1).ntmec);
+  if prm.gpu ~= 99
+    Gpassive         = zeros(3.*blk(1).ntmec,precision,'gpuArray');
+  else
+    Gpassive         = zeros(3.*blk(1).ntmec,precision);
+  end
   Gcc                = G(1).s(~idasp,~idasp);    % creep -> creep
   Gcl                = G(1).s(~idasp, idasp);    % lock  -> creep
   Gpassive(~idasp,idasp) = Gcc\Gcl;
@@ -1729,10 +1763,17 @@ while not(count == prm.thr)
   vec.mec = G(1).c_mec * (G(1).E - Gpassive) * bslip;
   vec.ine = G(1).i * mimean;
   % Zero padding
-  if isempty(vec.rig); vec.rig = zeros(size(d(1).ind)); end
-  if isempty(vec.kin); vec.kin = zeros(size(d(1).ind)); end
-  if isempty(vec.mec); vec.mec = zeros(size(d(1).ind)); end
-  if isempty(vec.ine); vec.ine = zeros(size(d(1).ind)); end
+  if prm.gpu ~= 99
+    if isempty(vec.rig); vec.rig = zeros(size(d(1).ind),precision,'gpuArray'); end
+    if isempty(vec.kin); vec.kin = zeros(size(d(1).ind),precision,'gpuArray'); end
+    if isempty(vec.mec); vec.mec = zeros(size(d(1).ind),precision,'gpuArray'); end
+    if isempty(vec.ine); vec.ine = zeros(size(d(1).ind),precision,'gpuArray'); end
+  else
+    if isempty(vec.rig); vec.rig = zeros(size(d(1).ind)); end
+    if isempty(vec.kin); vec.kin = zeros(size(d(1).ind)); end
+    if isempty(vec.mec); vec.mec = zeros(size(d(1).ind)); end
+    if isempty(vec.ine); vec.ine = zeros(size(d(1).ind)); end
+  end
   % Total velocities
   vec.sum = vec.rig + vec.kin + vec.mec + vec.ine;
 % vec.rel = g.c*((g.tb*poltmp).*cf);
@@ -1744,9 +1785,9 @@ while not(count == prm.thr)
     ccha.mi  = gather(cha.mi );
     ccha.la  = gather(cha.la );
     ccha.smp = gather(cha.smp);
-    make_fig(ccha,blk,obs,rt,gather(lo_mc),gather(up_mc),vec,mimean)
+    MakeFigures(ccha,blk,obs,rt,edg,gather(lo_mc),gather(up_mc),vec,Gpassive,bslip,mimean)
   else
-    make_fig( cha,blk,obs,rt,       lo_mc ,       up_mc ,vec,mimean)
+    MakeFigures( cha,blk,obs,rt,edg,       lo_mc ,       up_mc ,vec,Gpassive,bslip,mimean)
   end
   if rt > prm.itr; break; end
 end
@@ -1791,10 +1832,10 @@ if prm.gpu == 99
   covmp  =   cov(cha.mp');
   covmi  =   cov(cha.mi');
 else
-  gcha.mc = gpuarray(cha.mc);
+  gcha.mc = gpuArray(cha.mc);
   gcha.ma = gpuArray(cha.ma);
-  gcha.mp = gpuarray(cha.mp);
-  gcha.mi = gpuarray(cha.mi);
+  gcha.mp = gpuArray(cha.mp);
+  gcha.mi = gpuArray(cha.mi);
   meanmc  =  mean(gcha.mc,2);
   meanma  =  mean(gcha.ma,2);
   meanmp  =  mean(gcha.mp,2);
@@ -1932,7 +1973,7 @@ figure(100); clf(100)
 mc = 1;
 for nb1 = 1:blk(1).nblock
   for nb2 = nb1+1:blk(1).nblock
-    nf = size(tri(1).bound(nb1,nb2).clon,2);
+    nf = size(blk(1).bound(nb1,nb2).blon,1);
     if nf ~= 0
       % Back-slip rate
       patch(blk(1).bound(nb1,nb2).blon',...
@@ -1957,6 +1998,173 @@ quiver(obs(1).alon,obs(1).alat,obs(1).evec,obs(1).nvec,'green')
 hold on
 quiver(obs(1).alon,obs(1).alat,cal.smp(1:3:end)',cal.smp(2:3:end)','blue')
 % 
+end
+
+%% Show results for makeing FIGURES
+function MakeFigures(cha,blk,obs,rt,edg,lo_mc,up_mc,vec,Gpassive,bslip,mimean)
+% Color palette(Polar)
+red  = [           0: 1/32:1     ones(1,32)]';
+green= [           0: 1/32:1 1-1/32:-1/32:0]';
+blue = [ones(1,32) 1:-1/32:0               ]';
+rwb = [red green blue];
+rw  =    rwb(33:end,:);
+if lo_mc==-1
+  cmap=rwb;
+else
+  cmap=rw;
+end
+
+%---------Show kinematic coupling ------------------------
+figure(100); clf(100)
+% Bug to wait zero
+nn = 1;
+for nb1 = 1:blk(1).nblock
+  for nb2 = nb1+1:blk(1).nblock
+    if blk(1).bound(nb1,nb2).flag2 == 1
+      continue
+    else
+      nf = size(blk(1).bound(nb1,nb2).blon,1);
+      if nf~=0
+        patch(blk(1).bound(nb1,nb2).blon',blk(1).bound(nb1,nb2).blat', blk(1).bound(nb1,nb2).bdep',mean(cha.mc(nn:nn+nf-1,:),2));
+        nn = nn + nf;
+        hold on
+      end
+    end
+  end
+end
+ax      =           gca;
+ax.CLim = [lo_mc up_mc];
+colormap(cmap)
+colorbar
+
+%---------Show mechanical backslip rate ------------------
+figure(101); clf(101)
+% kinslip = (G(1).E - Gpassive) * bslip
+kinslip = bslip + Gpassive * bslip;
+nn = 1;
+na = 1;
+for nb1 = 1:blk(1).nblock
+  for nb2 = nb1+1:blk(1).nblock
+    if blk(1).bound(nb1,nb2).flag2 == 1
+      nf = size(blk(1).bound(nb1,nb2).blon,1);
+      edg(na).lon(end+1) = edg(na).lon(1);
+      edg(na).lat(end+1) = edg(na).lat(1);
+      % Backslip rate
+      patch(blk(1).bound(nb1,nb2).blon',...
+            blk(1).bound(nb1,nb2).blat',...
+            sqrt(kinslip(nn:nn+nf-1).^2+kinslip(nn+nf:nn+2*nf-1).^2)); hold on
+      % Asperities
+      plot(edg(na).lon,edg(na).lat,'LineWidth',3,'Color','b'); hold on
+      %
+      nn = nn + 3*nf;
+      na = na + 1;
+    else
+      continue
+    end
+  end
+end
+colormap('hot')
+colorbar
+
+%---------Show standard deviation for subfaults----------
+figure(110); clf(110)
+% bug to wait zero
+nn = 1;
+for nb1 = 1:blk(1).nblock
+  for nb2 = nb1+1:blk(1).nblock
+    if blk(1).bound(nb1,nb2).flag2 == 1
+      continue
+    else
+      nf = size(blk(1).bound(nb1,nb2).blon,1);
+      if nf ~= 0
+        patch(blk(1).bound(nb1,nb2).blon',blk(1).bound(nb1,nb2).blat',blk(1).bound(nb1,nb2).bdep',std(cha.mc(nn:nn+nf-1,:),0,2));
+        nn = nn + nf;
+        hold on
+      end
+    end
+  end
+end
+colormap(parula)
+colorbar
+
+%---------Show 2-d histogram of sampled euler pole-------------
+figure(120); clf(120)
+for nb = 1:blk(1).nblock
+  plot(blk(nb).lon,blk(nb).lat,'red')
+  hold on
+  text(mean(blk(nb).lon),mean(blk(nb).lat),int2str(nb))
+  hold on
+  [latp,lonp,~] = xyzp2lla(cha.mp(3.*nb-2,:),cha.mp(3.*nb-1,:),cha.mp(3.*nb,:));
+  minlon = min(lonp); maxlon = max(lonp); 
+  minlat = min(latp); maxlat = max(latp); 
+  if maxlon-minlon < 0.5; binlon=[minlon maxlon]; else binlon=minlon:0.5:maxlon; end  
+  if maxlat-minlat < 0.5; binlat=[minlat maxlat]; else binlat=minlat:0.5:maxlat; end  
+  histogram2(lonp,latp,binlon,binlat,'normalization','probability','facecolor','flat')
+  hold on
+  text(double(mean(lonp)),double(mean(latp)),int2str(nb))
+  hold on
+end
+quiver(obs(1).alon,obs(1).alat,      obs(1).evec,      obs(1).nvec,'green')
+quiver(obs(1).alon,obs(1).alat,cha.smp(1:3:end)',cha.smp(2:3:end)', 'blue')
+colorbar
+hold on
+
+%---------Show obs and cal vector at sites -------------
+% Color of arrows
+% green : Observed velocities
+% blue  : Calculated velocities
+figure(130); clf(130)
+quiver(obs(1).alon,obs(1).alat,      obs(1).evec,      obs(1).nvec,'green')
+hold on
+quiver(obs(1).alon,obs(1).alat,vec.sum(1:3:end)',vec.sum(2:3:end)', 'blue')
+hold on
+axis([obs(1).lonmin-1,obs(1).lonmax+1,obs(1).latmin-1,obs(1).latmax+1]);
+title(['obs and cal motion (iteration number: ',num2str(rt),')']);
+ 
+%-------------------- Show rigid, kinematic, mechanical vectors------------
+% Color of arrows
+% black   : Rigid rotation
+% red     : Elastic deformation due to slip deficit
+figure(140); clf(140)
+quiver(obs(1).alon,obs(1).alat, vec.rig(1:3:end)',vec.rig(2:3:end)','k')
+hold on
+quiver(obs(1).alon,obs(1).alat, vec.kin(1:3:end)',vec.kin(2:3:end)','b')
+hold on
+quiver(obs(1).alon,obs(1).alat, vec.mec(1:3:end)',vec.mec(2:3:end)','r')
+% hold on
+% quiver(obs(1).alon,obs(1).alat,vec.rel(1:3:end)',vec.rel(2:3:end)','m')
+axis([obs(1).lonmin-1,obs(1).lonmax+1,obs(1).latmin-1,obs(1).latmax+1]);
+title(['rigid and elastic motion (iteration number: ',num2str(rt),')']);
+
+%------------------------Show principal strain-----------------------------
+% Color of arrows
+% cyan    : Principal strain 1, maximum
+% magenta : Principal strain 2, minimum
+figure(150); clf(150)
+efactor = 1e8;
+for nb = 1:blk(1).nblock
+  hold on; plot(blk(nb).lon,blk(nb).lat,'red')
+  hold on; text(mean(blk(nb).lon),mean(blk(nb).lat),int2str(nb),'color','r')
+  e=[mimean(3*nb-2) mimean(3*nb-1);...
+     mimean(3*nb-1) mimean(3*nb  )];
+  [eigv,eigd] = eig(e);
+  e1 = eigd(1,1); e2 = eigd(2,2);
+  v1 = eigv(:,1); v2 = eigv(:,2);
+  if e1>=0; c1='c'; else; c1='m'; end
+  if e2>=0; c2='c'; else; c2='m'; end
+  figure(150)
+  hold on; quiver(blk(nb).loninter,blk(nb).latinter,efactor* e1*v1(1),efactor* e1*v1(2),c1,'showarrowhead','off','linewidth',1);
+  hold on; quiver(blk(nb).loninter,blk(nb).latinter,efactor*-e1*v1(1),efactor*-e1*v1(2),c1,'showarrowhead','off','linewidth',1);
+  hold on; quiver(blk(nb).loninter,blk(nb).latinter,efactor* e2*v2(1),efactor* e2*v2(2),c2,'showarrowhead','off','linewidth',1);
+  hold on; quiver(blk(nb).loninter,blk(nb).latinter,efactor*-e2*v2(1),efactor*-e2*v2(2),c2,'showarrowhead','off','linewidth',1);
+  hold on; plot(blk(nb).loninter,blk(nb).latinter,'.k','markersize',5)
+  hold on; text(blk(nb).loninter,blk(nb).latinter,int2str(nb),'color','k')
+end
+axis([obs(1).lonmin-1,obs(1).lonmax+1,obs(1).latmin-1,obs(1).latmax+1]);
+title(['principle strain (iteration number: ',num2str(rt),')']);
+
+% debug----------
+drawnow
 end
 
 %% Wait GPU program
