@@ -1568,14 +1568,13 @@ while not(count == prm.thr)
     end
     
     % Calculate back-slip on locked patches.
-    bslip             = (G(1).tb_mec * mp.smp) .* d(1).cfinv_mec .* idasp;
+    bslip              = (G(1).tb_mec * mp.smp) .* d(1).cfinv_mec .* idasp;
     % Calc velocities on surface
     Gpassive           = zeros(3.*blk(1).ntmec);
     Gcc                = G(1).s(~idasp,~idasp);    % creep -> creep
     Gcl                = G(1).s(~idasp, idasp);    % lock  -> creep
     Gpassive(~idasp,idasp) = Gcc\Gcl;
-%     Gpassive(~idl,idl) = G(~idl,~idl)\G(~idl, idl);
-    % d_bslip = (G(1).c - G(1).c*Gpassive*Gcl) * cal.slip;
+    % bslip = (G(1).c - G(1).c*Gpassive) * cal.slip;
    
     % Due to Rigid motion
     cal.rig = G(1).p * mp.smp;
@@ -1585,6 +1584,11 @@ while not(count == prm.thr)
     cal.mec = G(1).c_mec * (G(1).E - Gpassive) * bslip;
     % Due to Internal strain
     cal.ine = G(1).i * mi.smp;
+    % Zero padding
+    if isempty(cal.rig); cal.rig = zeros(size(d(1).ind)); end
+    if isempty(cal.kin); cal.kin = zeros(size(d(1).ind)); end
+    if isempty(cal.mec); cal.mec = zeros(size(d(1).ind)); end
+    if isempty(cal.ine); cal.ine = zeros(size(d(1).ind)); end
     % Total velocities
     cal.smp = cal.rig + cal.kin + cal.mec + cal.ine;
     
@@ -1689,10 +1693,47 @@ while not(count == prm.thr)
   mamean = mean(cha.ma,2);
   mimean = mean(cha.mi,2);
   mcmeanrep = repmat(mcmean,3,blk(1).nbkin);mcmeanrep = mcmeanrep(d(1).mcid);
-  vec.rig = G(1).p*mpmean;
-  vec.kin = G(1).c*((G.tb*mpmean).*d(1).cfinv.*mcmeanrep);
-  vec.mec = G(1).c(:,idasp) * (eye(3*nflt) - Gpassive) * cal.slip;
-  vec.ine = G(1).i*mimean;
+
+  % Derive locked meshes from up- and down-dip limit of asperities
+  idasp = false(blk(1).ntmec,1);
+  mt = 1;
+  md = 1;
+  for na = 1:size(asp,2)
+    nb1 = asp(na).nb1;
+    nb2 = asp(na).nb2;
+    np  =      blk(1).bound(nb1,nb2).naspline;
+    nf  = size(blk(1).bound(nb1,nb2).blon,1) ;
+    xd = blk(1).bound(nb1,nb2).asp_xd + (mamean(       mt:1:       mt+np-1)./blk(1).bound(nb1,nb2).asp_lline) .* blk(1).bound(nb1,nb2).asp_lx;
+    xu = blk(1).bound(nb1,nb2).asp_xd + (mamean(ma.n/2+mt:1:ma.n/2+mt+np-1)./blk(1).bound(nb1,nb2).asp_lline) .* blk(1).bound(nb1,nb2).asp_lx;
+    yd = blk(1).bound(nb1,nb2).asp_yd + (mamean(       mt:1:       mt+np-1)./blk(1).bound(nb1,nb2).asp_lline) .* blk(1).bound(nb1,nb2).asp_ly;
+    yu = blk(1).bound(nb1,nb2).asp_yd + (mamean(ma.n/2+mt:1:ma.n/2+mt+np-1)./blk(1).bound(nb1,nb2).asp_lline) .* blk(1).bound(nb1,nb2).asp_ly;
+    edge = [xd(  1: 1:end), yd(  1: 1:end);...
+            xu(end:-1:  1), yu(end:-1:  1)];
+    [edge_lat,edge_lon] = XYTPL(edge(:,1),edge(:,2),alat,alon);
+    idasp(md:md+3*nf-1,1) = repmat(inpolygon(tri(1).bound(nb1,nb2).clon,tri(1).bound(nb1,nb2).clat,edge_lon,edge_lat)',3,1);
+    mt = mt + 2.*np;
+    md = md + 3.*nf;
+  end
+  
+  % Calculate back-slip on locked patches.
+  bslip              = (G(1).tb_mec * mpmean) .* d(1).cfinv_mec .* idasp;
+  % Calc velocities on surface
+  Gpassive           = zeros(3.*blk(1).ntmec);
+  Gcc                = G(1).s(~idasp,~idasp);    % creep -> creep
+  Gcl                = G(1).s(~idasp, idasp);    % lock  -> creep
+  Gpassive(~idasp,idasp) = Gcc\Gcl;
+
+  % Calc vectors for mean parameters
+  vec.rig = G(1).p * mpmean;
+  vec.kin = G(1).c_kin * ((G(1).tb_kin * mpmean) .* d(1).cfinv_kin .* mcmeanrep);
+  vec.mec = G(1).c_mec * (G(1).E - Gpassive) * bslip;
+  vec.ine = G(1).i * mimean;
+  % Zero padding
+  if isempty(vec.rig); vec.rig = zeros(size(d(1).ind)); end
+  if isempty(vec.kin); vec.kin = zeros(size(d(1).ind)); end
+  if isempty(vec.mec); vec.mec = zeros(size(d(1).ind)); end
+  if isempty(vec.ine); vec.ine = zeros(size(d(1).ind)); end
+  % Total velocities
   vec.sum = vec.rig + vec.kin + vec.mec + vec.ine;
 % vec.rel = g.c*((g.tb*poltmp).*cf);
   % Debug-----------
