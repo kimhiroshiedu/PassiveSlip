@@ -1,14 +1,28 @@
-tau = 2;
-epsilon = 0.1;
-T = 30;
-ite = 2000;
+% Parameters
+tau     =    2;
+epsilon =  0.1;
+T       =   30;
+ite     = 2000;
 
-mu = 100;
+% Given distribution
+mu    = 100;
 sigma = 2^2;
-init = 100;
+init  = 100;
+
+% HMC sampling
 theta = proceed_HMC(tau, epsilon, T, ite, init, mu, sigma);
 
-histogram(theta);
+% Figure plot
+figure(20);
+subplot(1,2,1)
+plot(theta);
+xlabel('step')
+ylabel('x')
+
+subplot(1,2,2)
+histogram(theta,'Normalization','probability');
+xlabel('x')
+ylabel('pdf')
 
 %% HMCを実行する関数
 function [x] = proceed_HMC(tau, epsilon, T, ite, init, mu, sigma)
@@ -48,9 +62,9 @@ end
 
 %% リープ・フロッグ法を事項する関数
 function [x, p] = proceed_leapflog(epsilon, x, p, tau, mu, sigma)
-x = x + (-0.5.*epsilon.*(-1.*d_momentum(p, tau)));
-p = p + epsilon.*d_log_normal(x, mu, sigma);
-x = x + -epsilon.*(-1.*d_momentum(p, tau));
+x = x + (-0.5.*epsilon.*( -1.*d_momentum(p, tau)));
+p = p +        epsilon.*d_log_normal(x, mu, sigma);
+x = x +       -epsilon.*( -1.*d_momentum(p, tau)) ;
 end
 
 %% HMCを１ステップ実行するサブルーチン
