@@ -1,3 +1,11 @@
+%% HMCを実行する関数
+function [x] = proceed_HMC(tau, epsilon, T, ite, init)
+x = init;
+for ni = 1:ite
+  x = [x, proceed_HMC_iteration(x(ni), tau, epsilon, T)];
+end
+end
+
 %% Log probability
 % ここでは平均mu, 標準偏差sigmaの正規分布
 % -1をかけると物理でいうポテンシャルエネルギー
@@ -39,7 +47,7 @@ p = randn(0, tau, [1,1]);
 p_new = p;
 x_new = x;
 for ni = 1:T
-  [x, p] = proceed_leapflog(epsilon, x_new, p_new, tau);
+  [x_new, p_new] = proceed_leapflog(epsilon, x_new, p_new, tau);
 end
 alpha = exp(Hamiltonian(x, p, tau) - Hamiltonian(x_new, p_new, tau));
 u = rand(1);
@@ -49,12 +57,4 @@ else
   x_accepted = x;
 end
 
-end
-
-%% HMCを実行する関数
-function [x] = proceed_HMC(tau, epsilon, T, ite, init)
-x = init;
-for ni = 1:ite
-  x = [x, proceed_HMC_iteration(x(ni), tau, epsilon, T)];
-end
 end
