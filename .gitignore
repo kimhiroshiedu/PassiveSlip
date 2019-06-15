@@ -31,3 +31,5 @@ PAC*
 !InpolySpline.m
 !Est_PassiveSlip.m
 !proceed_HMC.m
+!HMC_sample.m
+
