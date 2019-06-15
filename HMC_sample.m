@@ -1,10 +1,14 @@
-%% HMC‚ğÀs‚·‚éŠÖ”
-function [x] = proceed_HMC(tau, epsilon, T, ite, init)
-x = init;
-for ni = 1:ite
-  x = [x, proceed_HMC_iteration(x(ni), tau, epsilon, T)];
-end
-end
+tau = 2;
+epsilon = 0.1;
+T = 30;
+ite = 2000;
+
+mu = 100;
+sigma = 2^2;
+init = 100;
+theta = proceed_HMC(tau, epsilon, T, ite, init, mu, sigma);
+
+histogram(theta);
 
 %% HMC‚ğÀs‚·‚éŠÖ”
 function [x] = proceed_HMC(tau, epsilon, T, ite, init, mu, sigma)
