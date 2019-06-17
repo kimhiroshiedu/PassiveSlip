@@ -13,14 +13,14 @@ init  = 100;
 theta = proceed_HMC(tau, epsilon, T, ite, init, mu, sigma);
 
 % Figure plot
-figure(20);
+figure(20); clf(20)
 subplot(1,2,1)
 plot(theta);
 xlabel('step')
 ylabel('x')
 
 subplot(1,2,2)
-histogram(theta,'Normalization','probability');
+histogram(theta,'Normalization','pdf');
 xlabel('x')
 ylabel('pdf')
 
