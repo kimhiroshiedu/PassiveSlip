@@ -1490,11 +1490,17 @@ res.old   =   inf(   1,1,precision);
 % pri.old =   inf(   1,1,precision);
 
 % Scale adjastment of rwd
+mcscale  = rwd * 1e-3;
+mascale  = rwd * 5e+1;
+mpscale  = rwd * 1e-12 .* ones(mp.n,1,precision) .* ~eul.id;
+miscale  = rwd * 1e-10;
+%{
 rwdscale =     1000 * rwd / prm.cha;
 mcscale  = rwdscale * 0.13;
 mascale  = rwdscale * 0.5;
 mpscale  = rwdscale * (1.3e-9) .* ones(mp.n,1,precision) .* ~eul.id;
 miscale  = rwdscale * 1e-10;
+%}
 
 % Initial chains
 cha.mp = zeros(mp.n,prm.kep,precision);
@@ -1527,21 +1533,21 @@ while not(count == prm.thr)
   rt   = rt+1;
   nacc = 0;tic
   if prm.gpu~=99
-    logu  = log(rand(prm.cha,1,precision,'gpuArray'));
-    rmc   =  randn(mc.n,prm.cha,precision,'gpuArray');
-    rma   =  randn(ma.n,prm.cha,precision,'gpuArray');
-    rmp   =  randn(mp.n,prm.cha,precision,'gpuArray');
-    rmi   =  randn(mi.n,prm.cha,precision,'gpuArray');
-    rla   =  randn(la.n,prm.cha,precision,'gpuArray');
-    idasp =          false(blk(1).ntmec,1,'gpuArray');
+    logu      = log(rand(prm.cha,1,precision,'gpuArray'));
+    rmc       =  randn(mc.n,prm.cha,precision,'gpuArray');
+    rma       =  randn(ma.n,prm.cha,precision,'gpuArray');
+    rmp       =  randn(mp.n,prm.cha,precision,'gpuArray');
+    rmi       =  randn(mi.n,prm.cha,precision,'gpuArray');
+    rla       =  randn(la.n,prm.cha,precision,'gpuArray');
+    idasp_old =          false(blk(1).ntmec,1,'gpuArray');
   else
-    logu  = log(rand(prm.cha,1,precision));
-    rmc   =  randn(mc.n,prm.cha,precision);
-    rma   =  randn(ma.n,prm.cha,precision);
-    rmp   =  randn(mp.n,prm.cha,precision);
-    rmi   =  randn(mi.n,prm.cha,precision);
-    rla   =  randn(la.n,prm.cha,precision);
-    idasp =          false(blk(1).ntmec,1);
+    logu      = log(rand(prm.cha,1,precision));
+    rmc       =  randn(mc.n,prm.cha,precision);
+    rma       =  randn(ma.n,prm.cha,precision);
+    rmp       =  randn(mp.n,prm.cha,precision);
+    rmi       =  randn(mi.n,prm.cha,precision);
+    rla       =  randn(la.n,prm.cha,precision);
+    idasp_old =          false(blk(1).ntmec,1);
   end
   rmp(         eul.id,:) = 0;
   rmi(~blk(1).idinter,:) = 0;
@@ -1585,22 +1591,24 @@ while not(count == prm.thr)
       [edg(na).lat,edg(na).lon] = XYTPL(edge(:,1),edge(:,2),alat,alon);
       idasp(md:md+3*nf-1,1) = repmat(inpolygon(tri(1).bound(nb1,nb2).clon,tri(1).bound(nb1,nb2).clat,edg(na).lon,edg(na).lat)',3,1);
       mt = mt +    np;
-      md = md + 3.*nf;
+      md = md + 3.*nf; 
     end
     
-    % Calculate back-slip on locked patches.
-    bslip              = (G(1).tb_mec * mp.smp) .* d(1).cfinv_mec .* idasp;
-    % Calc velocities on surface
-    if prm.gpu ~= 99
-      Gpassive         = zeros(3.*blk(1).ntmec,precision,'gpuArray');
-    else
-      Gpassive         = zeros(3.*blk(1).ntmec,precision);
+    if ~isequal(idasp,idasp_old)
+      % Calculate back-slip on locked patches.
+      bslip              = (G(1).tb_mec * mp.smp) .* d(1).cfinv_mec .* idasp;
+      % Calc velocities on surface
+      if prm.gpu ~= 99
+        Gpassive         = zeros(3.*blk(1).ntmec,precision,'gpuArray');
+      else
+        Gpassive         = zeros(3.*blk(1).ntmec,precision);
+      end
+      Gcc                = G(1).s(~idasp,~idasp);    % creep -> creep
+      Gcl                = G(1).s(~idasp, idasp);    % lock  -> creep
+      Gpassive(~idasp,idasp) = Gcc\Gcl;
+      % bslip = (G(1).c - G(1).c*Gpassive) * cal.slip;
     end
-    Gcc                = G(1).s(~idasp,~idasp);    % creep -> creep
-    Gcl                = G(1).s(~idasp, idasp);    % lock  -> creep
-    Gpassive(~idasp,idasp) = Gcc\Gcl;
-    % bslip = (G(1).c - G(1).c*Gpassive) * cal.slip;
-   
+    
     % Due to Rigid motion
     cal.rig = G(1).p * mp.smp;
     % Due to Kinematic coupling
@@ -1652,6 +1660,7 @@ while not(count == prm.thr)
       res.old = res.smp;
 %     pri.old = pri.smp;
     end
+    idasp_old =   idasp;
 
     % Keep section
     if it > prm.cha - prm.kep
