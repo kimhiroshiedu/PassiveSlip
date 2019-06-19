@@ -16,7 +16,7 @@ prm.optfile='PARAMETER/opt_bound_par_forward.txt';
 % Read dipping boundaries.
 [blk,prm] = ReadBoundaryTypes(blk,prm);
 % Read or generate block interfaces.
-[blk]     = ReadBlockInterface(blk,prm);
+[blk]     = ReadBlockInterface(blk,prm,obs);
 % Read Euler pole vectors.
 [eul,prm] = ReadEulerPoles(blk,prm);
 % Read internal strain flag.
@@ -195,19 +195,29 @@ end
 end
 
 %% Read Plate interface
-function [blk] = ReadBlockInterface(blk,prm)
+function [blk] = ReadBlockInterface(blk,prm,obs)
 % Coded by Takeo Ito 2016/12/21 (ver 1.0)
 %
 int_tri       =   50;
 dep_limit     = -100;
 dep_limit_low =  -20;
 dirblk        = prm.dirblock_interface;
+blk(1).f     = [];
+blk(1).da    = [];
+blk(1).nv    = [];
+blk(1).st    = [];
+blk(1).dp    = [];
+blk(1).phi   = [];
+blk(1).theta = [];
 blk(1).clon  = [];
 blk(1).clat  = [];
 blk(1).cdep  = [];
 blk(1).nt    =  0; % Number of trimeshes
 blk(1).ntmec =  0;
 blk(1).ntkin =  0;
+alat = mean(obs(1).alat(:));
+alon = mean(obs(1).alon(:));
+% 
 for nb1 = 1:blk(1).nblock
   for nb2 = nb1+1:blk(1).nblock
     blk(1).bound(nb1,nb2).type = 1;
@@ -307,6 +317,33 @@ for nb1 = 1:blk(1).nblock
         fclose(fid_out);
       end
     end
+    % Calc angle and area of trimeshes
+    for nf=1:size(blk(1).bound(nb1,nb2).blon,1)
+      [trix, triy] = PLTXY(blk(1).bound(nb1,nb2).blat(nf,:), blk(1).bound(nb1,nb2).blon(nf,:), alat, alon);
+      triz         = -1.*blk(1).bound(nb1,nb2).bdep(nf,:);
+      f_loc       = [trix; triy; triz];
+      [f,da,nv,st,dp,phi,theta] = EstFaultTri(f_loc);
+      blk(1).bound(nb1,nb2).f(    nf,:) =     f ;
+      blk(1).bound(nb1,nb2).da(   nf,:) =    da ;
+      blk(1).bound(nb1,nb2).nv(   nf,:) =    nv';
+      blk(1).bound(nb1,nb2).st(   nf,:) =    st ;
+      blk(1).bound(nb1,nb2).dp(   nf,:) =    dp ;
+      blk(1).bound(nb1,nb2).phi(  nf,:) =   phi ;
+      blk(1).bound(nb1,nb2).theta(nf,:) = theta ;
+    end
+    
+    % Stack calculated value
+    blk(1).f     = [blk(1).f    ; blk(1).bound(nb1,nb2).f           ];
+    blk(1).da    = [blk(1).da   ; blk(1).bound(nb1,nb2).da          ];
+    blk(1).nv    = [blk(1).nv   ; blk(1).bound(nb1,nb2).nv          ];
+    blk(1).st    = [blk(1).st   ; blk(1).bound(nb1,nb2).st          ];
+    blk(1).dp    = [blk(1).dp   ; blk(1).bound(nb1,nb2).dp          ];
+    blk(1).phi   = [blk(1).phi  ; blk(1).bound(nb1,nb2).phi         ];
+    blk(1).theta = [blk(1).theta; blk(1).bound(nb1,nb2).theta       ];
+    blk(1).clon  = [blk(1).clon ; mean(blk(1).bound(nb1,nb2).blon,2)];
+    blk(1).clat  = [blk(1).clat ; mean(blk(1).bound(nb1,nb2).blat,2)];
+    blk(1).cdep  = [blk(1).cdep ; mean(blk(1).bound(nb1,nb2).bdep,2)];
+
     % Grouping boundary type
     blk(1).bound(nb1,nb2).flag1 = 0;
     for ii = 1:size(blk(1).dipbo,1)
@@ -333,9 +370,6 @@ for nb1 = 1:blk(1).nblock
 
     blk(1).nt = blk(1).nt + size(blk(1).bound(nb1,nb2).blon,1);
     if blk(1).bound(nb1,nb2).flag2 == 1
-      blk(1).clon = [blk(1).clon; mean(blk(1).bound(nb1,nb2).blon,2)];
-      blk(1).clat = [blk(1).clat; mean(blk(1).bound(nb1,nb2).blat,2)];
-      blk(1).cdep = [blk(1).cdep; mean(blk(1).bound(nb1,nb2).bdep,2)];
       blk(1).ntmec = blk(1).ntmec + size(blk(1).bound(nb1,nb2).blon,1);
     else
       blk(1).ntkin = blk(1).ntkin + size(blk(1).bound(nb1,nb2).blon,1);
@@ -985,6 +1019,10 @@ nd = size(obs(1).alat,2);
 nfall = blk(1).nt;
 nfkin = blk(1).ntkin;
 nfmec = blk(1).ntmec;
+c1=cos(blk(1).phi);
+s1=sin(blk(1).phi);
+c2=cos(-blk(1).theta);
+s2=sin(-blk(1).theta);
 %
 alat = mean(obs(1).alat(:));
 alon = mean(obs(1).alon(:));
@@ -1082,7 +1120,7 @@ for nb1 = 1:blk(1).nblock
           end
           [tri] = CorrectFactor(blk,tri,nb1,nb2,dp,n,nf);
           [tri] = DiscriminateDirection(blk,tri,nb1,nb2,trix,triy,n,nf);
-          [tri] = trans_xyz2strdip(tri,nb1,nb2,n,nfall);
+          [tri] = trans_xyz2strdip(blk,tri,nb1,nb2,n,nfall,c1,s1,c2,s2);
         end
         trisave = tri(1).bound(nb1,nb2);
         save(trimat,'trisave','-v7.3');
@@ -1205,16 +1243,16 @@ theta = asin(dp(3));
 end
 
 %%
-function [tri] = trans_xyz2strdip(tri,nb1,nb2,n,nfall)
+function [tri] = trans_xyz2strdip(blk,tri,nb1,nb2,n,nfall,c1,s1,c2,s2)
 % This function transforms a strain tensor from xyz to fault strike-dip.
 % Strain of strike direction on the fault corresponds to ezx',
 % strain of dip direction on the fault corresponds to ezy', and
 % strain of tensile direction on the fault corresponds to ezz'.
 
-c1=cos(tri(1).bound(nb1,nb2).phi(n));
-s1=sin(tri(1).bound(nb1,nb2).phi(n));
-c2=cos(-tri(1).bound(nb1,nb2).theta(n));
-s2=sin(-tri(1).bound(nb1,nb2).theta(n));
+% c1=cos(tri(1).bound(nb1,nb2).phi(n));
+% s1=sin(tri(1).bound(nb1,nb2).phi(n));
+% c2=cos(-tri(1).bound(nb1,nb2).theta(n));
+% s2=sin(-tri(1).bound(nb1,nb2).theta(n));
 
 [sst,sdp,sts] = calctrans(tri(1).bound(nb1,nb2).gsstr(:,n),c1,s1,c2,s2);  % response to strike slip
 tri(1).bound(nb1,nb2).gsstrT(1:3:3*nfall,n)=sst;  % str
