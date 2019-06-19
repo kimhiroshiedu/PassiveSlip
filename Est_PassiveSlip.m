@@ -1596,10 +1596,11 @@ while not(count == prm.thr)
       md = md + 3.*nf; 
     end
     
+    % Calculate back-slip on locked patches.
+    bslip              = (G(1).tb_mec * mp.smp) .* d(1).cfinv_mec .* idasp;
+    
+    % Calc inverse Green's function
     if ~isequal(idasp,idasp_old)
-      % Calculate back-slip on locked patches.
-      bslip              = (G(1).tb_mec * mp.smp) .* d(1).cfinv_mec .* idasp;
-      % Calc velocities on surface
       if prm.gpu ~= 99
         Gpassive         = zeros(3.*blk(1).ntmec,precision,'gpuArray');
       else
