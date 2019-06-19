@@ -1601,23 +1601,25 @@ while not(count == prm.thr)
     
     % Calc inverse Green's function
     if ~isequal(idasp,idasp_old)
-      if prm.gpu ~= 99
-        Gpassive         = zeros(3.*blk(1).ntmec,precision,'gpuArray');
-      else
-        Gpassive         = zeros(3.*blk(1).ntmec,precision);
-      end
+      % if prm.gpu ~= 99
+      %   Gpassive       = zeros(3.*blk(1).ntmec,precision,'gpuArray');
+      % else
+      %   Gpassive       = zeros(3.*blk(1).ntmec,precision);
+      % end
       Gcc                = G(1).s(~idasp,~idasp);    % creep -> creep
       Gcl                = G(1).s(~idasp, idasp);    % lock  -> creep
-      Gpassive(~idasp,idasp) = Gcc\Gcl;
+      % Gpassive(~idasp,idasp) = Gcc\Gcl;
       % bslip = (G(1).c - G(1).c*Gpassive) * cal.slip;
     end
+    bslip(~idasp) = Gcc \ (Gcl * bslip(idasp));
     
     % Due to Rigid motion
     cal.rig = G(1).p * mp.smp;
     % Due to Kinematic coupling
     cal.kin = G(1).c_kin * ((G(1).tb_kin * mp.smp) .* d(1).cfinv_kin .* mc.smpmat);
     % Due to Mechanical coupling
-    cal.mec = G(1).c_mec * (G(1).E - Gpassive) * bslip;
+%     cal.mec = G(1).c_mec * (G(1).E - Gpassive) * bslip;
+    cal.mec = G(1).c_mec * bslip;
     % Due to Internal strain
     cal.ine = G(1).i * mi.smp;
     % Zero padding
