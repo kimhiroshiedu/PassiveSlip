@@ -1299,7 +1299,7 @@ G(1).t  = zeros(3*blk(1).nt,2.*blk(1).nt);
 G(1).b  = zeros(2*blk(1).nt,3.*blk(1).nblock);
 tmp.p   = zeros(3*nobs,3.*blk(1).nblock);
 tmp.i   = zeros(3*nobs,3.*blk(1).nblock);
-tmo.s   = zeros(3*blk(1).nt,3*blk(1).nt);
+tmp.s   = zeros(3*blk(1).nt,3*blk(1).nt);
 tmp.cf  = ones(3*blk(1).nt,1);
 tmp.inv = zeros(3*blk(1).nt,1);
 % 
