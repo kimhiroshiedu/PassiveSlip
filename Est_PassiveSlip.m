@@ -1524,11 +1524,13 @@ if prm.gpu ~= 99
 end
 
 % MCMC iteration
-rt    = 0;
-count = 0;
-burn  = 1;
-up_mc = 1;
-lo_mc = 0;
+rt      = 0     ;
+count   = 0     ;
+burn    = 1     ;
+up_mc   = 1     ;
+lo_mc   = 0     ;
+decrate = 0.9^ 1;
+incrate = 0.9^-1;
 while not(count == prm.thr)
   rt   = rt+1;
   nacc = 0;tic
@@ -1711,16 +1713,16 @@ while not(count == prm.thr)
 % Adjust random walk distance
   if burn == 0
     if cha.ajr > 0.24
-      rwd = rwd * 1.1;
+      rwd = rwd * incrate;
     elseif cha.ajr < 0.22
-      rwd = rwd * 0.9;
+      rwd = rwd * decrate;
     end
     count = count + 1;
   else
     if cha.ajr > 0.24
-      rwd = rwd * 1.1;
+      rwd = rwd * incrate;
     elseif cha.ajr < 0.22
-      rwd = rwd * 0.9;
+      rwd = rwd * decrate;
     else
       count = count + 1;
       burn = 0;
