@@ -1385,7 +1385,6 @@ G(1).c_mec  = tmp.c(:, d(1).idmec);
 G(1).p      = tmp.p(d(1).ind,:);
 G(1).i      = tmp.i(d(1).ind,:);
 G(1).s      = tmp.s(d(1).idmec,d(1).idmec);
-% G(1).E      = sparse(eye(3*blk(1).ntmec));
 d(1).mcid   = repmat(d(1).mcid,3,1);
 d(1).cfinv_kin = tmp.cfinv(~d(1).idmec);
 d(1).cfinv_mec = tmp.cfinv( d(1).idmec);
@@ -1514,7 +1513,6 @@ if prm.gpu ~= 99
   G(1).tb_mec    = gpuArray(single(full(G(1).tb_mec)));
   G(1).tb_kin    = gpuArray(single(full(G(1).tb_kin)));
   G(1).s         = gpuArray(single(full(G(1).s     )));
-%   G(1).E         = gpuArray(single(full(G(1).E     )));
   G(1).p         = gpuArray(single(     G(1).p      ));
   G(1).c_kin     = gpuArray(single(     G(1).c_kin  ));
   G(1).c_mec     = gpuArray(single(     G(1).c_mec  ));
@@ -1601,15 +1599,8 @@ while not(count == prm.thr)
     
     % Calc inverse Green's function
     if ~isequal(idasp,idasp_old)
-      % if prm.gpu ~= 99
-      %   Gpassive       = zeros(3.*blk(1).ntmec,precision,'gpuArray');
-      % else
-      %   Gpassive       = zeros(3.*blk(1).ntmec,precision);
-      % end
       Gcc                = G(1).s(~idasp,~idasp);    % creep -> creep
       Gcl                = G(1).s(~idasp, idasp);    % lock  -> creep
-      % Gpassive(~idasp,idasp) = Gcc\Gcl;
-      % bslip = (G(1).c - G(1).c*Gpassive) * cal.slip;
     end
     bslip(~idasp) = Gcc \ (Gcl * bslip(idasp));
     
@@ -1762,21 +1753,14 @@ while not(count == prm.thr)
   
   % Calculate back-slip on locked patches.
   bslip              = (G(1).tb_mec * mpmean) .* d(1).cfinv_mec .* idasp;
-  % Calc velocities on surface
-%   if prm.gpu ~= 99
-%     Gpassive         = zeros(3.*blk(1).ntmec,precision,'gpuArray');
-%   else
-%     Gpassive         = zeros(3.*blk(1).ntmec,precision);
-%   end
+  % Calc inverse Green's function
   Gcc                = G(1).s(~idasp,~idasp);    % creep -> creep
   Gcl                = G(1).s(~idasp, idasp);    % lock  -> creep
-%   Gpassive(~idasp,idasp) = Gcc\Gcl;
   bslip(~idasp)      = Gcc \ (Gcl * bslip(idasp));
 
   % Calc vectors for mean parameters
   vec.rig = G(1).p * mpmean;
   vec.kin = G(1).c_kin * ((G(1).tb_kin * mpmean) .* d(1).cfinv_kin .* mcmeanrep);
-  %   vec.mec = G(1).c_mec * (G(1).E - Gpassive) * bslip;
   vec.mec = G(1).c_mec * bslip;
   vec.ine = G(1).i * mimean;
   % Zero padding
