@@ -1385,7 +1385,7 @@ G(1).c_mec  = tmp.c(:, d(1).idmec);
 G(1).p      = tmp.p(d(1).ind,:);
 G(1).i      = tmp.i(d(1).ind,:);
 G(1).s      = tmp.s(d(1).idmec,d(1).idmec);
-G(1).E      = sparse(eye(3*blk(1).ntmec));
+% G(1).E      = sparse(eye(3*blk(1).ntmec));
 d(1).mcid   = repmat(d(1).mcid,3,1);
 d(1).cfinv_kin = tmp.cfinv(~d(1).idmec);
 d(1).cfinv_mec = tmp.cfinv( d(1).idmec);
@@ -1514,7 +1514,7 @@ if prm.gpu ~= 99
   G(1).tb_mec    = gpuArray(single(full(G(1).tb_mec)));
   G(1).tb_kin    = gpuArray(single(full(G(1).tb_kin)));
   G(1).s         = gpuArray(single(full(G(1).s     )));
-  G(1).E         = gpuArray(single(full(G(1).E     )));
+%   G(1).E         = gpuArray(single(full(G(1).E     )));
   G(1).p         = gpuArray(single(     G(1).p      ));
   G(1).c_kin     = gpuArray(single(     G(1).c_kin  ));
   G(1).c_mec     = gpuArray(single(     G(1).c_mec  ));
@@ -1763,19 +1763,21 @@ while not(count == prm.thr)
   % Calculate back-slip on locked patches.
   bslip              = (G(1).tb_mec * mpmean) .* d(1).cfinv_mec .* idasp;
   % Calc velocities on surface
-  if prm.gpu ~= 99
-    Gpassive         = zeros(3.*blk(1).ntmec,precision,'gpuArray');
-  else
-    Gpassive         = zeros(3.*blk(1).ntmec,precision);
-  end
+%   if prm.gpu ~= 99
+%     Gpassive         = zeros(3.*blk(1).ntmec,precision,'gpuArray');
+%   else
+%     Gpassive         = zeros(3.*blk(1).ntmec,precision);
+%   end
   Gcc                = G(1).s(~idasp,~idasp);    % creep -> creep
   Gcl                = G(1).s(~idasp, idasp);    % lock  -> creep
-  Gpassive(~idasp,idasp) = Gcc\Gcl;
+%   Gpassive(~idasp,idasp) = Gcc\Gcl;
+  bslip(~idasp)      = Gcc \ (Gcl * bslip(idasp));
 
   % Calc vectors for mean parameters
   vec.rig = G(1).p * mpmean;
   vec.kin = G(1).c_kin * ((G(1).tb_kin * mpmean) .* d(1).cfinv_kin .* mcmeanrep);
-  vec.mec = G(1).c_mec * (G(1).E - Gpassive) * bslip;
+  %   vec.mec = G(1).c_mec * (G(1).E - Gpassive) * bslip;
+  vec.mec = G(1).c_mec * bslip;
   vec.ine = G(1).i * mimean;
   % Zero padding
   if prm.gpu ~= 99
@@ -1800,9 +1802,9 @@ while not(count == prm.thr)
     ccha.mi  = gather(cha.mi );
     ccha.la  = gather(cha.la );
     ccha.smp = gather(cha.smp);
-    MakeFigures(ccha,blk,obs,rt,edg,gather(lo_mc),gather(up_mc),vec,Gpassive,bslip,mimean)
+    MakeFigures(ccha,blk,obs,rt,edg,gather(lo_mc),gather(up_mc),vec,bslip,mimean)
   else
-    MakeFigures( cha,blk,obs,rt,edg,       lo_mc ,       up_mc ,vec,Gpassive,bslip,mimean)
+    MakeFigures( cha,blk,obs,rt,edg,       lo_mc ,       up_mc ,vec,bslip,mimean)
   end
   if rt > prm.itr; break; end
 end
@@ -2016,7 +2018,7 @@ quiver(obs(1).alon,obs(1).alat,cal.smp(1:3:end)',cal.smp(2:3:end)','blue')
 end
 
 %% Show results for makeing FIGURES
-function MakeFigures(cha,blk,obs,rt,edg,lo_mc,up_mc,vec,Gpassive,bslip,mimean)
+function MakeFigures(cha,blk,obs,rt,edg,lo_mc,up_mc,vec,bslip,mimean)
 % Color palette(Polar)
 red  = [           0: 1/32:1     ones(1,32)]';
 green= [           0: 1/32:1 1-1/32:-1/32:0]';
@@ -2055,7 +2057,6 @@ colorbar
 %---------Show mechanical backslip rate ------------------
 figure(101); clf(101)
 % kinslip = (G(1).E - Gpassive) * bslip
-kinslip = bslip + Gpassive * bslip;
 nn = 1;
 na = 1;
 for nb1 = 1:blk(1).nblock
@@ -2067,7 +2068,7 @@ for nb1 = 1:blk(1).nblock
       % Backslip rate
       patch(blk(1).bound(nb1,nb2).blon',...
             blk(1).bound(nb1,nb2).blat',...
-            sqrt(kinslip(nn:nn+nf-1).^2+kinslip(nn+nf:nn+2*nf-1).^2)); hold on
+            sqrt(bslip(nn:nn+nf-1).^2+bslip(nn+nf:nn+2*nf-1).^2)); hold on
       % Asperities
       plot(edg(na).lon,edg(na).lat,'LineWidth',3,'Color','b'); hold on
       %
