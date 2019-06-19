@@ -13,6 +13,8 @@ PAC*
 *.m
 *.txt
 *.asv
+*~
+*.swp
 
 # Maintain folders
 !subfunction/*
