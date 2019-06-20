@@ -2164,18 +2164,28 @@ hold on
 % green : Observed velocities
 % blue  : Calculated velocities
 figure(130); clf(130)
+subplot(1,2,1)
 quiver(obs(1).alon,obs(1).alat,      obs(1).evec,      obs(1).nvec,'green')
 hold on
 quiver(obs(1).alon,obs(1).alat,vec.sum(1:3:end)',vec.sum(2:3:end)', 'blue')
 hold on
 axis([obs(1).lonmin-1,obs(1).lonmax+1,obs(1).latmin-1,obs(1).latmax+1]);
-title(['obs and cal motion (iteration number: ',num2str(rt),')']);
- 
+title(['Horizontal obs and cal motion (iteration number: ',num2str(rt),')']);
+
+subplot(1,2,2)
+quiver(obs(1).alon,obs(1).alat,zeros(size(obs(1).hvec)),      obs(1).hvec,'green')
+hold on
+quiver(obs(1).alon,obs(1).alat,zeros(size(obs(1).hvec)),vec.sum(3:3:end)', 'blue')
+hold on
+axis([obs(1).lonmin-1,obs(1).lonmax+1,obs(1).latmin-1,obs(1).latmax+1]);
+title(['Vertical obs and cal motion (iteration number: ',num2str(rt),')']);
+
 %-------------------- Show rigid, kinematic, mechanical vectors------------
 % Color of arrows
 % black   : Rigid rotation
 % red     : Elastic deformation due to slip deficit
 figure(140); clf(140)
+subplot(1,2,1)
 quiver(obs(1).alon,obs(1).alat, vec.rig(1:3:end)',vec.rig(2:3:end)','k')
 hold on
 quiver(obs(1).alon,obs(1).alat, vec.kin(1:3:end)',vec.kin(2:3:end)','b')
@@ -2184,7 +2194,18 @@ quiver(obs(1).alon,obs(1).alat, vec.mec(1:3:end)',vec.mec(2:3:end)','r')
 % hold on
 % quiver(obs(1).alon,obs(1).alat,vec.rel(1:3:end)',vec.rel(2:3:end)','m')
 axis([obs(1).lonmin-1,obs(1).lonmax+1,obs(1).latmin-1,obs(1).latmax+1]);
-title(['rigid and elastic motion (iteration number: ',num2str(rt),')']);
+title(['Horizontal rigid and elastic motion (iteration number: ',num2str(rt),')']);
+
+subplot(1,2,2)
+quiver(obs(1).alon,obs(1).alat, zeros(size(vec.rig(3:3:end)))',vec.rig(3:3:end)','k')
+hold on
+quiver(obs(1).alon,obs(1).alat, zeros(size(vec.kin(3:3:end)))',vec.kin(3:3:end)','b')
+hold on
+quiver(obs(1).alon,obs(1).alat, zeros(size(vec.mec(3:3:end)))',vec.mec(3:3:end)','r')
+% hold on
+% quiver(obs(1).alon,obs(1).alat,vec.rel(1:3:end)',vec.rel(2:3:end)','m')
+axis([obs(1).lonmin-1,obs(1).lonmax+1,obs(1).latmin-1,obs(1).latmax+1]);
+title(['Vertical rigid and elastic motion (iteration number: ',num2str(rt),')']);
 
 %------------------------Show principal strain-----------------------------
 % Color of arrows
