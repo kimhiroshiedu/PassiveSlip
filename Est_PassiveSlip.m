@@ -1382,14 +1382,20 @@ for nb1 = 1:blk(1).nblock
       G(1).b(mt+nf:mt+2*nf-1,3*nb2  ) = -G(1).b(mt+nf:mt+2*nf-1,3*nb1  );
       tmp.s(tri(1).idstr,mc     :mc+  nf-1) = tri(1).bound(nb1,nb2).gsstrT(1:3:end,:);
       tmp.s(tri(1).idstr,mc+  nf:mc+2*nf-1) = tri(1).bound(nb1,nb2).gsdipT(1:3:end,:);
-      tmp.s(tri(1).idstr,mc+2*nf:mc+3*nf-1) = tri(1).bound(nb1,nb2).gstnsT(1:3:end,:);
+      %       tmp.s(tri(1).idstr,mc+2*nf:mc+3*nf-1) = tri(1).bound(nb1,nb2).gstnsT(1:3:end,:);
+      tmp.s(tri(1).idstr,mc+2*nf:mc+3*nf-1) = zeros(size(tri(1).bound(nb1,nb2).gstnsT(1:3:end,:)));
       tmp.s(tri(1).iddip,mc     :mc+  nf-1) = tri(1).bound(nb1,nb2).gsstrT(2:3:end,:);
       tmp.s(tri(1).iddip,mc+  nf:mc+2*nf-1) = tri(1).bound(nb1,nb2).gsdipT(2:3:end,:);
-      tmp.s(tri(1).iddip,mc+2*nf:mc+3*nf-1) = tri(1).bound(nb1,nb2).gstnsT(2:3:end,:);
-      tmp.s(tri(1).idtns,mc     :mc+  nf-1) = tri(1).bound(nb1,nb2).gsstrT(3:3:end,:);
-      tmp.s(tri(1).idtns,mc+  nf:mc+2*nf-1) = tri(1).bound(nb1,nb2).gsdipT(3:3:end,:);
-      tmp.s(tri(1).idtns,mc+2*nf:mc+3*nf-1) = tri(1).bound(nb1,nb2).gstnsT(3:3:end,:);
-%
+      %       tmp.s(tri(1).iddip,mc+2*nf:mc+3*nf-1) = tri(1).bound(nb1,nb2).gstnsT(2:3:end,:);
+      tmp.s(tri(1).iddip,mc+2*nf:mc+3*nf-1) = zeros(size(tri(1).bound(nb1,nb2).gstnsT(2:3:end,:)));
+      %       tmp.s(tri(1).idtns,mc     :mc+  nf-1) = tri(1).bound(nb1,nb2).gsstrT(3:3:end,:);
+      %       tmp.s(tri(1).idtns,mc+  nf:mc+2*nf-1) = tri(1).bound(nb1,nb2).gsdipT(3:3:end,:);
+      %       tmp.s(tri(1).idtns,mc+2*nf:mc+3*nf-1) = tri(1).bound(nb1,nb2).gstnsT(3:3:end,:);
+      tmp.s(tri(1).idtns,mc     :mc+  nf-1) = zeros(size(tri(1).bound(nb1,nb2).gsstrT(3:3:end,:)));
+      tmp.s(tri(1).idtns,mc+  nf:mc+2*nf-1) = zeros(size(tri(1).bound(nb1,nb2).gsdipT(3:3:end,:)));
+      tmp.s(tri(1).idtns,mc+2*nf:mc+3*nf-1) = zeros(size(tri(1).bound(nb1,nb2).gstnsT(3:3:end,:)));
+
+      %
       mc = mc + 3*nf;
       mt = mt + 2*nf;
       mr = mr +   nf;
@@ -1627,7 +1633,8 @@ while not(count == prm.thr)
       edge = [xd(  1: 1:end), yd(  1: 1:end);...
               xu(end:-1:  1), yu(end:-1:  1)];
       [edg(na).lat,edg(na).lon] = XYTPL(edge(:,1),edge(:,2),alat,alon);
-      idasp(md:md+3*nf-1,1) = repmat(inpolygon(tri(1).bound(nb1,nb2).clon,tri(1).bound(nb1,nb2).clat,edg(na).lon,edg(na).lat)',3,1);
+      idasp(md:md+3*nf-1,1) = [repmat(inpolygon(tri(1).bound(nb1,nb2).clon,tri(1).bound(nb1,nb2).clat,edg(na).lon,edg(na).lat)',2,1);...
+                               zeros(size(tri(1).bound(nb1,nb2).clon))];
       mt = mt +    np;
       md = md + 3.*nf; 
     end
@@ -1784,7 +1791,8 @@ while not(count == prm.thr)
     edge = [xd(  1: 1:end), yd(  1: 1:end);...
             xu(end:-1:  1), yu(end:-1:  1)];
     [edg(na).lat,edg(na).lon] = XYTPL(edge(:,1),edge(:,2),alat,alon);
-    idasp(md:md+3*nf-1,1) = repmat(inpolygon(tri(1).bound(nb1,nb2).clon,tri(1).bound(nb1,nb2).clat,edg(na).lon,edg(na).lat)',3,1);
+    idasp(md:md+3*nf-1,1) = [repmat(inpolygon(tri(1).bound(nb1,nb2).clon,tri(1).bound(nb1,nb2).clat,edg(na).lon,edg(na).lat)',3,1);...
+                             zeros(size(tri(1).bound(nb1,nb2).clon))];
     mt = mt +    np;
     md = md + 3.*nf;
   end
