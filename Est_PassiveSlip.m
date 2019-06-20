@@ -1649,7 +1649,7 @@ while not(count == prm.thr)
       Gcc                = G(1).s(idc,idc);    % creep -> creep
       Gcl                = G(1).s(idc,idl);    % lock  -> creep
     end
-    bslip(idc) = Gcc \ (Gcl * bslip(idl));
+    bslip(idc) = -Gcc \ (Gcl * bslip(idl));
     
     % Due to Rigid motion
     cal.rig = G(1).p * mp.smp;
@@ -1806,7 +1806,7 @@ while not(count == prm.thr)
   % Calc inverse Green's function
   Gcc                = G(1).s(idc,idc);    % creep -> creep
   Gcl                = G(1).s(idc,idl);    % lock  -> creep
-  bslip(idc)         = Gcc \ (Gcl * bslip(idl));
+  bslip(idc)         = -Gcc \ (Gcl * bslip(idl));
 
   % Calc vectors for mean parameters
   vec.rig = G(1).p * mpmean;
