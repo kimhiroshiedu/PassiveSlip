@@ -1634,10 +1634,9 @@ while not(count == prm.thr)
               xu(end:-1:  1), yu(end:-1:  1)];
       [edg(na).lat,edg(na).lon] = XYTPL(edge(:,1),edge(:,2),alat,alon);
       idl(md:md+3*nf-1,1) = [repmat( inpolygon(tri(1).bound(nb1,nb2).clon,tri(1).bound(nb1,nb2).clat,edg(na).lon,edg(na).lat)',2,1);...
-                                      zeros(size(tri(1).bound(nb1,nb2).clon))'];
+                                    false(size(tri(1).bound(nb1,nb2).clon))'];
       idc(md:md+3*nf-1,1) = [repmat(~inpolygon(tri(1).bound(nb1,nb2).clon,tri(1).bound(nb1,nb2).clat,edg(na).lon,edg(na).lat)',2,1);...
-                                      zeros(size(tri(1).bound(nb1,nb2).clon))'];
-                           
+                                    false(size(tri(1).bound(nb1,nb2).clon))'];
       mt = mt +    np;
       md = md + 3.*nf; 
     end
@@ -1648,7 +1647,7 @@ while not(count == prm.thr)
     % Calc inverse Green's function
     if ~isequal(idl,idl_old)
       Gcc                = G(1).s(idc,idc);    % creep -> creep
-      Gcl                = G(1).s(idc, idl);    % lock  -> creep
+      Gcl                = G(1).s(idc,idl);    % lock  -> creep
     end
     bslip(idc) = Gcc \ (Gcl * bslip(idl));
     
@@ -1795,9 +1794,9 @@ while not(count == prm.thr)
             xu(end:-1:  1), yu(end:-1:  1)];
     [edg(na).lat,edg(na).lon] = XYTPL(edge(:,1),edge(:,2),alat,alon);
     idl(md:md+3*nf-1,1) = [repmat( inpolygon(tri(1).bound(nb1,nb2).clon,tri(1).bound(nb1,nb2).clat,edg(na).lon,edg(na).lat)',2,1);...
-                                    zeros(size(tri(1).bound(nb1,nb2).clon))'];
+                                  false(size(tri(1).bound(nb1,nb2).clon))'];
     idc(md:md+3*nf-1,1) = [repmat(~inpolygon(tri(1).bound(nb1,nb2).clon,tri(1).bound(nb1,nb2).clat,edg(na).lon,edg(na).lat)',2,1);...
-                                    zeros(size(tri(1).bound(nb1,nb2).clon))'];
+                                  false(size(tri(1).bound(nb1,nb2).clon))'];
     mt = mt +    np;
     md = md + 3.*nf;
   end
