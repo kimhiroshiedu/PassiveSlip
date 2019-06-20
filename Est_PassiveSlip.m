@@ -1583,7 +1583,7 @@ while not(count == prm.thr)
     rmp       =  randn(mp.n,prm.cha,precision,'gpuArray');
     rmi       =  randn(mi.n,prm.cha,precision,'gpuArray');
     rla       =  randn(la.n,prm.cha,precision,'gpuArray');
-    idasp_old =          false(blk(1).ntmec,1,'gpuArray');
+    idl_old   =          false(blk(1).ntmec,1,'gpuArray');
   else
     logu      = log(rand(prm.cha,1,precision));
     rmc       =  randn(mc.n,prm.cha,precision);
@@ -1591,7 +1591,7 @@ while not(count == prm.thr)
     rmp       =  randn(mp.n,prm.cha,precision);
     rmi       =  randn(mi.n,prm.cha,precision);
     rla       =  randn(la.n,prm.cha,precision);
-    idasp_old =          false(blk(1).ntmec,1);
+    idl_old   =          false(blk(1).ntmec,1);
   end
   rmp(         eul.id,:) = 0;
   rmi(~blk(1).idinter,:) = 0;
@@ -1633,21 +1633,24 @@ while not(count == prm.thr)
       edge = [xd(  1: 1:end), yd(  1: 1:end);...
               xu(end:-1:  1), yu(end:-1:  1)];
       [edg(na).lat,edg(na).lon] = XYTPL(edge(:,1),edge(:,2),alat,alon);
-      idasp(md:md+3*nf-1,1) = [repmat(inpolygon(tri(1).bound(nb1,nb2).clon,tri(1).bound(nb1,nb2).clat,edg(na).lon,edg(na).lat)',2,1);...
-                               zeros(size(tri(1).bound(nb1,nb2).clon))];
+      idl(md:md+3*nf-1,1) = [repmat( inpolygon(tri(1).bound(nb1,nb2).clon,tri(1).bound(nb1,nb2).clat,edg(na).lon,edg(na).lat)',2,1);...
+                                      zeros(size(tri(1).bound(nb1,nb2).clon))'];
+      idc(md:md+3*nf-1,1) = [repmat(~inpolygon(tri(1).bound(nb1,nb2).clon,tri(1).bound(nb1,nb2).clat,edg(na).lon,edg(na).lat)',3,1);...
+                                      zeros(size(tri(1).bound(nb1,nb2).clon))'];
+                           
       mt = mt +    np;
       md = md + 3.*nf; 
     end
     
     % Calculate back-slip on locked patches.
-    bslip              = (G(1).tb_mec * mp.smp) .* d(1).cfinv_mec .* idasp;
+    bslip              = (G(1).tb_mec * mp.smp) .* d(1).cfinv_mec .* idl;
     
     % Calc inverse Green's function
-    if ~isequal(idasp,idasp_old)
-      Gcc                = G(1).s(~idasp,~idasp);    % creep -> creep
-      Gcl                = G(1).s(~idasp, idasp);    % lock  -> creep
+    if ~isequal(idl,idl_old)
+      Gcc                = G(1).s(idc,idc);    % creep -> creep
+      Gcl                = G(1).s(idc, idl);    % lock  -> creep
     end
-    bslip(~idasp) = Gcc \ (Gcl * bslip(idasp));
+    bslip(idc) = Gcc \ (Gcl * bslip(idl));
     
     % Due to Rigid motion
     cal.rig = G(1).p * mp.smp;
@@ -1701,7 +1704,7 @@ while not(count == prm.thr)
       res.old = res.smp;
 %     pri.old = pri.smp;
     end
-    idasp_old =   idasp;
+    idl_old   =     idl;
 
     % Keep section
     if it > prm.cha - prm.kep
@@ -1791,18 +1794,20 @@ while not(count == prm.thr)
     edge = [xd(  1: 1:end), yd(  1: 1:end);...
             xu(end:-1:  1), yu(end:-1:  1)];
     [edg(na).lat,edg(na).lon] = XYTPL(edge(:,1),edge(:,2),alat,alon);
-    idasp(md:md+3*nf-1,1) = [repmat(inpolygon(tri(1).bound(nb1,nb2).clon,tri(1).bound(nb1,nb2).clat,edg(na).lon,edg(na).lat)',3,1);...
-                             zeros(size(tri(1).bound(nb1,nb2).clon))];
+    idl(md:md+3*nf-1,1) = [repmat( inpolygon(tri(1).bound(nb1,nb2).clon,tri(1).bound(nb1,nb2).clat,edg(na).lon,edg(na).lat)',3,1);...
+                                    zeros(size(tri(1).bound(nb1,nb2).clon))'];
+    idc(md:md+3*nf-1,1) = [repmat(~inpolygon(tri(1).bound(nb1,nb2).clon,tri(1).bound(nb1,nb2).clat,edg(na).lon,edg(na).lat)',3,1);...
+                                    zeros(size(tri(1).bound(nb1,nb2).clon))'];
     mt = mt +    np;
     md = md + 3.*nf;
   end
   
   % Calculate back-slip on locked patches.
-  bslip              = (G(1).tb_mec * mpmean) .* d(1).cfinv_mec .* idasp;
+  bslip              = (G(1).tb_mec * mpmean) .* d(1).cfinv_mec .* idl;
   % Calc inverse Green's function
-  Gcc                = G(1).s(~idasp,~idasp);    % creep -> creep
-  Gcl                = G(1).s(~idasp, idasp);    % lock  -> creep
-  bslip(~idasp)      = Gcc \ (Gcl * bslip(idasp));
+  Gcc                = G(1).s(idc,idc);    % creep -> creep
+  Gcl                = G(1).s(idc,idl);    % lock  -> creep
+  bslip(idc)         = Gcc \ (Gcl * bslip(idl));
 
   % Calc vectors for mean parameters
   vec.rig = G(1).p * mpmean;
