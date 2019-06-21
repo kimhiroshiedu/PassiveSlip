@@ -2100,7 +2100,9 @@ for nb1 = 1:blk(1).nblock
     end
   end
 end
-colormap('hot')
+
+c = flipud(hot);
+colormap(c)
 colorbar
 
 %---------Show standard deviation for subfaults----------
