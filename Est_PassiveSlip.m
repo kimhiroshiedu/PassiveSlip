@@ -1576,23 +1576,15 @@ incrate = 0.9^-1;
 while not(count == prm.thr)
   rt   = rt+1;
   nacc = 0;tic
-  if prm.gpu~=99
-    logu      = log(rand(prm.cha,1,precision,'gpuArray'));
-    rmc       =  randn(mc.n,prm.cha,precision,'gpuArray');
-    rma       =  randn(ma.n,prm.cha,precision,'gpuArray');
-    rmp       =  randn(mp.n,prm.cha,precision,'gpuArray');
-    rmi       =  randn(mi.n,prm.cha,precision,'gpuArray');
-    rla       =  randn(la.n,prm.cha,precision,'gpuArray');
-    idl_old   =          false(blk(1).ntmec,1,'gpuArray');
-  else
-    logu      = log(rand(prm.cha,1,precision));
-    rmc       =  randn(mc.n,prm.cha,precision);
-    rma       =  randn(ma.n,prm.cha,precision);
-    rmp       =  randn(mp.n,prm.cha,precision);
-    rmi       =  randn(mi.n,prm.cha,precision);
-    rla       =  randn(la.n,prm.cha,precision);
-    idl_old   =          false(blk(1).ntmec,1);
-  end
+
+  % Random value for each parameter
+  logu      = log(rand(prm.cha,1,precision));
+  rmc       =  randn(mc.n,prm.cha,precision);
+  rma       =  randn(ma.n,prm.cha,precision);
+  rmp       =  randn(mp.n,prm.cha,precision);
+  rmi       =  randn(mi.n,prm.cha,precision);
+  rla       =  randn(la.n,prm.cha,precision);
+
   rmp(         eul.id,:) = 0;
   rmi(~blk(1).idinter,:) = 0;
   for it = 1:prm.cha
@@ -1645,12 +1637,11 @@ while not(count == prm.thr)
     bslip              = (G(1).tb_mec * mp.smp) .* d(1).cfinv_mec .* idl;
     
     % Calc inverse Green's function
-    if ~isequal(idl,idl_old)
-      Gcc                = G(1).s(idc,idc);    % creep -> creep
-      Gcl                = G(1).s(idc,idl);    % lock  -> creep
-    end
-    bslip(idc) = -Gcc \ (Gcl * bslip(idl));
-    
+    %     Gcc        = G(1).s(idc,idc);    % creep -> creep
+    %     Gcl        = G(1).s(idc,idl);    % lock  -> creep
+    %     bslip(idc) = -Gcc \ (Gcl * bslip(idl));
+    bslip(idc) = -G(1).s(idc,idc) \ (G(1).s(idc,idl) * bslip(idl));
+ 
     % Due to Rigid motion
     cal.rig = G(1).p * mp.smp;
     % Due to Kinematic coupling
@@ -1681,18 +1672,18 @@ while not(count == prm.thr)
     % Calc residual section
     res.smp = sum(((d(1).obs-cal.smp)./d(1).err).^2,1);
     % Mc is better Zero
-%     PRI.SMP = sum(abs(Mc.SMP),1);
-%% MAKE Probably Density Function
-% $$ PDF_{post}=\frac{\frac{1}{\sqrt{2\pi\exp(L)}\times\frac{1}{\sqrt{2\pi}\times\exp{\frac{-Re^{2}}{2}}\exp{\frac{-M^{2}}{2\times\exp{L}}}{\frac{1}{\sqrt{2\pi\exp(L_{old})}\times\frac{1}{\sqrt{2\pi}\times\exp{\frac{-Re^{2}_{old}}{2}}\exp{\frac{-M^{2}_{old}}{2\times\exp{L_{old}}}} $$%%
-%  log(x(x>0));
-%   q1 = logproppdf(x0,y);
-%   q2 = logproppdf(y,x0);
-% This is a generic formula.
-%   rho = (q1+logpdf(y))-(q2+logpdf(x0));  
+    %     PRI.SMP = sum(abs(Mc.SMP),1);
+    %% MAKE Probably Density Function
+    % $$ PDF_{post}=\frac{\frac{1}{\sqrt{2\pi\exp(L)}\times\frac{1}{\sqrt{2\pi}\times\exp{\frac{-Re^{2}}{2}}\exp{\frac{-M^{2}}{2\times\exp{L}}}{\frac{1}{\sqrt{2\pi\exp(L_{old})}\times\frac{1}{\sqrt{2\pi}\times\exp{\frac{-Re^{2}_{old}}{2}}\exp{\frac{-M^{2}_{old}}{2\times\exp{L_{old}}}} $$%%
+    %  log(x(x>0));
+    %   q1 = logproppdf(x0,y);
+    %   q2 = logproppdf(y,x0);
+    % This is a generic formula.
+    %   rho = (q1+logpdf(y))-(q2+logpdf(x0));
     pdf = -0.5.*...
-         ((res.smp+la.smp+exp(-la.smp))...
-         -(res.old+la.old+exp(-la.old)));
-%   pdf = -0.5.*(res.smp-res.old);
+        ((res.smp+la.smp+exp(-la.smp))...
+        -(res.old+la.old+exp(-la.old)));
+    %   pdf = -0.5.*(res.smp-res.old);
     acc = pdf > logu(it);
     if acc
       mc.old  =  mc.smp;
@@ -1701,9 +1692,8 @@ while not(count == prm.thr)
       mi.old  =  mi.smp;
       la.old  =  la.smp;
       res.old = res.smp;
-%     pri.old = pri.smp;
+      %pri.old = pri.smp;
     end
-    idl_old   =     idl;
 
     % Keep section
     if it > prm.cha - prm.kep
@@ -1800,13 +1790,10 @@ while not(count == prm.thr)
     mt = mt +    np;
     md = md + 3.*nf;
   end
-  
-  % Calculate back-slip on locked patches.
-  bslip              = (G(1).tb_mec * mpmean) .* d(1).cfinv_mec .* idl;
-  % Calc inverse Green's function
-  Gcc                = G(1).s(idc,idc);    % creep -> creep
-  Gcl                = G(1).s(idc,idl);    % lock  -> creep
-  bslip(idc)         = -Gcc \ (Gcl * bslip(idl));
+
+  % Calculate back-slip on locked and creeping patches.
+  bslip      = (G(1).tb_mec * mpmean) .* d(1).cfinv_mec .* idl;
+  bslip(idc) = -G(1).s(idc,idc) \ (G(1).s(idc,idl) * bslip(idl));
 
   % Calc vectors for mean parameters
   vec.rig = G(1).p * mpmean;
