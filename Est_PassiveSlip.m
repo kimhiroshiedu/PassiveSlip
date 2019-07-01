@@ -2356,3 +2356,15 @@ lat=atan2(Z,sqrt(X.*X+Y.*Y)).*180/pi;
 lon=atan2(Y,X).*180/pi;
 ang=sqrt(X.*X+Y.*Y+Z.*Z).*(1e6.*(180./pi));
 end
+
+%% Dirac delta function
+function y = Dirac(x)
+y = zeros(size(x));
+y(x == 0) = inf;
+end
+
+%% Heaviside step function
+function y = Heviside(x)
+y = zeros(size(x));
+y(x >= 0) = 1;
+end
