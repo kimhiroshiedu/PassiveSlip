@@ -2364,7 +2364,17 @@ y(x == 0) = inf;
 end
 
 %% Heaviside step function
-function y = Heviside(x)
+function y = Heveaside(x)
 y = zeros(size(x));
 y(x >= 0) = 1;
+end
+
+%% Interp linearly for some points
+function y = linspace2(x,nint)
+x1 = x(1:end-1);
+x2 = x(2:end  );
+xdiff = x2 - x1;
+n1 = nint-1;
+y = x1 + (xdiff./n1) .* (0:n1-1)';
+y = [y(:); x(end)];
 end
