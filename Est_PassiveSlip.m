@@ -1325,7 +1325,7 @@ tmp.err(3:3:3*nobs) = obs(1).herr;
 d(1).ind   = find(tmp.err ~= 0)';
 d(1).obs   = tmp.obs(d(1).ind)';
 d(1).err   = tmp.err(d(1).ind)';
-d(1).mcid  = false(  blk(1).ntkin,blk(1).nbkin);
+d(1).mcid  = zeros(3*blk(1).ntkin,blk(1).nbkin);
 d(1).idmec = false(3*blk(1).ntmec,           1);
 %
 % (G(1).C * (( G(1).T * ( G(1).B1 - G(1).B2 ) * Mp)*Mc ) + G(1).P * Mp
@@ -1352,7 +1352,7 @@ for nb1 = 1:blk(1).nblock
       if blk(1).bound(nb1,nb2).flag2 == 1
         d(1).idmec(mc:mc+3*nf-1) = true;
       else
-        d(1).mcid(mr:mr+nf-1,nk) = true;
+        d(1).mcid(mr:mr+3*nf-1,mr:mr+nf-1) = repmat(eye(nf),3,1);
         nk = nk + 1;
       end
       tmp.c(1:3*nobs,mc     :mc+  nf-1) = tri(1).bound(nb1,nb2).gustr;
@@ -1429,7 +1429,6 @@ G(1).c_mec  = tmp.c(:, d(1).idmec);
 G(1).p      = tmp.p(d(1).ind,:);
 G(1).i      = tmp.i(d(1).ind,:);
 G(1).s      = tmp.s(d(1).idmec,d(1).idmec);
-d(1).mcid   = repmat(d(1).mcid,3,1);
 d(1).cfinv_kin = tmp.cfinv(~d(1).idmec);
 d(1).cfinv_mec = tmp.cfinv( d(1).idmec);
 end
@@ -1561,6 +1560,7 @@ if prm.gpu ~= 99
   G(1).c_kin     = gpuArray(single(     G(1).c_kin  ));
   G(1).c_mec     = gpuArray(single(     G(1).c_mec  ));
   G(1).i         = gpuArray(single(     G(1).i      ));
+  d(1).mcid      = gpuArray(single(     d(1).mcid     ));
   d(1).cfinv_mec = gpuArray(single(     d(1).cfinv_mec));
   d(1).cfinv_kin = gpuArray(single(     d(1).cfinv_kin));
 end
@@ -1596,19 +1596,17 @@ while not(count == prm.thr)
     mp.smp = mp.old + rwd .* mpscale .* rmp(:,it);
     mi.smp = mi.old + rwd .* miscale .* rmi(:,it);
     la.smp = la.old + rwd .*  la.std .* rla(:,it);
-    % Make mc.smpmat
-    mc.smpmat = repmat(mc.smp,3,blk(1).nbkin);
-    mc.smpmat = mc.smpmat(d(1).mcid);
+    ma.smp = ma.old + rwd .* mascale .* rma(:,it);
+    id_reject = [ma.smp(       1:ma.n/2) < 0 | ma.smp(1       :ma.n/2) > blk(1).asp_lline                                           ;...
+                 ma.smp(ma.n/2+1:   end) < 0 | ma.smp(ma.n/2+1:   end) > blk(1).asp_lline | ma.smp(1:ma.n/2) > ma.smp(ma.n/2+1:end)];
+    ma.smp(id_reject) = ma.old(id_reject);
+
     % Calc gpu memory free capacity
     if prm.gpu ~= 99
       byte1 = whos('G');
       byte2 = whos('mp');
       b = waitGPU(byte1.bytes+byte2.bytes);
     end
-    ma.smp = ma.old + rwd .* mascale .* rma(:,it);
-    id_reject = [ma.smp(       1:ma.n/2) < 0 | ma.smp(1       :ma.n/2) > blk(1).asp_lline                                           ;...
-                 ma.smp(ma.n/2+1:   end) < 0 | ma.smp(ma.n/2+1:   end) > blk(1).asp_lline | ma.smp(1:ma.n/2) > ma.smp(ma.n/2+1:end)];
-    ma.smp(id_reject) = ma.old(id_reject);
 
     % Derive locked meshes from up- and down-dip limit of asperities
     mt = 1;
@@ -1645,7 +1643,7 @@ while not(count == prm.thr)
     % Due to Rigid motion
     cal.rig = G(1).p * mp.smp;
     % Due to Kinematic coupling
-    cal.kin = G(1).c_kin * ((G(1).tb_kin * mp.smp) .* d(1).cfinv_kin .* mc.smpmat);
+    cal.kin = G(1).c_kin * ((G(1).tb_kin * mp.smp) .* d(1).cfinv_kin .* (d(1).mcid * mc.smp));
     % Due to Mechanical coupling
 %     cal.mec = G(1).c_mec * (G(1).E - Gpassive) * bslip;
     cal.mec = G(1).c_mec * bslip;
@@ -1766,7 +1764,6 @@ while not(count == prm.thr)
   mcmean = mean(cha.mc,2);
   mamean = mean(cha.ma,2);
   mimean = mean(cha.mi,2);
-  mcmeanrep = repmat(mcmean,3,blk(1).nbkin);mcmeanrep = mcmeanrep(d(1).mcid);
 
   % Derive locked meshes from up- and down-dip limit of asperities
   mt = 1;
@@ -1797,7 +1794,7 @@ while not(count == prm.thr)
 
   % Calc vectors for mean parameters
   vec.rig = G(1).p * mpmean;
-  vec.kin = G(1).c_kin * ((G(1).tb_kin * mpmean) .* d(1).cfinv_kin .* mcmeanrep);
+  vec.kin = G(1).c_kin * ((G(1).tb_kin * mpmean) .* d(1).cfinv_kin .* (d(1).mcid * mcmean));
   vec.mec = G(1).c_mec * bslip;
   vec.ine = G(1).i * mimean;
   % Zero padding
