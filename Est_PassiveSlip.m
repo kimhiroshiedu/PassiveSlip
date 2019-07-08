@@ -4,8 +4,9 @@ function Est_PassiveSlip
 % Combined by Hiroshi Kimura     2018/11/12
 % Revise by Hiroshi Kimura       2019/2/16
 %--- 
-prm.input = 'PARAMETER/parameter_inversiontest.txt';
-prm.optfile='PARAMETER/opt_bound_par_forward.txt';
+prm.input      = 'PARAMETER/parameter_inversiontest.txt';
+prm.optfile    = 'PARAMETER/opt_bound_par_forward.txt';
+prm.interpfile = 'PARAMETER/interp_randwalkline.txt';
 %--
 % Read Parameters.
 [prm]     = ReadParameters(prm);
@@ -82,6 +83,12 @@ prm.num    = size(tmp,1);
 prm.optb1  = tmp(:,1);
 prm.optb2  = tmp(:,2);
 prm.optint = tmp(:,3);
+%====================================================
+tmp = load(prm.interpfile);
+prm.interpnum = size(tmp,1);
+prm.interpb1  = tmp(:,1);
+prm.interpb2  = tmp(:,2);
+prm.interpint = tmp(:,3);
 %====================================================
 fprintf('==================\nINPUT PARAMETERS\n==================\n') 
 fprintf('HOME_D                    : %s \n',prm.home_d) 
@@ -1968,6 +1975,9 @@ alat = mean(obs(1).alat(:));
 alon = mean(obs(1).alon(:));
 blk(1).naspline  =  0;
 blk(1).asp_lline = [];
+
+Nint = 10;  % default
+
 np = 1;
 for nb1 = 1:blk(1).nblock
   for nb2 = nb1+1:blk(1).nblock
@@ -1976,6 +1986,10 @@ for nb1 = 1:blk(1).nblock
     if fid >= 0
       asp(np).nb1 = nb1;
       asp(np).nb2 = nb2;
+      nint = Nint;
+      %       for
+      %       end
+      %       nint = prm.interpint;
       tmp = fscanf(fid,'%f %f %f %f \n',[4, Inf]);
       blk(1).bound(nb1,nb2).naspline = size(tmp,2);
       blk(1).bound(nb1,nb2).asp_lond = tmp(1,:)';
@@ -1989,6 +2003,10 @@ for nb1 = 1:blk(1).nblock
       blk(1).bound(nb1,nb2).asp_yd = yd;
       blk(1).bound(nb1,nb2).asp_xu = xu;
       blk(1).bound(nb1,nb2).asp_yu = yu;
+      blk(1).bound(nb1,nb2).asp_xd_interp = linspace2(blk(1).bound(nb1,nb2).asp_xd, nint);
+      blk(1).bound(nb1,nb2).asp_yd_interp = linspace2(blk(1).bound(nb1,nb2).asp_yd, nint);
+      blk(1).bound(nb1,nb2).asp_xu_interp = linspace2(blk(1).bound(nb1,nb2).asp_xu, nint);
+      blk(1).bound(nb1,nb2).asp_yu_interp = linspace2(blk(1).bound(nb1,nb2).asp_yu, nint);
       blk(1).bound(nb1,nb2).asp_lx = xu - xd;
       blk(1).bound(nb1,nb2).asp_ly = yu - yd;
       np = np + 1;
@@ -2368,6 +2386,8 @@ end
 
 %% Interp linearly for some points
 function y = linspace2(x,nint)
+% Calculate linspace for vector data
+% y = linspace2(x, nint) x, vector; nint, interp interval with interger
 x1 = x(1:end-1);
 x2 = x(2:end  );
 xdiff = x2 - x1;
