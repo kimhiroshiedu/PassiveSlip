@@ -1,13 +1,26 @@
 %% Est_PassiveSlip.m
-function Est_PassiveSlip
+function Est_PassiveSlip(varargin)
 % Coded by Ryohei Sasajima final 2013/12/23
 % Combined by Hiroshi Kimura     2018/11/12
-% Revise by Hiroshi Kimura       2019/2/16
+% Revised by Hiroshi Kimura      2019/02/16
+% Revised by Hiroshi Kimura      2019/07/09
 %--- 
 prm.input      = 'PARAMETER/parameter_inversiontest.txt';
 prm.optfile    = 'PARAMETER/opt_bound_par_forward.txt';
 prm.interpfile = 'PARAMETER/interp_randwalkline.txt';
 %--
+
+% Simulation mode select
+if ~isempty(varargin)
+  if varargin{1} == 'I'
+    mode = 1;
+  elseif varargin{1} == 'F'
+    mode = 0;
+  end
+else
+  mode = 1; 
+end
+
 % Read Parameters.
 [prm]     = ReadParameters(prm);
 % Read observation data. 
@@ -34,8 +47,15 @@ prm.interpfile = 'PARAMETER/interp_randwalkline.txt';
 [d,G]     = GreenFunctionMatrix(blk,obs,tri);
 % Define locking patches.
 [d]       = InitialLockingPatch(blk,tri,d);
+
+if mode == 1
+% MCMC simulation for coupling estimattion
+  [cal,cha] = MechCoupling_MCMC_MH(blk,asp,tri,prm,obs,eul,d,G);
+elseif mode == 0
 % Calculate pasive slip and response to surface.
-[cal,cha] = MechCoupling_MCMC_MH(blk,asp,tri,prm,obs,eul,d,G);
+  [cal,cha] = CalcPassiveSlip(blk,asp,tri,prm,obs,eul,d,G);
+end
+
 % Save data.
 SaveData(prm,blk,obs,tri,d,G,cal,cha)
 
@@ -1853,6 +1873,79 @@ fprintf(logfid,'=== finished MCMC part ===\n');
 fclose(logfid);
 end
 
+%% Estimate passive slip distribution by forward simulation
+function [cal,cha] = CalcPassiveSlip(blk,asp,tri,prm,obs,eul,d,G)
+cha = [];
+% initial parameters
+mc.int = 1e-2 ;
+mp.int = 1e-10;
+mi.int = 1e-10;
+mc.n   = blk(1).nb;
+mp.n   = 3.*blk(1).nblock;
+mi.n   = 3.*blk(1).nblock;
+% substitute euler pole vectors
+mp.old         = double(blk(1).pole);
+mp.old(eul.id) = 0                  ;
+mp.old         = mp.old+eul.fixw    ;
+% substitute internal strain tensors
+mi.old = 1e-10.*(-0.5+rand(mi.n,1,precision));
+mi.old = mi.old.*blk(1).idinter              ;
+
+% substitude index of locking patches
+id_lock = logical(d(1).id_lock);
+id_crep = logical(d(1).id_crep);
+
+% Derive locked meshes from up- and down-dip limit of asperities
+mt = 1;
+md = 1;
+for na = 1:size(asp,2)
+  nb1 = asp(na).nb1;
+  nb2 = asp(na).nb2;
+  np  =      blk(1).bound(nb1,nb2).naspline;
+  nf  = size(blk(1).bound(nb1,nb2).blon,1) ;
+  xd = blk(1).bound(nb1,nb2).asp_xd + (ma.smp(       mt:1:       mt+np-1)./blk(1).bound(nb1,nb2).asp_lline) .* blk(1).bound(nb1,nb2).asp_lx;
+  xu = blk(1).bound(nb1,nb2).asp_xd + (ma.smp(ma.n/2+mt:1:ma.n/2+mt+np-1)./blk(1).bound(nb1,nb2).asp_lline) .* blk(1).bound(nb1,nb2).asp_lx;
+  yd = blk(1).bound(nb1,nb2).asp_yd + (ma.smp(       mt:1:       mt+np-1)./blk(1).bound(nb1,nb2).asp_lline) .* blk(1).bound(nb1,nb2).asp_ly;
+  yu = blk(1).bound(nb1,nb2).asp_yd + (ma.smp(ma.n/2+mt:1:ma.n/2+mt+np-1)./blk(1).bound(nb1,nb2).asp_lline) .* blk(1).bound(nb1,nb2).asp_ly;
+  edge = [xd(  1: 1:end), yd(  1: 1:end);...
+          xu(end:-1:  1), yu(end:-1:  1)];
+  [edg(na).lat,edg(na).lon] = XYTPL(edge(:,1),edge(:,2),alat,alon);
+  idl(md:md+3*nf-1,1) = [repmat( inpolygon(tri(1).bound(nb1,nb2).clon,tri(1).bound(nb1,nb2).clat,edg(na).lon,edg(na).lat)',2,1);...
+      false(size(tri(1).bound(nb1,nb2).clon))'];
+  idc(md:md+3*nf-1,1) = [repmat(~inpolygon(tri(1).bound(nb1,nb2).clon,tri(1).bound(nb1,nb2).clat,edg(na).lon,edg(na).lat)',2,1);...
+      false(size(tri(1).bound(nb1,nb2).clon))'];
+  mt = mt +    np;
+  md = md + 3.*nf;
+end
+
+% Calculate back-slip on locked patches.
+bslip              = (G(1).tb_mec * mp.old) .* d(1).cfinv_mec .* idl;
+
+% Calc inverse Green's function
+%     Gcc        = G(1).s(idc,idc);    % creep -> creep
+%     Gcl        = G(1).s(idc,idl);    % lock  -> creep
+%     bslip(idc) = -Gcc \ (Gcl * bslip(idl));
+bslip(idc) = -G(1).s(idc,idc) \ (G(1).s(idc,idl) * bslip(idl));
+
+% Due to Rigid motion
+cal.rig = G(1).p * mp.old;
+% Due to Kinematic coupling
+cal.kin = G(1).c_kin * ((G(1).tb_kin * mp.old) .* d(1).cfinv_kin .* (d(1).mcid * mc.old));
+% Due to Mechanical coupling
+%     cal.mec = G(1).c_mec * (G(1).E - Gpassive) * bslip;
+cal.mec = G(1).c_mec * bslip;
+% Due to Internal strain
+cal.ine = G(1).i * mi.old;
+% Zero padding
+if isempty(cal.rig); cal.rig = zeros(size(d(1).ind)); end
+if isempty(cal.kin); cal.kin = zeros(size(d(1).ind)); end
+if isempty(cal.mec); cal.mec = zeros(size(d(1).ind)); end
+if isempty(cal.ine); cal.ine = zeros(size(d(1).ind)); end
+% Total velocities
+cal.smp = cal.rig + cal.kin + cal.mec + cal.ine;
+
+end
+
 %% Compress CHA sampling
 function CompressData(cha,prm,itr,nacc)
 % Compressing CHA sampled parameter to int
@@ -1986,29 +2079,40 @@ for nb1 = 1:blk(1).nblock
     if fid >= 0
       asp(np).nb1 = nb1;
       asp(np).nb2 = nb2;
-      nint = Nint;
-      %       for
-      %       end
-      %       nint = prm.interpint;
+      blk(1).bound(nb1,nb2).interpint = Nint;
+      for n = 1:size(prm.interpb1, 1)
+        interpid = ismember([asp(n).nb1, asp(n).nb2], [prm.interpb1(n), prm.interpb2(n)]);
+        ispair   = sum(interpid);
+        if ispair == 2
+          blk(1).bound(nb1,nb2).interpint = prm.interpint(n); break;
+        end
+      end
       tmp = fscanf(fid,'%f %f %f %f \n',[4, Inf]);
       blk(1).bound(nb1,nb2).naspline = size(tmp,2);
       blk(1).bound(nb1,nb2).asp_lond = tmp(1,:)';
       blk(1).bound(nb1,nb2).asp_latd = tmp(2,:)';
-      blk(1).bound(nb1,nb2).asp_lonu = tmp(3,:)';
-      blk(1).bound(nb1,nb2).asp_latu = tmp(4,:)';
+      blk(1).bound(nb1,nb2).asp_depd = tmp(3,:)';
+      blk(1).bound(nb1,nb2).asp_lonu = tmp(4,:)';
+      blk(1).bound(nb1,nb2).asp_latu = tmp(5,:)';
+      blk(1).bound(nb1,nb2).asp_depu = tmp(6,:)';
       [xd,yd] = PLTXY(blk(1).bound(nb1,nb2).asp_latd,blk(1).bound(nb1,nb2).asp_lond,alat,alon);
       [xu,yu] = PLTXY(blk(1).bound(nb1,nb2).asp_latu,blk(1).bound(nb1,nb2).asp_lonu,alat,alon);
-      blk(1).bound(nb1,nb2).asp_lline=sqrt((xd-xu).^2+(yd-yu).^2);
-      blk(1).bound(nb1,nb2).asp_xd = xd;
-      blk(1).bound(nb1,nb2).asp_yd = yd;
-      blk(1).bound(nb1,nb2).asp_xu = xu;
-      blk(1).bound(nb1,nb2).asp_yu = yu;
-      blk(1).bound(nb1,nb2).asp_xd_interp = linspace2(blk(1).bound(nb1,nb2).asp_xd, nint);
-      blk(1).bound(nb1,nb2).asp_yd_interp = linspace2(blk(1).bound(nb1,nb2).asp_yd, nint);
-      blk(1).bound(nb1,nb2).asp_xu_interp = linspace2(blk(1).bound(nb1,nb2).asp_xu, nint);
-      blk(1).bound(nb1,nb2).asp_yu_interp = linspace2(blk(1).bound(nb1,nb2).asp_yu, nint);
-      blk(1).bound(nb1,nb2).asp_lx = xu - xd;
-      blk(1).bound(nb1,nb2).asp_ly = yu - yd;
+      blk(1).bound(nb1,nb2).asp_lline=sqrt((xd-xu).^2 + (yd-yu).^2);
+      blk(1).bound(nb1,nb2).asp_xd =                             xd;
+      blk(1).bound(nb1,nb2).asp_yd =                             yd;
+      blk(1).bound(nb1,nb2).asp_zd = blk(1).bound(nb1,nb2).asp_depd;
+      blk(1).bound(nb1,nb2).asp_xu =                             xu;
+      blk(1).bound(nb1,nb2).asp_yu =                             yu;
+      blk(1).bound(nb1,nb2).asp_zu = blk(1).bound(nb1,nb2).asp_depu;
+      blk(1).bound(nb1,nb2).asp_xd_interp = linspace2(blk(1).bound(nb1,nb2).asp_xd, blk(1).bound(nb1,nb2).interpint);
+      blk(1).bound(nb1,nb2).asp_yd_interp = linspace2(blk(1).bound(nb1,nb2).asp_yd, blk(1).bound(nb1,nb2).interpint);
+      blk(1).bound(nb1,nb2).asp_zd_interp = linspace2(blk(1).bound(nb1,nb2).asp_zd, blk(1).bound(nb1,nb2).interpint);
+      blk(1).bound(nb1,nb2).asp_xu_interp = linspace2(blk(1).bound(nb1,nb2).asp_xu, blk(1).bound(nb1,nb2).interpint);
+      blk(1).bound(nb1,nb2).asp_yu_interp = linspace2(blk(1).bound(nb1,nb2).asp_yu, blk(1).bound(nb1,nb2).interpint);
+      blk(1).bound(nb1,nb2).asp_zu_interp = linspace2(blk(1).bound(nb1,nb2).asp_zu, blk(1).bound(nb1,nb2).interpint);
+      blk(1).bound(nb1,nb2).asp_lx = xd - xu;
+      blk(1).bound(nb1,nb2).asp_ly = yd - yu;
+      blk(1).bound(nb1,nb2).asp_lz = zd - zu;
       np = np + 1;
       blk(1).naspline  =  blk(1).naspline + blk(1).bound(nb1,nb2).naspline;
       blk(1).asp_lline = [blk(1).asp_lline, blk(1).bound(nb1,nb2).asp_lline];
@@ -2374,24 +2478,27 @@ end
 
 %% Dirac delta function
 function y = Dirac(x)
-y = zeros(size(x));
-y(x == 0) = inf;
+% Calculate Heaviside step function
+%   y = Dirac(x) x and y, vector
+y = 1 .* (x == 0);
 end
 
 %% Heaviside step function
 function y = Heveaside(x)
-y = zeros(size(x));
-y(x >= 0) = 1;
+% Calculate Heveaside step function
+%   y = Heaviside(x)
+%   y and x are possible to be either scaler or vector.
+y = 1 .* (x >= 0);
 end
 
 %% Interp linearly for some points
 function y = linspace2(x,nint)
 % Calculate linspace for vector data
-% y = linspace2(x, nint) x, vector; nint, interp interval with interger
+% y = linspace2(x, nint) x and y, vector; nint, interp interval with
 x1 = x(1:end-1);
 x2 = x(2:end  );
 xdiff = x2 - x1;
 n1 = nint-1;
-y = x1 + (xdiff./n1) .* (0:n1-1)';
+y = x1 + (xdiff./nint) .* (0:n1)';
 y = [y(:); x(end)];
 end
