@@ -1057,7 +1057,6 @@ obsz = -1e-3.*obs(1).ahig;
 tricz = -blk(1).cdep;
 % 
 mc           = 1;
-mt           = 1;
 tri(1).obsdis= [];
 blk(1).nb    = 0;
 blk(1).nbmec = 0;
@@ -1160,7 +1159,6 @@ for nb1 = 1:blk(1).nblock
         blk(1).nbkin = blk(1).nbkin + 1;
       end
       mc = mc + 3*nf;
-      mt = mt +   nf;
     else
       tri(1).bound(nb1,nb2).clat = [];
       tri(1).bound(nb1,nb2).clon = [];
@@ -2093,7 +2091,7 @@ for nb1 = 1:blk(1).nblock
             blk(1).bound(nb1,nb2).interpint = prm.interpint(n); break;
           end
         end
-        tmp = fscanf(fid,'%f %f %f %f \n',[4, Inf]);
+        tmp = fscanf(fid,'%f %f %f %f \n',[6, Inf]);
         blk(1).bound(nb1,nb2).naspline = size(tmp,2);
         blk(1).bound(nb1,nb2).asp_lond = tmp(1,:)';
         blk(1).bound(nb1,nb2).asp_latd = tmp(2,:)';
@@ -2137,10 +2135,10 @@ for nb1 = 1:blk(1).nblock
         hy_d = [blk(1).bound(nb1,nb2).asp_yd_interp(1); hy_d; blk(1).bound(nb1,nb2).asp_yd_interp(end)];
         hy_u = [blk(1).bound(nb1,nb2).asp_yu_interp(1); hy_u; blk(1).bound(nb1,nb2).asp_yu_interp(end)];
         nstrip = size(hx_d,1)-1;
-        blk(1).bound(nb1,nb2).stripid = false(nf,ntrip);
+        blk(1).bound(nb1,nb2).stripid = false(nf,nstrip);
         for n = 1:nstrip
-          stripx = [hx_d(n),hx_d(n+1),hx_u(n),hx_u(n+1)];
-          stripy = [hy_d(n),hy_d(n+1),hy_u(n),hy_u(n+1)];
+          stripx = [hx_d(n),hx_d(n+1),hx_u(n+1),hx_u(n)];
+          stripy = [hy_d(n),hy_d(n+1),hy_u(n+1),hy_u(n)];
           instrip = inpolygon(tricx(mt:mt+nf-1),tricy(mt:mt+nf-1),stripx,stripy);
           blk(1).bound(nb1,nb2).stripid(:,n) = instrip;
         end
@@ -2526,10 +2524,17 @@ end
 function y = linspace2(x,nint)
 % Calculate linspace for vector data
 % y = linspace2(x, nint) x and y, vector; nint, interp interval with
+tmpx = x;
+if size(tmpx,1) > size(tmpx,2)
+  x = x';
+end
 x1 = x(1:end-1);
 x2 = x(2:end  );
 xdiff = x2 - x1;
 n1 = nint-1;
 y = x1 + (xdiff./nint) .* (0:n1)';
 y = [y(:); x(end)];
+if size(tmpx,1) < size(tmpx,2)
+  y = y';
+end
 end
