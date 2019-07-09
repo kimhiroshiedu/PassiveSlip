@@ -50,7 +50,7 @@ end
 
 if mode == 1
 % MCMC simulation for coupling estimattion
-  [cal,cha] = MechCoupling_MCMC_MH(blk,asp,tri,prm,obs,eul,d,G);
+  [cal,cha] = Proceed_MCMC_MH(blk,asp,tri,prm,obs,eul,d,G);
 elseif mode == 0
 % Calculate pasive slip and response to surface.
   [cal,cha] = CalcPassiveSlip(blk,asp,tri,prm,obs,eul,d,G);
@@ -1491,7 +1491,7 @@ d(1).id_crep = logical(d(1).id_crep);
 end
 
 %% Estimate mechanical coupled area by MCMC (Metropolis-Hasting)
-function [cal,cha] = MechCoupling_MCMC_MH(blk,asp,tri,prm,obs,eul,d,G)
+function [cal,cha] = Proceed_MCMC_MH(blk,asp,tri,prm,obs,eul,d,G)
 % Test version coded by Hiroshi Kimura in 2019/2/1
 % Combined by Hiroshi Kimura in 2019/4/22
 
