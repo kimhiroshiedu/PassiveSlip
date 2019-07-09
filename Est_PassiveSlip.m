@@ -1369,15 +1369,20 @@ mc = 1;
 mt = 1;
 mr = 1;
 nk = 1;
+nfmec = 1;
+nfkin = 1;
 for nb1 = 1:blk(1).nblock
   for nb2 = nb1+1:blk(1).nblock
     nf = size(tri(1).bound(nb1,nb2).clon,2);
     if nf ~= 0
       if blk(1).bound(nb1,nb2).flag2 == 1
         d(1).idmec(mc:mc+3*nf-1) = true;
+        %         d(1).idstrip(
+        nfmec = nfmec + nf;
       else
         d(1).mcid(mr:mr+3*nf-1,mr:mr+nf-1) = repmat(eye(nf),3,1);
         nk = nk + 1;
+        nfkin = nfkin + nf;
       end
       tmp.c(1:3*nobs,mc     :mc+  nf-1) = tri(1).bound(nb1,nb2).gustr;
       tmp.c(1:3*nobs,mc+  nf:mc+2*nf-1) = tri(1).bound(nb1,nb2).gudip;
@@ -2141,6 +2146,12 @@ for nb1 = 1:blk(1).nblock
           stripy = [hy_d(n),hy_d(n+1),hy_u(n+1),hy_u(n)];
           instrip = inpolygon(tricx(mt:mt+nf-1),tricy(mt:mt+nf-1),stripx,stripy);
           blk(1).bound(nb1,nb2).stripid(:,n) = instrip;
+        end
+        blk(1).bound(nb1,nb2).interpid = zeros(blk(1).bound(nb1,nb2).interpint*(blk(1).bound(nb1,nb2).naspline-1)+1, blk(1).bound(nb1,nb2).naspline);
+        for n = 1:blk(1).bound(nb1,nb2).naspline-1
+          
+          if n == blk(1).bound(nb1,nb2).naspline-1
+          end
         end
       end
       mt = mt +   nf;
