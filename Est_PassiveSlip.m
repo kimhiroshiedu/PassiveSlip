@@ -1038,14 +1038,11 @@ b                               = temp;
 end
 
 %% Make Green's function of halfspace elastic strain for triangular meshes
-%% TO DO: Reconstruct the Coefficient matrix to calculate the strain response to any other boundaries.
 function [blk,tri] = GreenTri(blk,obs,prm)
 % Coded by Hiroshi Kimura 2019/01/28 (ver 1.0)
 pr = 0.25;
 nd = size(obs(1).alat,2);
 nfall = blk(1).nt;
-nfkin = blk(1).ntkin;
-nfmec = blk(1).ntmec;
 c1=cos(blk(1).phi);
 s1=sin(blk(1).phi);
 c2=cos(-blk(1).theta);
@@ -1060,6 +1057,7 @@ obsz = -1e-3.*obs(1).ahig;
 tricz = -blk(1).cdep;
 % 
 mc           = 1;
+mt           = 1;
 tri(1).obsdis= [];
 blk(1).nb    = 0;
 blk(1).nbmec = 0;
@@ -1068,7 +1066,7 @@ tri(1).idstr = false(3*nfall,1);
 tri(1).iddip = false(3*nfall,1);
 tri(1).idtns = false(3*nfall,1);
 for nb1 = 1:blk(1).nblock
-  [tri(nb1).localx,tri(nb1).localy] = PLTXY(blk(nb1).lat,blk(nb1).lon,alat,alon);
+  [tri(nb1).localx, tri(nb1).localy] = PLTXY(blk(nb1).lat,blk(nb1).lon,alat,alon);
   for nb2 = nb1+1:blk(1).nblock
     nf = size(blk(1).bound(nb1,nb2).blon,1);
     if nf ~= 0
@@ -1109,9 +1107,9 @@ for nb1 = 1:blk(1).nblock
           % Green's function relates to strike slip
           u = CalcTriDisps(obsx,obsy,obsz,trix,triy,triz,pr,1,0,0);
           s = CalcTriStrains(tricx,tricy,tricz,trix,triy,triz,pr,1,0,0);
-          tri(1).bound(nb1,nb2).gustr(1:3:3*nd,n) =  u.x;  % E
-          tri(1).bound(nb1,nb2).gustr(2:3:3*nd,n) =  u.y;  % N
-          tri(1).bound(nb1,nb2).gustr(3:3:3*nd,n) = -u.z;  % U
+          tri(1).bound(nb1,nb2).gustr(1:3:3*nd   ,n) =  u.x;   % E
+          tri(1).bound(nb1,nb2).gustr(2:3:3*nd   ,n) =  u.y;   % N
+          tri(1).bound(nb1,nb2).gustr(3:3:3*nd   ,n) = -u.z;   % U
           tri(1).bound(nb1,nb2).gsstr(1:6:6*nfall,n) =  s.xx;  % exx
           tri(1).bound(nb1,nb2).gsstr(2:6:6*nfall,n) =  s.xy;  % exy
           tri(1).bound(nb1,nb2).gsstr(3:6:6*nfall,n) = -s.xz;  % exz
@@ -1121,9 +1119,9 @@ for nb1 = 1:blk(1).nblock
           % Green's function relates to tensile slip
           u = CalcTriDisps(obsx,obsy,obsz,trix,triy,triz,pr,0,1,0);
           s = CalcTriStrains(tricx,tricy,tricz,trix,triy,triz,pr,0,1,0);
-          tri(1).bound(nb1,nb2).gutns(1:3:3*nd,n) =  u.x;  % E
-          tri(1).bound(nb1,nb2).gutns(2:3:3*nd,n) =  u.y;  % N
-          tri(1).bound(nb1,nb2).gutns(3:3:3*nd,n) = -u.z;  % U 
+          tri(1).bound(nb1,nb2).gutns(1:3:3*nd   ,n) =  u.x;   % E
+          tri(1).bound(nb1,nb2).gutns(2:3:3*nd   ,n) =  u.y;   % N
+          tri(1).bound(nb1,nb2).gutns(3:3:3*nd   ,n) = -u.z;   % U 
           tri(1).bound(nb1,nb2).gstns(1:6:6*nfall,n) =  s.xx;  % exx
           tri(1).bound(nb1,nb2).gstns(2:6:6*nfall,n) =  s.xy;  % exy
           tri(1).bound(nb1,nb2).gstns(3:6:6*nfall,n) = -s.xz;  % exz
@@ -1133,9 +1131,9 @@ for nb1 = 1:blk(1).nblock
           % Green's function relates to dip slip
           u = CalcTriDisps(obsx,obsy,obsz,trix,triy,triz,pr,0,0,1);
           s = CalcTriStrains(tricx,tricy,tricz,trix,triy,triz,pr,0,0,1);
-          tri(1).bound(nb1,nb2).gudip(1:3:3*nd,n) =  u.x;  % E
-          tri(1).bound(nb1,nb2).gudip(2:3:3*nd,n) =  u.y;  % N
-          tri(1).bound(nb1,nb2).gudip(3:3:3*nd,n) = -u.z;  % U
+          tri(1).bound(nb1,nb2).gudip(1:3:3*nd   ,n) =  u.x;   % E
+          tri(1).bound(nb1,nb2).gudip(2:3:3*nd   ,n) =  u.y;   % N
+          tri(1).bound(nb1,nb2).gudip(3:3:3*nd   ,n) = -u.z;   % U
           tri(1).bound(nb1,nb2).gsdip(1:6:6*nfall,n) =  s.xx;  % exx
           tri(1).bound(nb1,nb2).gsdip(2:6:6*nfall,n) =  s.xy;  % exy
           tri(1).bound(nb1,nb2).gsdip(3:6:6*nfall,n) = -s.xz;  % exz
@@ -1162,6 +1160,7 @@ for nb1 = 1:blk(1).nblock
         blk(1).nbkin = blk(1).nbkin + 1;
       end
       mc = mc + 3*nf;
+      mt = mt +   nf;
     else
       tri(1).bound(nb1,nb2).clat = [];
       tri(1).bound(nb1,nb2).clon = [];
@@ -2071,51 +2070,83 @@ blk(1).asp_lline = [];
 
 Nint = 10;  % default
 
+[tricx,tricy] = PLTXY(blk(1).clat,blk(1).clon,alat,alon);
+tricz = -blk(1).cdep;
+% 
+mc = 1;
+mt = 1;
 np = 1;
 for nb1 = 1:blk(1).nblock
   for nb2 = nb1+1:blk(1).nblock
-    rwlfile = fullfile(prm.dirblock_patch,['udlineb_',num2str(nb1),'_',num2str(nb2),'.txt']);
-    fid       = fopen(rwlfile,'r');
-    if fid >= 0
-      asp(np).nb1 = nb1;
-      asp(np).nb2 = nb2;
-      blk(1).bound(nb1,nb2).interpint = Nint;
-      for n = 1:size(prm.interpb1, 1)
-        interpid = ismember([asp(n).nb1, asp(n).nb2], [prm.interpb1(n), prm.interpb2(n)]);
-        ispair   = sum(interpid);
-        if ispair == 2
-          blk(1).bound(nb1,nb2).interpint = prm.interpint(n); break;
+    nf = size(blk(1).bound(nb1,nb2).blon,1);
+    if nf ~= 0
+      rwlfile = fullfile(prm.dirblock_patch,['udlineb_',num2str(nb1),'_',num2str(nb2),'.txt']);
+      fid     = fopen(rwlfile,'r');
+      if fid >= 0
+        asp(np).nb1 = nb1;
+        asp(np).nb2 = nb2;
+        blk(1).bound(nb1,nb2).interpint = Nint;
+        for n = 1:size(prm.interpb1, 1)
+          interpid = ismember([asp(n).nb1, asp(n).nb2], [prm.interpb1(n), prm.interpb2(n)]);
+          ispair   = sum(interpid);
+          if ispair == 2
+            blk(1).bound(nb1,nb2).interpint = prm.interpint(n); break;
+          end
+        end
+        tmp = fscanf(fid,'%f %f %f %f \n',[4, Inf]);
+        blk(1).bound(nb1,nb2).naspline = size(tmp,2);
+        blk(1).bound(nb1,nb2).asp_lond = tmp(1,:)';
+        blk(1).bound(nb1,nb2).asp_latd = tmp(2,:)';
+        blk(1).bound(nb1,nb2).asp_depd = tmp(3,:)';
+        blk(1).bound(nb1,nb2).asp_lonu = tmp(4,:)';
+        blk(1).bound(nb1,nb2).asp_latu = tmp(5,:)';
+        blk(1).bound(nb1,nb2).asp_depu = tmp(6,:)';
+        [xd,yd] = PLTXY(blk(1).bound(nb1,nb2).asp_latd,blk(1).bound(nb1,nb2).asp_lond,alat,alon);
+        [xu,yu] = PLTXY(blk(1).bound(nb1,nb2).asp_latu,blk(1).bound(nb1,nb2).asp_lonu,alat,alon);
+        blk(1).bound(nb1,nb2).asp_lline=sqrt((xd-xu).^2 + (yd-yu).^2);
+        blk(1).bound(nb1,nb2).asp_xd =                             xd;
+        blk(1).bound(nb1,nb2).asp_yd =                             yd;
+        blk(1).bound(nb1,nb2).asp_zd = blk(1).bound(nb1,nb2).asp_depd;
+        blk(1).bound(nb1,nb2).asp_xu =                             xu;
+        blk(1).bound(nb1,nb2).asp_yu =                             yu;
+        blk(1).bound(nb1,nb2).asp_zu = blk(1).bound(nb1,nb2).asp_depu;
+        blk(1).bound(nb1,nb2).asp_lx = blk(1).bound(nb1,nb2).asp_xd - blk(1).bound(nb1,nb2).asp_xu;
+        blk(1).bound(nb1,nb2).asp_ly = blk(1).bound(nb1,nb2).asp_yd - blk(1).bound(nb1,nb2).asp_yu;
+        blk(1).bound(nb1,nb2).asp_lz = blk(1).bound(nb1,nb2).asp_zd - blk(1).bound(nb1,nb2).asp_zu;
+        % Interpolation of up- and down-dip point
+        blk(1).bound(nb1,nb2).asp_xd_interp = linspace2(blk(1).bound(nb1,nb2).asp_xd, blk(1).bound(nb1,nb2).interpint);
+        blk(1).bound(nb1,nb2).asp_yd_interp = linspace2(blk(1).bound(nb1,nb2).asp_yd, blk(1).bound(nb1,nb2).interpint);
+        blk(1).bound(nb1,nb2).asp_zd_interp = linspace2(blk(1).bound(nb1,nb2).asp_zd, blk(1).bound(nb1,nb2).interpint);
+        blk(1).bound(nb1,nb2).asp_xu_interp = linspace2(blk(1).bound(nb1,nb2).asp_xu, blk(1).bound(nb1,nb2).interpint);
+        blk(1).bound(nb1,nb2).asp_yu_interp = linspace2(blk(1).bound(nb1,nb2).asp_yu, blk(1).bound(nb1,nb2).interpint);
+        blk(1).bound(nb1,nb2).asp_zu_interp = linspace2(blk(1).bound(nb1,nb2).asp_zu, blk(1).bound(nb1,nb2).interpint);
+        blk(1).bound(nb1,nb2).asp_lx_interp = blk(1).bound(nb1,nb2).asp_xd_interp - blk(1).bound(nb1,nb2).asp_xu_interp;
+        blk(1).bound(nb1,nb2).asp_ly_interp = blk(1).bound(nb1,nb2).asp_yd_interp - blk(1).bound(nb1,nb2).asp_yu_interp;
+        blk(1).bound(nb1,nb2).asp_lz_interp = blk(1).bound(nb1,nb2).asp_zd_interp - blk(1).bound(nb1,nb2).asp_zu_interp;
+        np = np + 1;
+        blk(1).naspline  =  blk(1).naspline + blk(1).bound(nb1,nb2).naspline;
+        blk(1).asp_lline = [blk(1).asp_lline, blk(1).bound(nb1,nb2).asp_lline];
+
+        % Indexing trimesh with each strip
+        hx_d = (blk(1).bound(nb1,nb2).asp_xd_interp(1:end-1) + blk(1).bound(nb1,nb2).asp_xd_interp(2:end)) ./ 2;
+        hx_u = (blk(1).bound(nb1,nb2).asp_xu_interp(1:end-1) + blk(1).bound(nb1,nb2).asp_xu_interp(2:end)) ./ 2;
+        hy_d = (blk(1).bound(nb1,nb2).asp_yd_interp(1:end-1) + blk(1).bound(nb1,nb2).asp_yd_interp(2:end)) ./ 2;
+        hy_u = (blk(1).bound(nb1,nb2).asp_yu_interp(1:end-1) + blk(1).bound(nb1,nb2).asp_yu_interp(2:end)) ./ 2;
+        hx_d = [blk(1).bound(nb1,nb2).asp_xd_interp(1); hx_d; blk(1).bound(nb1,nb2).asp_xd_interp(end)];
+        hx_u = [blk(1).bound(nb1,nb2).asp_xu_interp(1); hx_u; blk(1).bound(nb1,nb2).asp_xu_interp(end)];
+        hy_d = [blk(1).bound(nb1,nb2).asp_yd_interp(1); hy_d; blk(1).bound(nb1,nb2).asp_yd_interp(end)];
+        hy_u = [blk(1).bound(nb1,nb2).asp_yu_interp(1); hy_u; blk(1).bound(nb1,nb2).asp_yu_interp(end)];
+        nstrip = size(hx_d,1)-1;
+        blk(1).bound(nb1,nb2).stripid = false(nf,ntrip);
+        for n = 1:nstrip
+          stripx = [hx_d(n),hx_d(n+1),hx_u(n),hx_u(n+1)];
+          stripy = [hy_d(n),hy_d(n+1),hy_u(n),hy_u(n+1)];
+          instrip = inpolygon(tricx(mt:mt+nf-1),tricy(mt:mt+nf-1),stripx,stripy);
+          blk(1).bound(nb1,nb2).stripid(:,n) = instrip;
         end
       end
-      tmp = fscanf(fid,'%f %f %f %f \n',[4, Inf]);
-      blk(1).bound(nb1,nb2).naspline = size(tmp,2);
-      blk(1).bound(nb1,nb2).asp_lond = tmp(1,:)';
-      blk(1).bound(nb1,nb2).asp_latd = tmp(2,:)';
-      blk(1).bound(nb1,nb2).asp_depd = tmp(3,:)';
-      blk(1).bound(nb1,nb2).asp_lonu = tmp(4,:)';
-      blk(1).bound(nb1,nb2).asp_latu = tmp(5,:)';
-      blk(1).bound(nb1,nb2).asp_depu = tmp(6,:)';
-      [xd,yd] = PLTXY(blk(1).bound(nb1,nb2).asp_latd,blk(1).bound(nb1,nb2).asp_lond,alat,alon);
-      [xu,yu] = PLTXY(blk(1).bound(nb1,nb2).asp_latu,blk(1).bound(nb1,nb2).asp_lonu,alat,alon);
-      blk(1).bound(nb1,nb2).asp_lline=sqrt((xd-xu).^2 + (yd-yu).^2);
-      blk(1).bound(nb1,nb2).asp_xd =                             xd;
-      blk(1).bound(nb1,nb2).asp_yd =                             yd;
-      blk(1).bound(nb1,nb2).asp_zd = blk(1).bound(nb1,nb2).asp_depd;
-      blk(1).bound(nb1,nb2).asp_xu =                             xu;
-      blk(1).bound(nb1,nb2).asp_yu =                             yu;
-      blk(1).bound(nb1,nb2).asp_zu = blk(1).bound(nb1,nb2).asp_depu;
-      blk(1).bound(nb1,nb2).asp_xd_interp = linspace2(blk(1).bound(nb1,nb2).asp_xd, blk(1).bound(nb1,nb2).interpint);
-      blk(1).bound(nb1,nb2).asp_yd_interp = linspace2(blk(1).bound(nb1,nb2).asp_yd, blk(1).bound(nb1,nb2).interpint);
-      blk(1).bound(nb1,nb2).asp_zd_interp = linspace2(blk(1).bound(nb1,nb2).asp_zd, blk(1).bound(nb1,nb2).interpint);
-      blk(1).bound(nb1,nb2).asp_xu_interp = linspace2(blk(1).bound(nb1,nb2).asp_xu, blk(1).bound(nb1,nb2).interpint);
-      blk(1).bound(nb1,nb2).asp_yu_interp = linspace2(blk(1).bound(nb1,nb2).asp_yu, blk(1).bound(nb1,nb2).interpint);
-      blk(1).bound(nb1,nb2).asp_zu_interp = linspace2(blk(1).bound(nb1,nb2).asp_zu, blk(1).bound(nb1,nb2).interpint);
-      blk(1).bound(nb1,nb2).asp_lx = xd - xu;
-      blk(1).bound(nb1,nb2).asp_ly = yd - yu;
-      blk(1).bound(nb1,nb2).asp_lz = zd - zu;
-      np = np + 1;
-      blk(1).naspline  =  blk(1).naspline + blk(1).bound(nb1,nb2).naspline;
-      blk(1).asp_lline = [blk(1).asp_lline, blk(1).bound(nb1,nb2).asp_lline];
+      mt = mt +   nf;
+      mc = mc + 3*nf;
     end
   end
 end
