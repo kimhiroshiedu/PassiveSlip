@@ -55,7 +55,7 @@ elseif mode == 0
 end
 
 % Save data.
-SaveData(prm,blk,obs,tri,d,G,cal,cha)
+SaveData(prm,blk,obs,tri,d,G,cal)
 
 end
 
@@ -443,7 +443,7 @@ fprintf('=== Read Locked Patches=== \n');
 end
 
 %% Save data
-function SaveData(prm,blk,obs,tri,d,G,cal,cha)
+function SaveData(prm,blk,obs,tri,d,G,cal)
 
 logfile=fullfile(prm.dirresult,'log.txt');
 log_fid=fopen(logfile,'a');
@@ -1912,12 +1912,14 @@ idc = d(1).maid * ~d(1).idl;
 
 % Calculate back-slip on locked patches.
 bslip              = (G(1).tb_mec * mp.old) .* d(1).cfinv_mec .* idl;
+cal.aslip = bslip;
 
 % Calc inverse Green's function
 %     Gcc        = G(1).s(idc,idc);    % creep -> creep
 %     Gcl        = G(1).s(idc,idl);    % lock  -> creep
 %     bslip(idc) = -Gcc \ (Gcl * bslip(idl));
 bslip(idc) = -G(1).s(idc,idc) \ (G(1).s(idc,idl) * bslip(idl));
+cal.bslip = bslip;
 
 % Due to Rigid motion
 cal.rig = G(1).p * mp.old;
