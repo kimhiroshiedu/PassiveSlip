@@ -9,7 +9,6 @@ prm.input      = 'PARAMETER/parameter_inversiontest.txt';
 prm.optfile    = 'PARAMETER/opt_bound_par_forward.txt';
 prm.interpfile = 'PARAMETER/interp_randwalkline.txt';
 %--
-
 % Simulation mode select
 if ~isempty(varargin)
   if varargin{1} == 'I'
@@ -20,7 +19,6 @@ if ~isempty(varargin)
 else
   mode = 1; 
 end
-
 % Read Parameters.
 [prm]     = ReadParameters(prm);
 % Read observation data. 
@@ -35,8 +33,6 @@ end
 [eul,prm] = ReadEulerPoles(blk,prm);
 % Read internal strain flag.
 [blk,prm] = ReadInternalStrain(blk,obs,prm);
-% Read locked patches definition.
-[blk]     = ReadLockedPatch(blk,prm);
 % Read random walk line definitions.
 [blk,asp] = DefRandomWalkLine(blk,prm,obs);
 % Estimate rigid motion and calculate AIC.
@@ -45,15 +41,17 @@ end
 [blk,tri] = GreenTri(blk,obs,prm);
 % Arrange Green's functions.
 [d,G]     = GreenFunctionMatrix(blk,obs,tri);
-% Define locking patches.
-[d]       = InitialLockingPatch(blk,tri,d);
 
 if mode == 1
 % MCMC simulation for coupling estimattion
-  [cal,cha] = Proceed_MCMC_MH(blk,asp,tri,prm,obs,eul,d,G);
+  [cal]   = Proceed_MCMC_MH(blk,asp,tri,prm,obs,eul,d,G);
 elseif mode == 0
+% Read asperity areas.
+  [blk]   = ReadLockedPatch(blk,prm);
+% Define locking patches.
+  [d]     = InitialLockingPatch(blk,tri,d);
 % Calculate pasive slip and response to surface.
-  [cal,cha] = CalcPassiveSlip(blk,asp,tri,prm,obs,eul,d,G);
+  [cal]   = CalcPassiveSlip(blk,asp,tri,prm,obs,eul,d,G);
 end
 
 % Save data.
@@ -412,26 +410,30 @@ function [blk] = ReadLockedPatch(blk,prm)
 
 for nb1 = 1:blk(1).nblock
   for nb2 = nb1+1:blk(1).nblock
-    blk(1).bound(nb1,nb2).patchid = 0;
-    patchfile = fullfile(prm.dirblock_patch,['patchb_',num2str(nb1),'_',num2str(nb2),'.txt']);
-    fid       = fopen(patchfile,'r');
-    if fid >= 0
-      blk(1).bound(nb1,nb2).patchid = 1;
-      np    = 0;
-      n     = 0;
-      while 1
-        tline = fgetl(fid);
-        if ~ischar(tline) ; break; end
-        if tline(1) ~= '>'
-          n   = n+1;
-          tmp = strsplit(strtrim(tline));
-          blk(1).bound(nb1,nb2).patch(np+1).lon(n) = str2double(cellstr(tmp(1)));
-          blk(1).bound(nb1,nb2).patch(np+1).lat(n) = str2double(cellstr(tmp(2)));
-        else
-          np = np+1;
-          n  = 0;
-          continue;
+    if blk(1).bound(nb1,nb2).flag2 == 1
+      blk(1).bound(nb1,nb2).patchid = 0;
+      patchfile = fullfile(prm.dirblock_patch,['patchb_',num2str(nb1),'_',num2str(nb2),'.txt']);
+      fid       = fopen(patchfile,'r');
+      if fid >= 0
+        blk(1).bound(nb1,nb2).patchid = 1;
+        np    = 0;
+        n     = 0;
+        while 1
+          tline = fgetl(fid);
+          if ~ischar(tline) ; break; end
+          if tline(1) ~= '>'
+            n   = n+1;
+            tmp = strsplit(strtrim(tline));
+            blk(1).bound(nb1,nb2).patch(np+1).lon(n) = str2double(cellstr(tmp(1)));
+            blk(1).bound(nb1,nb2).patch(np+1).lat(n) = str2double(cellstr(tmp(2)));
+          else
+            np = np+1;
+            n  = 0;
+            continue;
+          end
         end
+      else
+        error(['Not found', patchfile]);
       end
     end
   end
@@ -1360,6 +1362,7 @@ d(1).idmec = false(3*blk(1).ntmec,           1);
 %
 G(1).t  = zeros(3*blk(1).nt,2.*blk(1).nt);
 G(1).b  = zeros(2*blk(1).nt,3.*blk(1).nblock);
+G(1).zc = zeros(blk(1).ntmec,1);
 tmp.p   = zeros(3*nobs,3.*blk(1).nblock);
 tmp.i   = zeros(3*nobs,3.*blk(1).nblock);
 tmp.s   = zeros(3*blk(1).nt,3*blk(1).nt);
@@ -1382,13 +1385,15 @@ for nb1 = 1:blk(1).nblock
     nf = size(tri(1).bound(nb1,nb2).clon,2);
     if nf ~= 0
       if blk(1).bound(nb1,nb2).flag2 == 1
-        d(1).maid(mm3:mm3+3*nf-1,mm1:mm1+nf-1) = repmat(eye(nf),3,1);
+        % d(1).maid(mm3:mm3+3*nf-1,mm1:mm1+nf-1) = repmat(eye(nf),3,1);
+        d(1).maid(mm3:mm3+3*nf-1,mm1:mm1+nf-1) = [repmat(eye(nf),2,1); zeros(nf)];  % due to "zero tns-strain"
         nint = blk(1).bound(nb1,nb2).interpint;
         nasp = blk(1).bound(nb1,nb2).naspline ;
         nstp = nint * (nasp - 1) + 1;
         d(1).idmec(mf3:mf3+3*nf-1) = true;
         d(1).idstrip(mm1:mm1+nf, ms:ms+nstp-1) = blk(1).bound(nb1,nb2).stripid;
         d(1).idMit(ms:ms+nstp-1, ma:ma+nasp-1) = blk(1).bound(nb1,nb2).interpid;
+        G(1).zc(mm1:mm1+nf-1) = -blk(1).cdep(mf1:mf1+nf-1);
         mm1 = mm1 +   nf;
         mm3 = mm3 + 3*nf;
         ms = ms + nstp;
@@ -1480,14 +1485,17 @@ end
 %% Define initial locking patches
 function [d] = InitialLockingPatch(blk,tri,d)
 % Coded by Hiroshi Kimura in 2019/2/14
-% d(1).id_lock : Locking, give back-slip  (coupling = 1)
-% d(1).id_crep : Creeping, slip passively (coupling = 0)
+% d(1).idl : Locking, give back-slip  (coupling = 1)
+% d(1).idc : Creeping, slip passively (coupling = 0)
 % 
-d(1).id_lock = zeros(3*blk(1).nt,1);
-d(1).id_crep = zeros(3*blk(1).nt,1);
-mc = 1;
+d(1).idl = zeros(blk(1).ntmec,1);
+d(1).idc = zeros(blk(1).ntmec,1);
+mm = 1;
 for nb1 = 1:blk(1).nblock
   for nb2 = nb1+1:blk(1).nblock
+    if blk(1).bound(nb1,nb2).flag2 == 1
+    else
+    end
     nf = size(tri(1).bound(nb1,nb2).clon,2);
     if nf ~= 0
       for np = 1:size(blk(1).bound(nb1,nb2).patch,2)
@@ -1495,23 +1503,23 @@ for nb1 = 1:blk(1).nblock
                            tri(1).bound(nb1,nb2).clat,...
                            blk(1).bound(nb1,nb2).patch(np).lon,...
                            blk(1).bound(nb1,nb2).patch(np).lat);
-        d(1).id_lock(mc:mc+nf-1) = d(1).id_lock(mc:mc+nf-1) | slipid';
+        d(1).idl(mm:mm+nf-1) = d(1).idl(mm:mm+nf-1) | slipid';
 %         d(1).id_lock(mc:mc+3*nf-1) = d(1).id_lock(mc:mc+3*nf-1) | [repmat( slipid',2,1); false(nf,1)];
 %         d(1).id_crep(mc:mc+3*nf-1) = d(1).id_crep(mc:mc+3*nf-1) | [repmat(~slipid',2,1); false(nf,1)];
       end
-      d(1).id_lock(mc:mc+3*nf-1) = [repmat( d(1).id_lock(mc:mc+nf-1),2,1); false(nf,1)];
-      d(1).id_crep(mc:mc+3*nf-1) = [repmat(~d(1).id_lock(mc:mc+nf-1),2,1); false(nf,1)];
-      mc = mc + 3*nf;
+%       d(1).idl(mm:mm+3*nf-1) = [repmat( d(1).idl(mm:mm+nf-1),2,1); false(nf,1)];
+%       d(1).idc(mm:mm+3*nf-1) = [repmat(~d(1).idl(mm:mm+nf-1),2,1); false(nf,1)];
+      mm = mm + nf;
     end
   end
 end
-d(1).id_lock = logical(d(1).id_lock);
-d(1).id_crep = logical(d(1).id_crep);
+d(1).idl = logical(d(1).id_lock);
+d(1).idc = logical(d(1).id_crep);
 
 end
 
 %% Estimate mechanical coupled area by MCMC (Metropolis-Hasting)
-function [cal,cha] = Proceed_MCMC_MH(blk,asp,tri,prm,obs,eul,d,G)
+function [cal] = Proceed_MCMC_MH(blk,asp,tri,prm,obs,eul,d,G)
 % Test version coded by Hiroshi Kimura in 2019/2/1
 % Combined by Hiroshi Kimura in 2019/4/22
 
@@ -1871,16 +1879,6 @@ while not(count == prm.thr)
   if rt > prm.itr; break; end
 end
 
-% GPU to CPU
-if prm.gpu ~= 99
-  cha.mc  = gather(cha.mc );
-  cha.ma  = gather(cha.ma );
-  cha.mp  = gather(cha.mp );
-  cha.mi  = gather(cha.mi );
-  cha.la  = gather(cha.la );
-  cha.smp = gather(cha.smp);
-end
-
 % Display
 cha.res = res.smp;
 fprintf(       'RMS=: %8.3f\n',cha.res)
@@ -1891,15 +1889,15 @@ fclose(logfid);
 end
 
 %% Estimate passive slip distribution by forward simulation
-function [cal,cha] = CalcPassiveSlip(blk,asp,tri,prm,obs,eul,d,G)
-cha = [];
+function [cal] = CalcPassiveSlip(blk,asp,tri,prm,obs,eul,d,G)
 % initial parameters
 mc.int = 1e-2 ;
 mp.int = 1e-10;
 mi.int = 1e-10;
-mc.n   = blk(1).nb;
+mc.n   = blk(1).ntkin;
 mp.n   = 3.*blk(1).nblock;
 mi.n   = 3.*blk(1).nblock;
+mc.old = zeros(mc.n,1);
 % substitute euler pole vectors
 mp.old         = double(blk(1).pole);
 mp.old(eul.id) = 0                  ;
@@ -1909,31 +1907,8 @@ mi.old = 1e-10.*(-0.5+rand(mi.n,1,precision));
 mi.old = mi.old.*blk(1).idinter              ;
 
 % substitude index of locking patches
-id_lock = logical(d(1).id_lock);
-id_crep = logical(d(1).id_crep);
-
-% Derive locked meshes from up- and down-dip limit of asperities
-mt = 1;
-md = 1;
-for na = 1:size(asp,2)
-  nb1 = asp(na).nb1;
-  nb2 = asp(na).nb2;
-  np  =      blk(1).bound(nb1,nb2).naspline;
-  nf  = size(blk(1).bound(nb1,nb2).blon,1) ;
-  xd = blk(1).bound(nb1,nb2).asp_xd + (ma.smp(       mt:1:       mt+np-1)./blk(1).bound(nb1,nb2).asp_lline) .* blk(1).bound(nb1,nb2).asp_lx;
-  xu = blk(1).bound(nb1,nb2).asp_xd + (ma.smp(ma.n/2+mt:1:ma.n/2+mt+np-1)./blk(1).bound(nb1,nb2).asp_lline) .* blk(1).bound(nb1,nb2).asp_lx;
-  yd = blk(1).bound(nb1,nb2).asp_yd + (ma.smp(       mt:1:       mt+np-1)./blk(1).bound(nb1,nb2).asp_lline) .* blk(1).bound(nb1,nb2).asp_ly;
-  yu = blk(1).bound(nb1,nb2).asp_yd + (ma.smp(ma.n/2+mt:1:ma.n/2+mt+np-1)./blk(1).bound(nb1,nb2).asp_lline) .* blk(1).bound(nb1,nb2).asp_ly;
-  edge = [xd(  1: 1:end), yd(  1: 1:end);...
-          xu(end:-1:  1), yu(end:-1:  1)];
-  [edg(na).lat,edg(na).lon] = XYTPL(edge(:,1),edge(:,2),alat,alon);
-  idl(md:md+3*nf-1,1) = [repmat( inpolygon(tri(1).bound(nb1,nb2).clon,tri(1).bound(nb1,nb2).clat,edg(na).lon,edg(na).lat)',2,1);...
-      false(size(tri(1).bound(nb1,nb2).clon))'];
-  idc(md:md+3*nf-1,1) = [repmat(~inpolygon(tri(1).bound(nb1,nb2).clon,tri(1).bound(nb1,nb2).clat,edg(na).lon,edg(na).lat)',2,1);...
-      false(size(tri(1).bound(nb1,nb2).clon))'];
-  mt = mt +    np;
-  md = md + 3.*nf;
-end
+idl = d(1).maid *  d(1).idl;
+idc = d(1).maid * ~d(1).idl;
 
 % Calculate back-slip on locked patches.
 bslip              = (G(1).tb_mec * mp.old) .* d(1).cfinv_mec .* idl;
@@ -1960,6 +1935,8 @@ if isempty(cal.mec); cal.mec = zeros(size(d(1).ind)); end
 if isempty(cal.ine); cal.ine = zeros(size(d(1).ind)); end
 % Total velocities
 cal.smp = cal.rig + cal.kin + cal.mec + cal.ine;
+% Residuals
+cal.res = d(1).obs - cal.smp;
 
 end
 
