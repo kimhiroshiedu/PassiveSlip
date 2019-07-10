@@ -1349,7 +1349,8 @@ tmp.err(3:3:3*nobs) = obs(1).herr;
 d(1).ind   = find(tmp.err ~= 0)';
 d(1).obs   = tmp.obs(d(1).ind)';
 d(1).err   = tmp.err(d(1).ind)';
-d(1).mcid  = zeros(3*blk(1).ntkin,blk(1).nbkin);
+d(1).mcid  = zeros(3*blk(1).ntkin,blk(1).nbkin);  % kinematic couple
+d(1).maid  = zeros(3*blk(1).ntmec,blk(1).nbmec);  % mechanical couple
 d(1).idmec = false(3*blk(1).ntmec,           1);
 %
 % (G(1).C * (( G(1).T * ( G(1).B1 - G(1).B2 ) * Mp)*Mc ) + G(1).P * Mp
@@ -1365,69 +1366,81 @@ tmp.s   = zeros(3*blk(1).nt,3*blk(1).nt);
 tmp.cf  = ones(3*blk(1).nt,1);
 tmp.inv = zeros(3*blk(1).nt,1);
 % 
-mc = 1;
-mt = 1;
-mr = 1;
-nk = 1;
-nfmec = 1;
-nfkin = 1;
+nasp = blk(1).naspline;
+% 
+mf1 = 1;
+mf2 = 1;
+mf3 = 1;
+ma  = 1;
+ms  = 1;
+mm1 = 1;
+mm3 = 1;
+mk1 = 1;
+mk3 = 1;
 for nb1 = 1:blk(1).nblock
   for nb2 = nb1+1:blk(1).nblock
     nf = size(tri(1).bound(nb1,nb2).clon,2);
     if nf ~= 0
       if blk(1).bound(nb1,nb2).flag2 == 1
-        d(1).idmec(mc:mc+3*nf-1) = true;
-        %         d(1).idstrip(
-        nfmec = nfmec + nf;
+        d(1).maid(mm3:mm3+3*nf-1,mm1:mm1+nf-1) = repmat(eye(nf),3,1);
+        nint = blk(1).bound(nb1,nb2).interpint;
+        nasp = blk(1).bound(nb1,nb2).naspline ;
+        nstp = nint * (nasp - 1) + 1;
+        d(1).idmec(mf3:mf3+3*nf-1) = true;
+        d(1).idstrip(mm1:mm1+nf, ms:ms+nstp-1) = blk(1).bound(nb1,nb2).stripid;
+        d(1).idMit(ms:ms+nstp-1, ma:ma+nasp-1) = blk(1).bound(nb1,nb2).interpid;
+        mm1 = mm1 +   nf;
+        mm3 = mm3 + 3*nf;
+        ms = ms + nstp;
+        ma = ma + nasp;
       else
-        d(1).mcid(mr:mr+3*nf-1,mr:mr+nf-1) = repmat(eye(nf),3,1);
-        nk = nk + 1;
-        nfkin = nfkin + nf;
+        d(1).mcid(mk3:mk3+3*nf-1,mk1:mk1+nf-1) = repmat(eye(nf),3,1);
+        mk1 = mk1 +   nf;
+        mk3 = mk3 + 3*nf;
       end
-      tmp.c(1:3*nobs,mc     :mc+  nf-1) = tri(1).bound(nb1,nb2).gustr;
-      tmp.c(1:3*nobs,mc+  nf:mc+2*nf-1) = tri(1).bound(nb1,nb2).gudip;
-      tmp.c(1:3*nobs,mc+2*nf:mc+3*nf-1) = tri(1).bound(nb1,nb2).gutns;
-      tmp.cf( mc   :mc+3*nf-1) = tri(1).bound(nb1,nb2).cf ;
-      tmp.inv(mc   :mc+3*nf-1) = tri(1).bound(nb1,nb2).inv;
-      G(1).t(mc   :mc+  nf-1,mt   :mt+  nf-1) = diag(tri(1).bound(nb1,nb2).st(:,1));
-      G(1).t(mc+nf:mc+2*nf-1,mt   :mt+  nf-1) = diag(tri(1).bound(nb1,nb2).dp(:,1));
-      G(1).t(mc   :mc+  nf-1,mt+nf:mt+2*nf-1) = diag(tri(1).bound(nb1,nb2).st(:,2));
-      G(1).t(mc+nf:mc+2*nf-1,mt+nf:mt+2*nf-1) = diag(tri(1).bound(nb1,nb2).dp(:,2));
-      G(1).b(mt   :mt+  nf-1,3*nb1-2) = -1.*(-tri(1).bound(nb1,nb2).oxyz(:,7).*tri(1).bound(nb1,nb2).oxyz(:,3));
-      G(1).b(mt   :mt+  nf-1,3*nb1-1) = -1.*(-tri(1).bound(nb1,nb2).oxyz(:,5).*tri(1).bound(nb1,nb2).oxyz(:,3));
-      G(1).b(mt   :mt+  nf-1,3*nb1  ) = -1.*( tri(1).bound(nb1,nb2).oxyz(:,5).*tri(1).bound(nb1,nb2).oxyz(:,2)...
+      tmp.c(1:3*nobs,mf3     :mf3+  nf-1) = tri(1).bound(nb1,nb2).gustr;
+      tmp.c(1:3*nobs,mf3+  nf:mf3+2*nf-1) = tri(1).bound(nb1,nb2).gudip;
+      tmp.c(1:3*nobs,mf3+2*nf:mf3+3*nf-1) = tri(1).bound(nb1,nb2).gutns;
+      tmp.cf( mf3   :mf3+3*nf-1) = tri(1).bound(nb1,nb2).cf ;
+      tmp.inv(mf3   :mf3+3*nf-1) = tri(1).bound(nb1,nb2).inv;
+      G(1).t(mf3   :mf3+  nf-1,mf2   :mf2+  nf-1) = diag(tri(1).bound(nb1,nb2).st(:,1));
+      G(1).t(mf3+nf:mf3+2*nf-1,mf2   :mf2+  nf-1) = diag(tri(1).bound(nb1,nb2).dp(:,1));
+      G(1).t(mf3   :mf3+  nf-1,mf2+nf:mf2+2*nf-1) = diag(tri(1).bound(nb1,nb2).st(:,2));
+      G(1).t(mf3+nf:mf3+2*nf-1,mf2+nf:mf2+2*nf-1) = diag(tri(1).bound(nb1,nb2).dp(:,2));
+      G(1).b(mf2   :mf2+  nf-1,3*nb1-2) = -1.*(-tri(1).bound(nb1,nb2).oxyz(:,7).*tri(1).bound(nb1,nb2).oxyz(:,3));
+      G(1).b(mf2   :mf2+  nf-1,3*nb1-1) = -1.*(-tri(1).bound(nb1,nb2).oxyz(:,5).*tri(1).bound(nb1,nb2).oxyz(:,3));
+      G(1).b(mf2   :mf2+  nf-1,3*nb1  ) = -1.*( tri(1).bound(nb1,nb2).oxyz(:,5).*tri(1).bound(nb1,nb2).oxyz(:,2)...
                                       +tri(1).bound(nb1,nb2).oxyz(:,7).*tri(1).bound(nb1,nb2).oxyz(:,1));
-      G(1).b(mt+nf:mt+2*nf-1,3*nb1-2) = -1.*( tri(1).bound(nb1,nb2).oxyz(:,4).*tri(1).bound(nb1,nb2).oxyz(:,5).*tri(1).bound(nb1,nb2).oxyz(:,3)...
+      G(1).b(mf2+nf:mf2+2*nf-1,3*nb1-2) = -1.*( tri(1).bound(nb1,nb2).oxyz(:,4).*tri(1).bound(nb1,nb2).oxyz(:,5).*tri(1).bound(nb1,nb2).oxyz(:,3)...
                                       +tri(1).bound(nb1,nb2).oxyz(:,6).*tri(1).bound(nb1,nb2).oxyz(:,2));
-      G(1).b(mt+nf:mt+2*nf-1,3*nb1-1) = -1.*(-tri(1).bound(nb1,nb2).oxyz(:,4).*tri(1).bound(nb1,nb2).oxyz(:,7).*tri(1).bound(nb1,nb2).oxyz(:,3)...
+      G(1).b(mf2+nf:mf2+2*nf-1,3*nb1-1) = -1.*(-tri(1).bound(nb1,nb2).oxyz(:,4).*tri(1).bound(nb1,nb2).oxyz(:,7).*tri(1).bound(nb1,nb2).oxyz(:,3)...
                                       -tri(1).bound(nb1,nb2).oxyz(:,6).*tri(1).bound(nb1,nb2).oxyz(:,1));
-      G(1).b(mt+nf:mt+2*nf-1,3*nb1  ) = -1.*( tri(1).bound(nb1,nb2).oxyz(:,4).*tri(1).bound(nb1,nb2).oxyz(:,7).*tri(1).bound(nb1,nb2).oxyz(:,2)...
+      G(1).b(mf2+nf:mf2+2*nf-1,3*nb1  ) = -1.*( tri(1).bound(nb1,nb2).oxyz(:,4).*tri(1).bound(nb1,nb2).oxyz(:,7).*tri(1).bound(nb1,nb2).oxyz(:,2)...
                                       -tri(1).bound(nb1,nb2).oxyz(:,4).*tri(1).bound(nb1,nb2).oxyz(:,5).*tri(1).bound(nb1,nb2).oxyz(:,1));
-      G(1).b(mt   :mt+  nf-1,3*nb2-2) = -G(1).b(mt   :mt+  nf-1,3*nb1-2);
-      G(1).b(mt   :mt+  nf-1,3*nb2-1) = -G(1).b(mt   :mt+  nf-1,3*nb1-1);
-      G(1).b(mt   :mt+  nf-1,3*nb2  ) = -G(1).b(mt   :mt+  nf-1,3*nb1  );
-      G(1).b(mt+nf:mt+2*nf-1,3*nb2-2) = -G(1).b(mt+nf:mt+2*nf-1,3*nb1-2);
-      G(1).b(mt+nf:mt+2*nf-1,3*nb2-1) = -G(1).b(mt+nf:mt+2*nf-1,3*nb1-1);
-      G(1).b(mt+nf:mt+2*nf-1,3*nb2  ) = -G(1).b(mt+nf:mt+2*nf-1,3*nb1  );
-      tmp.s(tri(1).idstr,mc     :mc+  nf-1) = tri(1).bound(nb1,nb2).gsstrT(1:3:end,:);
-      tmp.s(tri(1).idstr,mc+  nf:mc+2*nf-1) = tri(1).bound(nb1,nb2).gsdipT(1:3:end,:);
+      G(1).b(mf2   :mf2+  nf-1,3*nb2-2) = -G(1).b(mf2   :mf2+  nf-1,3*nb1-2);
+      G(1).b(mf2   :mf2+  nf-1,3*nb2-1) = -G(1).b(mf2   :mf2+  nf-1,3*nb1-1);
+      G(1).b(mf2   :mf2+  nf-1,3*nb2  ) = -G(1).b(mf2   :mf2+  nf-1,3*nb1  );
+      G(1).b(mf2+nf:mf2+2*nf-1,3*nb2-2) = -G(1).b(mf2+nf:mf2+2*nf-1,3*nb1-2);
+      G(1).b(mf2+nf:mf2+2*nf-1,3*nb2-1) = -G(1).b(mf2+nf:mf2+2*nf-1,3*nb1-1);
+      G(1).b(mf2+nf:mf2+2*nf-1,3*nb2  ) = -G(1).b(mf2+nf:mf2+2*nf-1,3*nb1  );
+      tmp.s(tri(1).idstr,mf3     :mf3+  nf-1) = tri(1).bound(nb1,nb2).gsstrT(1:3:end,:);
+      tmp.s(tri(1).idstr,mf3+  nf:mf3+2*nf-1) = tri(1).bound(nb1,nb2).gsdipT(1:3:end,:);
       %       tmp.s(tri(1).idstr,mc+2*nf:mc+3*nf-1) = tri(1).bound(nb1,nb2).gstnsT(1:3:end,:);
-      tmp.s(tri(1).idstr,mc+2*nf:mc+3*nf-1) = zeros(size(tri(1).bound(nb1,nb2).gstnsT(1:3:end,:)));
-      tmp.s(tri(1).iddip,mc     :mc+  nf-1) = tri(1).bound(nb1,nb2).gsstrT(2:3:end,:);
-      tmp.s(tri(1).iddip,mc+  nf:mc+2*nf-1) = tri(1).bound(nb1,nb2).gsdipT(2:3:end,:);
+      tmp.s(tri(1).idstr,mf3+2*nf:mf3+3*nf-1) = zeros(size(tri(1).bound(nb1,nb2).gstnsT(1:3:end,:)));
+      tmp.s(tri(1).iddip,mf3     :mf3+  nf-1) = tri(1).bound(nb1,nb2).gsstrT(2:3:end,:);
+      tmp.s(tri(1).iddip,mf3+  nf:mf3+2*nf-1) = tri(1).bound(nb1,nb2).gsdipT(2:3:end,:);
       %       tmp.s(tri(1).iddip,mc+2*nf:mc+3*nf-1) = tri(1).bound(nb1,nb2).gstnsT(2:3:end,:);
-      tmp.s(tri(1).iddip,mc+2*nf:mc+3*nf-1) = zeros(size(tri(1).bound(nb1,nb2).gstnsT(2:3:end,:)));
+      tmp.s(tri(1).iddip,mf3+2*nf:mf3+3*nf-1) = zeros(size(tri(1).bound(nb1,nb2).gstnsT(2:3:end,:)));
       %       tmp.s(tri(1).idtns,mc     :mc+  nf-1) = tri(1).bound(nb1,nb2).gsstrT(3:3:end,:);
       %       tmp.s(tri(1).idtns,mc+  nf:mc+2*nf-1) = tri(1).bound(nb1,nb2).gsdipT(3:3:end,:);
       %       tmp.s(tri(1).idtns,mc+2*nf:mc+3*nf-1) = tri(1).bound(nb1,nb2).gstnsT(3:3:end,:);
-      tmp.s(tri(1).idtns,mc     :mc+  nf-1) = zeros(size(tri(1).bound(nb1,nb2).gsstrT(3:3:end,:)));
-      tmp.s(tri(1).idtns,mc+  nf:mc+2*nf-1) = zeros(size(tri(1).bound(nb1,nb2).gsdipT(3:3:end,:)));
-      tmp.s(tri(1).idtns,mc+2*nf:mc+3*nf-1) = zeros(size(tri(1).bound(nb1,nb2).gstnsT(3:3:end,:)));
-
+      tmp.s(tri(1).idtns,mf3     :mf3+  nf-1) = zeros(size(tri(1).bound(nb1,nb2).gsstrT(3:3:end,:)));
+      tmp.s(tri(1).idtns,mf3+  nf:mf3+2*nf-1) = zeros(size(tri(1).bound(nb1,nb2).gsdipT(3:3:end,:)));
+      tmp.s(tri(1).idtns,mf3+2*nf:mf3+3*nf-1) = zeros(size(tri(1).bound(nb1,nb2).gstnsT(3:3:end,:)));
       %
-      mc = mc + 3*nf;
-      mt = mt + 2*nf;
-      mr = mr +   nf;
+      mf1 = mf1 +   nf;
+      mf2 = mf2 + 2*nf;
+      mf3 = mf3 + 3*nf;
     end
   end
 %   
@@ -1460,6 +1473,8 @@ G(1).i      = tmp.i(d(1).ind,:);
 G(1).s      = tmp.s(d(1).idmec,d(1).idmec);
 d(1).cfinv_kin = tmp.cfinv(~d(1).idmec);
 d(1).cfinv_mec = tmp.cfinv( d(1).idmec);
+d(1).zu = [zeros(nasp),   eye(nasp)];
+d(1).zd = [  eye(nasp), zeros(nasp)];
 end
 
 %% Define initial locking patches
