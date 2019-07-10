@@ -643,7 +643,7 @@ if fid ~= 0
   tline = char(fgetl(fid));
   while 1
     switch tline
-      case '# Mechanical coupled boundaries'
+      case '# Dipping boundaries'
         while 1
           tline = char(fgetl(fid));
           Tline = strtrim(strsplit(tline));
@@ -656,7 +656,7 @@ if fid ~= 0
             break
           end
         end
-      case '# Dipping boundaries'
+      case '# Mechanical coupled boundaries'
         while 1
           tline = char(fgetl(fid));
           Tline = strtrim(strsplit(tline));
@@ -2082,22 +2082,22 @@ np = 1;
 for nb1 = 1:blk(1).nblock
   for nb2 = nb1+1:blk(1).nblock
     nf = size(blk(1).bound(nb1,nb2).blon,1);
-    if nf ~= 0
+    if nf ~= 0 && blk(1).bound(nb1,nb2).flag2 == 1
       rwlfile = fullfile(prm.dirblock_patch,['udlineb_',num2str(nb1),'_',num2str(nb2),'.txt']);
       fid     = fopen(rwlfile,'r');
       if fid >= 0
         asp(np).nb1 = nb1;
         asp(np).nb2 = nb2;
-        blk(1).bound(nb1,nb2).interpint = Nint;
+        nint = Nint;
         for n = 1:size(prm.interpb1, 1)
           interpid = ismember([asp(n).nb1, asp(n).nb2], [prm.interpb1(n), prm.interpb2(n)]);
           ispair   = sum(interpid);
           if ispair == 2
-            blk(1).bound(nb1,nb2).interpint = prm.interpint(n); break;
+            nint = prm.interpint(n); break;
           end
         end
         tmp = fscanf(fid,'%f %f %f %f \n',[6, Inf]);
-        blk(1).bound(nb1,nb2).naspline = size(tmp,2);
+        nasp = size(tmp,2);
         blk(1).bound(nb1,nb2).asp_lond = tmp(1,:)';
         blk(1).bound(nb1,nb2).asp_latd = tmp(2,:)';
         blk(1).bound(nb1,nb2).asp_depd = tmp(3,:)';
@@ -2117,17 +2117,17 @@ for nb1 = 1:blk(1).nblock
         blk(1).bound(nb1,nb2).asp_ly = blk(1).bound(nb1,nb2).asp_yd - blk(1).bound(nb1,nb2).asp_yu;
         blk(1).bound(nb1,nb2).asp_lz = blk(1).bound(nb1,nb2).asp_zd - blk(1).bound(nb1,nb2).asp_zu;
         % Interpolation of up- and down-dip point
-        blk(1).bound(nb1,nb2).asp_xd_interp = linspace2(blk(1).bound(nb1,nb2).asp_xd, blk(1).bound(nb1,nb2).interpint);
-        blk(1).bound(nb1,nb2).asp_yd_interp = linspace2(blk(1).bound(nb1,nb2).asp_yd, blk(1).bound(nb1,nb2).interpint);
-        blk(1).bound(nb1,nb2).asp_zd_interp = linspace2(blk(1).bound(nb1,nb2).asp_zd, blk(1).bound(nb1,nb2).interpint);
-        blk(1).bound(nb1,nb2).asp_xu_interp = linspace2(blk(1).bound(nb1,nb2).asp_xu, blk(1).bound(nb1,nb2).interpint);
-        blk(1).bound(nb1,nb2).asp_yu_interp = linspace2(blk(1).bound(nb1,nb2).asp_yu, blk(1).bound(nb1,nb2).interpint);
-        blk(1).bound(nb1,nb2).asp_zu_interp = linspace2(blk(1).bound(nb1,nb2).asp_zu, blk(1).bound(nb1,nb2).interpint);
+        blk(1).bound(nb1,nb2).asp_xd_interp = linspace2(blk(1).bound(nb1,nb2).asp_xd, nint);
+        blk(1).bound(nb1,nb2).asp_yd_interp = linspace2(blk(1).bound(nb1,nb2).asp_yd, nint);
+        blk(1).bound(nb1,nb2).asp_zd_interp = linspace2(blk(1).bound(nb1,nb2).asp_zd, nint);
+        blk(1).bound(nb1,nb2).asp_xu_interp = linspace2(blk(1).bound(nb1,nb2).asp_xu, nint);
+        blk(1).bound(nb1,nb2).asp_yu_interp = linspace2(blk(1).bound(nb1,nb2).asp_yu, nint);
+        blk(1).bound(nb1,nb2).asp_zu_interp = linspace2(blk(1).bound(nb1,nb2).asp_zu, nint);
         blk(1).bound(nb1,nb2).asp_lx_interp = blk(1).bound(nb1,nb2).asp_xd_interp - blk(1).bound(nb1,nb2).asp_xu_interp;
         blk(1).bound(nb1,nb2).asp_ly_interp = blk(1).bound(nb1,nb2).asp_yd_interp - blk(1).bound(nb1,nb2).asp_yu_interp;
         blk(1).bound(nb1,nb2).asp_lz_interp = blk(1).bound(nb1,nb2).asp_zd_interp - blk(1).bound(nb1,nb2).asp_zu_interp;
         np = np + 1;
-        blk(1).naspline  =  blk(1).naspline + blk(1).bound(nb1,nb2).naspline;
+        blk(1).naspline  =  blk(1).naspline + nasp;
         blk(1).asp_lline = [blk(1).asp_lline, blk(1).bound(nb1,nb2).asp_lline];
 
         % Indexing trimesh with each strip
@@ -2147,15 +2147,26 @@ for nb1 = 1:blk(1).nblock
           instrip = inpolygon(tricx(mt:mt+nf-1),tricy(mt:mt+nf-1),stripx,stripy);
           blk(1).bound(nb1,nb2).stripid(:,n) = instrip;
         end
-        blk(1).bound(nb1,nb2).interpid = zeros(blk(1).bound(nb1,nb2).interpint*(blk(1).bound(nb1,nb2).naspline-1)+1, blk(1).bound(nb1,nb2).naspline);
-        for n = 1:blk(1).bound(nb1,nb2).naspline-1
-          
-          if n == blk(1).bound(nb1,nb2).naspline-1
+        nl = 1;
+        blk(1).bound(nb1,nb2).interpid = zeros(nint*(nasp-1)+1, nasp);
+        for n = 1:nasp
+          if n ~= nasp
+            blk(1).bound(nb1,nb2).interpid(nl:nl+nint-1,n  ) = 1-(0:nint-1)./nint;
+            blk(1).bound(nb1,nb2).interpid(nl:nl+nint-1,n+1) =   (0:nint-1)./nint;
+          else
+            blk(1).bound(nb1,nb2).interpid(end,end) = 1;
           end
+          nl = nl + nint;
         end
+        blk(1).bound(nb1,nb2).naspline  = nasp;
+        blk(1).bound(nb1,nb2).interpint = nint;
+      else
+        error(['Not found ',rwlfile]);
       end
       mt = mt +   nf;
       mc = mc + 3*nf;
+    else
+        
     end
   end
 end
