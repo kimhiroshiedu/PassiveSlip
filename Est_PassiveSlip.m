@@ -1937,8 +1937,8 @@ if isempty(cal.mec); cal.mec = zeros(size(d(1).ind)); end
 if isempty(cal.ine); cal.ine = zeros(size(d(1).ind)); end
 % Total velocities
 cal.smp = cal.rig + cal.kin + cal.mec + cal.ine;
-% Residuals
-cal.res = d(1).obs - cal.smp;
+
+MakeFigs(blk,tri,cal,obs)
 
 end
 
