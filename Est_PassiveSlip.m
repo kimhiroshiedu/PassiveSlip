@@ -55,7 +55,7 @@ elseif mode == 0
 end
 
 % Save data.
-SaveData(prm,blk,obs,tri,d,G,cal)
+SaveData(prm,blk,obs,tri,d,G,cal,mode)
 
 end
 
@@ -443,7 +443,7 @@ fprintf('=== Read Locked Patches=== \n');
 end
 
 %% Save data
-function SaveData(prm,blk,obs,tri,d,G,cal)
+function SaveData(prm,blk,obs,tri,d,G,cal,mode)
 
 logfile=fullfile(prm.dirresult,'log.txt');
 log_fid=fopen(logfile,'a');
@@ -476,13 +476,18 @@ save(fullfile(a_dir,'grn.mat'),'d','G','-v7.3')
 % 
 movefile([prm.dirresult,'/cha_test*.mat'],a_dir)
 % 
-savefig(100,fullfile(f_fir,'coupling'))
-savefig(101,fullfile(f_fir,'back_slip'))
-savefig(140,fullfile(f_fir,'vec_rig_ela'))
-savefig(130,fullfile(f_fir,'vector'))
-savefig(120,fullfile(f_fir,'pole'))
-savefig(110,fullfile(f_fir,'std'))
-
+if mode == 1
+  savefig(100,fullfile(f_fir,'coupling'))
+  savefig(110,fullfile(f_fir,'bslip'))
+  savefig(120,fullfile(f_fir,'std'))
+  savefig(130,fullfile(f_fir,'pole'))
+  savefig(140,fullfile(f_fir,'vector'))
+  savefig(150,fullfile(f_fir,'vec_rig_ela'))
+  savefig(160,fullfile(f_fir,'strain'))
+else
+  savefig(100,fullfile(f_fir,'bslip_vector'))
+end
+% 
 fprintf(log_fid,'MODEL= %s\n',prm.dirblock);
 fprintf(log_fid,'OBSDATA= %s\n',prm.fileobs);
 fclose('all');
@@ -2251,7 +2256,7 @@ colormap(cmap)
 colorbar
 
 %---------Show mechanical backslip rate ------------------
-figure(101); clf(101)
+figure(110); clf(110)
 % kinslip = (G(1).E - Gpassive) * bslip
 nn = 1;
 na = 1;
@@ -2281,7 +2286,7 @@ colormap(c)
 colorbar
 
 %---------Show standard deviation for subfaults----------
-figure(110); clf(110)
+figure(120); clf(120)
 % bug to wait zero
 nn = 1;
 for nb1 = 1:blk(1).nblock
@@ -2302,7 +2307,7 @@ colormap(parula)
 colorbar
 
 %---------Show 2-d histogram of sampled euler pole-------------
-figure(120); clf(120)
+figure(130); clf(130)
 for nb = 1:blk(1).nblock
   plot(blk(nb).lon,blk(nb).lat,'red')
   hold on
@@ -2327,7 +2332,7 @@ hold on
 % Color of arrows
 % green : Observed velocities
 % blue  : Calculated velocities
-figure(130); clf(130)
+figure(140); clf(140)
 subplot(1,2,1)
 quiver(obs(1).alon,obs(1).alat,      obs(1).evec,      obs(1).nvec,'green')
 hold on
@@ -2348,7 +2353,7 @@ title(['Vertical obs and cal motion (iteration number: ',num2str(rt),')']);
 % Color of arrows
 % black   : Rigid rotation
 % red     : Elastic deformation due to slip deficit
-figure(140); clf(140)
+figure(150); clf(150)
 subplot(1,2,1)
 quiver(obs(1).alon,obs(1).alat, vec.rig(1:3:end)',vec.rig(2:3:end)','k')
 hold on
@@ -2375,7 +2380,7 @@ title(['Vertical rigid and elastic motion (iteration number: ',num2str(rt),')'])
 % Color of arrows
 % cyan    : Principal strain 1, maximum
 % magenta : Principal strain 2, minimum
-figure(150); clf(150)
+figure(160); clf(160)
 efactor = 1e8;
 for nb = 1:blk(1).nblock
   hold on; plot(blk(nb).lon,blk(nb).lat,'red')
@@ -2387,7 +2392,7 @@ for nb = 1:blk(1).nblock
   v1 = eigv(:,1); v2 = eigv(:,2);
   if e1>=0; c1='c'; else; c1='m'; end
   if e2>=0; c2='c'; else; c2='m'; end
-  figure(150)
+  figure(160)
   hold on; quiver(blk(nb).loninter,blk(nb).latinter,efactor* e1*v1(1),efactor* e1*v1(2),c1,'showarrowhead','off','linewidth',1);
   hold on; quiver(blk(nb).loninter,blk(nb).latinter,efactor*-e1*v1(1),efactor*-e1*v1(2),c1,'showarrowhead','off','linewidth',1);
   hold on; quiver(blk(nb).loninter,blk(nb).latinter,efactor* e2*v2(1),efactor* e2*v2(2),c2,'showarrowhead','off','linewidth',1);
