@@ -1368,6 +1368,7 @@ tmp.i   = zeros(3*nobs,3.*blk(1).nblock);
 tmp.s   = zeros(3*blk(1).nt,3*blk(1).nt);
 tmp.cf  = ones(3*blk(1).nt,1);
 tmp.inv = zeros(3*blk(1).nt,1);
+tmp.zlimit = zeros(blk(1).naspline,2);
 % 
 nasp = blk(1).naspline;
 % 
@@ -1391,9 +1392,11 @@ for nb1 = 1:blk(1).nblock
         nasp = blk(1).bound(nb1,nb2).naspline ;
         nstp = nint * (nasp - 1) + 1;
         d(1).idmec(mf3:mf3+3*nf-1) = true;
-        d(1).idstrip(mm1:mm1+nf, ms:ms+nstp-1) = blk(1).bound(nb1,nb2).stripid;
-        d(1).idMit(ms:ms+nstp-1, ma:ma+nasp-1) = blk(1).bound(nb1,nb2).interpid;
         G(1).zc(mm1:mm1+nf-1) = -blk(1).cdep(mf1:mf1+nf-1);
+        tmp.zlimit(ma:ma+nasp-1, 1) = blk(1).bound(nb1,nb2).asp_depd;
+        tmp.zlimit(ma:ma+nasp-1, 2) = blk(1).bound(nb1,nb2).asp_depu;
+        tmp.idstrip(mm1:mm1+  nf-1, ms:ms+nstp-1) = blk(1).bound(nb1,nb2).stripid ;
+        tmp.idMit(   ms:ms +nstp-1, ma:ma+nasp-1) = blk(1).bound(nb1,nb2).interpid;
         mm1 = mm1 +   nf;
         mm3 = mm3 + 3*nf;
         ms = ms + nstp;
@@ -1469,6 +1472,9 @@ end
 tmp.c     = tmp.c(d(1).ind,:);
 tmp.tb    = G(1).t*G(1).b;
 tmp.cfinv = tmp.cf.*tmp.inv;
+tmp.zu     = [zeros(nasp),   eye(nasp)];
+tmp.zd     = [  eye(nasp), zeros(nasp)];
+tmp.zlimit = reshape(tmp.zlimit, 2*blk(1).naspline, 1);
 G(1).tb_kin = sparse(tmp.tb(~d(1).idmec,:));
 G(1).tb_mec = sparse(tmp.tb( d(1).idmec,:));
 G(1).c_kin  = tmp.c(:,~d(1).idmec);
@@ -1476,10 +1482,12 @@ G(1).c_mec  = tmp.c(:, d(1).idmec);
 G(1).p      = tmp.p(d(1).ind,:);
 G(1).i      = tmp.i(d(1).ind,:);
 G(1).s      = tmp.s(d(1).idmec,d(1).idmec);
+G(1).zu     = tmp.idstrip * tmp.idMit * tmp.zu;
+G(1).zd     = tmp.idstrip * tmp.idMit * tmp.zd;
+G(1).zulim  = tmp.idstrip * tmp.idMit * tmp.zu * tmp.zlimit;
+G(1).zdlim  = tmp.idstrip * tmp.idMit * tmp.zd * tmp.zlimit;
 d(1).cfinv_kin = tmp.cfinv(~d(1).idmec);
 d(1).cfinv_mec = tmp.cfinv( d(1).idmec);
-d(1).zu = [zeros(nasp),   eye(nasp)];
-d(1).zd = [  eye(nasp), zeros(nasp)];
 end
 
 %% Define initial locking patches
@@ -1504,11 +1512,7 @@ for nb1 = 1:blk(1).nblock
                            blk(1).bound(nb1,nb2).patch(np).lon,...
                            blk(1).bound(nb1,nb2).patch(np).lat);
         d(1).idl(mm:mm+nf-1) = d(1).idl(mm:mm+nf-1) | slipid';
-%         d(1).id_lock(mc:mc+3*nf-1) = d(1).id_lock(mc:mc+3*nf-1) | [repmat( slipid',2,1); false(nf,1)];
-%         d(1).id_crep(mc:mc+3*nf-1) = d(1).id_crep(mc:mc+3*nf-1) | [repmat(~slipid',2,1); false(nf,1)];
       end
-%       d(1).idl(mm:mm+3*nf-1) = [repmat( d(1).idl(mm:mm+nf-1),2,1); false(nf,1)];
-%       d(1).idc(mm:mm+3*nf-1) = [repmat(~d(1).idl(mm:mm+nf-1),2,1); false(nf,1)];
       mm = mm + nf;
     end
   end
@@ -1534,6 +1538,11 @@ fprintf(logfid,'Residual=%9.3f \n',rr);
 alat = mean(obs(1).alat(:));
 alon = mean(obs(1).alon(:));
 
+% Heaviside of asperity limit line
+Hu = Heaviside(G(1).zulim - d(1).tricz);
+Hd = Heaviside(G(1).zdlim - d(1).tricz);
+Hlim = Hd - Hu;
+
 % Initial value
 if prm.gpu ~= 99
   precision = 'single'     ;
@@ -1541,8 +1550,6 @@ else
   precision = 'double'     ;
 end
 rwd         = prm.rwd      ;
-nb          = blk(1).nblock;
-passivelim  = 1            ;  % [mm], TODO : How to determine?
 
 % Initial value
 mc.int = 1e+1;
@@ -1661,27 +1668,31 @@ while not(count == prm.thr)
     end
 
     % Derive locked meshes from up- and down-dip limit of asperities
-    mt = 1;
-    md = 1;
-    for na = 1:size(asp,2)
-      nb1 = asp(na).nb1;
-      nb2 = asp(na).nb2;
-      np  =      blk(1).bound(nb1,nb2).naspline;
-      nf  = size(blk(1).bound(nb1,nb2).blon,1) ;
-      xd = blk(1).bound(nb1,nb2).asp_xd + (ma.smp(       mt:1:       mt+np-1)./blk(1).bound(nb1,nb2).asp_lline) .* blk(1).bound(nb1,nb2).asp_lx;
-      xu = blk(1).bound(nb1,nb2).asp_xd + (ma.smp(ma.n/2+mt:1:ma.n/2+mt+np-1)./blk(1).bound(nb1,nb2).asp_lline) .* blk(1).bound(nb1,nb2).asp_lx;
-      yd = blk(1).bound(nb1,nb2).asp_yd + (ma.smp(       mt:1:       mt+np-1)./blk(1).bound(nb1,nb2).asp_lline) .* blk(1).bound(nb1,nb2).asp_ly;
-      yu = blk(1).bound(nb1,nb2).asp_yd + (ma.smp(ma.n/2+mt:1:ma.n/2+mt+np-1)./blk(1).bound(nb1,nb2).asp_lline) .* blk(1).bound(nb1,nb2).asp_ly;
-      edge = [xd(  1: 1:end), yd(  1: 1:end);...
-              xu(end:-1:  1), yu(end:-1:  1)];
-      [edg(na).lat,edg(na).lon] = XYTPL(edge(:,1),edge(:,2),alat,alon);
-      idl(md:md+3*nf-1,1) = [repmat( inpolygon(tri(1).bound(nb1,nb2).clon,tri(1).bound(nb1,nb2).clat,edg(na).lon,edg(na).lat)',2,1);...
-                                    false(size(tri(1).bound(nb1,nb2).clon))'];
-      idc(md:md+3*nf-1,1) = [repmat(~inpolygon(tri(1).bound(nb1,nb2).clon,tri(1).bound(nb1,nb2).clat,edg(na).lon,edg(na).lat)',2,1);...
-                                    false(size(tri(1).bound(nb1,nb2).clon))'];
-      mt = mt +    np;
-      md = md + 3.*nf; 
-    end
+    %     mt = 1;
+    %     md = 1;
+    %     for na = 1:size(asp,2)
+    %       nb1 = asp(na).nb1;
+    %       nb2 = asp(na).nb2;
+    %       np  =      blk(1).bound(nb1,nb2).naspline;
+    %       nf  = size(blk(1).bound(nb1,nb2).blon,1) ;
+    %       xd = blk(1).bound(nb1,nb2).asp_xd + (ma.smp(       mt:1:       mt+np-1)./blk(1).bound(nb1,nb2).asp_lline) .* blk(1).bound(nb1,nb2).asp_lx;
+    %       xu = blk(1).bound(nb1,nb2).asp_xd + (ma.smp(ma.n/2+mt:1:ma.n/2+mt+np-1)./blk(1).bound(nb1,nb2).asp_lline) .* blk(1).bound(nb1,nb2).asp_lx;
+    %       yd = blk(1).bound(nb1,nb2).asp_yd + (ma.smp(       mt:1:       mt+np-1)./blk(1).bound(nb1,nb2).asp_lline) .* blk(1).bound(nb1,nb2).asp_ly;
+    %       yu = blk(1).bound(nb1,nb2).asp_yd + (ma.smp(ma.n/2+mt:1:ma.n/2+mt+np-1)./blk(1).bound(nb1,nb2).asp_lline) .* blk(1).bound(nb1,nb2).asp_ly;
+    %       edge = [xd(  1: 1:end), yd(  1: 1:end);...
+    %               xu(end:-1:  1), yu(end:-1:  1)];
+    %       [edg(na).lat,edg(na).lon] = XYTPL(edge(:,1),edge(:,2),alat,alon);
+    %       idl(md:md+3*nf-1,1) = [repmat( inpolygon(tri(1).bound(nb1,nb2).clon,tri(1).bound(nb1,nb2).clat,edg(na).lon,edg(na).lat)',2,1);...
+    %                                     false(size(tri(1).bound(nb1,nb2).clon))'];
+    %       idc(md:md+3*nf-1,1) = [repmat(~inpolygon(tri(1).bound(nb1,nb2).clon,tri(1).bound(nb1,nb2).clat,edg(na).lon,edg(na).lat)',2,1);...
+    %                                     false(size(tri(1).bound(nb1,nb2).clon))'];
+    %       mt = mt +    np;
+    %       md = md + 3.*nf;
+    %     end
+
+    idl1 = (Heaviside(G(1).zd*ma.smp-d(1).tricz) - Heaviside(G(1).zu*ma.smp-d(1).tricz)) .* Hlim;
+    idl = d(1).maid *  idl1;
+    idc = d(1).maid * ~idl1;
     
     % Calculate back-slip on locked patches.
     bslip              = (G(1).tb_mec * mp.smp) .* d(1).cfinv_mec .* idl;
@@ -2529,7 +2540,7 @@ y = 1 .* (x == 0);
 end
 
 %% Heaviside step function
-function y = Heveaside(x)
+function y = Heaviside(x)
 % Calculate Heveaside step function
 %   y = Heaviside(x)
 %   y and x are possible to be either scaler or vector.
