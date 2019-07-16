@@ -1695,9 +1695,9 @@ while not(count == prm.thr)
     %       md = md + 3.*nf;
     %     end
 
-    idl1 = (Heaviside(G(1).zd*ma.smp-d(1).tricz) - Heaviside(G(1).zu*ma.smp-d(1).tricz)) .* Hlim;
-    idl = d(1).maid *  idl1;
-    idc = d(1).maid * ~idl1;
+    idl1 = (Heaviside(G(1).zd*ma.smp-G(1).zc) - Heaviside(G(1).zu*ma.smp-G(1).zc)) .* Hlim;
+    idl = logical(d(1).maid *  idl1);
+    idc = logical(d(1).maid * ~idl1);
     
     % Calculate back-slip on locked patches.
     bslip              = (G(1).tb_mec * mp.smp) .* d(1).cfinv_mec .* idl;
@@ -1766,12 +1766,14 @@ while not(count == prm.thr)
       if prm.gpu ~= 99
         cha.mc(:,it-(prm.cha-prm.kep)) = gather(mc.smp);
         cha.ma(:,it-(prm.cha-prm.kep)) = gather(ma.smp);
+        cha.maid(:,it-(prm.cha-prm.kep)) = gather(idl1);
         cha.mp(:,it-(prm.cha-prm.kep)) = gather(mp.smp);
         cha.mi(:,it-(prm.cha-prm.kep)) = gather(mi.smp);
         cha.la(:,it-(prm.cha-prm.kep)) = gather(la.smp);
       else
         cha.mc(:,it-(prm.cha-prm.kep)) =        mc.smp;
         cha.ma(:,it-(prm.cha-prm.kep)) =        ma.smp;
+        cha.maid(:,it-(prm.cha-prm.kep)) =        idl1;
         cha.mp(:,it-(prm.cha-prm.kep)) =        mp.smp;
         cha.mi(:,it-(prm.cha-prm.kep)) =        mi.smp;
         cha.la(:,it-(prm.cha-prm.kep)) =        la.smp;
@@ -1833,31 +1835,13 @@ while not(count == prm.thr)
   mamean = mean(cha.ma,2);
   mimean = mean(cha.mi,2);
 
-  % Derive locked meshes from up- and down-dip limit of asperities
-  mt = 1;
-  md = 1;
-  for na = 1:size(asp,2)
-    nb1 = asp(na).nb1;
-    nb2 = asp(na).nb2;
-    np  =      blk(1).bound(nb1,nb2).naspline;
-    nf  = size(blk(1).bound(nb1,nb2).blon,1) ;
-    xd = blk(1).bound(nb1,nb2).asp_xd + (mamean(       mt:1:       mt+np-1)./blk(1).bound(nb1,nb2).asp_lline) .* blk(1).bound(nb1,nb2).asp_lx;
-    xu = blk(1).bound(nb1,nb2).asp_xd + (mamean(ma.n/2+mt:1:ma.n/2+mt+np-1)./blk(1).bound(nb1,nb2).asp_lline) .* blk(1).bound(nb1,nb2).asp_lx;
-    yd = blk(1).bound(nb1,nb2).asp_yd + (mamean(       mt:1:       mt+np-1)./blk(1).bound(nb1,nb2).asp_lline) .* blk(1).bound(nb1,nb2).asp_ly;
-    yu = blk(1).bound(nb1,nb2).asp_yd + (mamean(ma.n/2+mt:1:ma.n/2+mt+np-1)./blk(1).bound(nb1,nb2).asp_lline) .* blk(1).bound(nb1,nb2).asp_ly;
-    edge = [xd(  1: 1:end), yd(  1: 1:end);...
-            xu(end:-1:  1), yu(end:-1:  1)];
-    [edg(na).lat,edg(na).lon] = XYTPL(edge(:,1),edge(:,2),alat,alon);
-    idl(md:md+3*nf-1,1) = [repmat( inpolygon(tri(1).bound(nb1,nb2).clon,tri(1).bound(nb1,nb2).clat,edg(na).lon,edg(na).lat)',2,1);...
-                                  false(size(tri(1).bound(nb1,nb2).clon))'];
-    idc(md:md+3*nf-1,1) = [repmat(~inpolygon(tri(1).bound(nb1,nb2).clon,tri(1).bound(nb1,nb2).clat,edg(na).lon,edg(na).lat)',2,1);...
-                                  false(size(tri(1).bound(nb1,nb2).clon))'];
-    mt = mt +    np;
-    md = md + 3.*nf;
-  end
-
+  idl1 = (Heaviside(G(1).zd*mamean-G(1).zc) - Heaviside(G(1).zu*mamean-G(1).zc)) .* Hlim;
+  idl = logical(d(1).maid *  idl1);
+  idc = logical(d(1).maid * ~idl1);
+  
   % Calculate back-slip on locked and creeping patches.
   bslip      = (G(1).tb_mec * mpmean) .* d(1).cfinv_mec .* idl;
+  bslipl     = bslip;
   bslip(idc) = -G(1).s(idc,idc) \ (G(1).s(idc,idl) * bslip(idl));
 
   % Calc vectors for mean parameters
@@ -1888,9 +1872,9 @@ while not(count == prm.thr)
     ccha.mi  = gather(cha.mi );
     ccha.la  = gather(cha.la );
     ccha.smp = gather(cha.smp);
-    MakeFigures(ccha,blk,obs,rt,edg,gather(lo_mc),gather(up_mc),vec,bslip,mimean)
+    MakeFigures(ccha,blk,obs,rt,gather(lo_mc),gather(up_mc),vec,bslip,bslipl,mimean)
   else
-    MakeFigures( cha,blk,obs,rt,edg,       lo_mc ,       up_mc ,vec,bslip,mimean)
+    MakeFigures( cha,blk,obs,rt,       lo_mc ,       up_mc ,vec,bslip,bslipl,mimean)
   end
   if rt > prm.itr; break; end
 end
@@ -1966,37 +1950,45 @@ sfactor = 2^16;  % int16
 % 
 cha.mc = single(cha.mc);
 cha.ma = single(cha.ma);
+cha.maid = logical(cha.maid);
 cha.mp = single(cha.mp);
 cha.mi = single(cha.mi);
 % if prm.gpu==99&&gpudevicecount==0
 if prm.gpu == 99
   meanmc = mean(cha.mc,2);
   meanma = mean(cha.ma,2);
+  meanmaid = mean(cha.maid,2);
   meanmp = mean(cha.mp,2);
   meanmi = mean(cha.mi,2);
   covmc  =   cov(cha.mc');
   covma  =   cov(cha.ma');
+  covmaid = cov(cha.maid');
   covmp  =   cov(cha.mp');
   covmi  =   cov(cha.mi');
 else
   gcha.mc = gpuArray(cha.mc);
   gcha.ma = gpuArray(cha.ma);
+  gcha.maid = gpuArray(cha.maid);
   gcha.mp = gpuArray(cha.mp);
   gcha.mi = gpuArray(cha.mi);
   meanmc  =  mean(gcha.mc,2);
   meanma  =  mean(gcha.ma,2);
+  meanmaid = mean(gcha.maid,2);
   meanmp  =  mean(gcha.mp,2);
   meanmi  =  mean(gcha.mi,2);
   covmc   =    cov(gcha.mc');
   covma   =    cov(gcha.ma');
+  covmaid = cov(gcha.maid');
   covmp   =    cov(gcha.mp');
   covmi   =    cov(gcha.mi');
   meanmc  =   gather(meanmc);
   meanma  =   gather(meanma);
+  meanmaid = gather(meanmaid);
   meanmp  =   gather(meanmp);
   meanmi  =   gather(meanmi);
   covmc   =    gather(covmc);
   covma   =    gather(covma);
+  covmaid = gather(covmaid);
   covmp   =    gather(covmp);
   covmi   =    gather(covmi);
 end
@@ -2005,6 +1997,8 @@ mcmax = max(cha.mc,[],2);
 mcmin = min(cha.mc,[],2);
 mamax = max(cha.ma,[],2);
 mamin = min(cha.ma,[],2);
+maidmax = 1;
+maidmin = 0;
 mpmax = max(cha.mp,[],2);
 mpmin = min(cha.mp,[],2);
 mimax = max(cha.mi,[],2);
@@ -2014,14 +2008,22 @@ mcscale = 1./(mcmax-mcmin);
 mcbase  = bsxfun(@minus,bsxfun(@times,bsxfun(@minus,cha.mc,mcmin),mcscale.*(sfactor-1)),sfactor/2);
 % mcint = int8(mcbase);
 mcint   = int16(mcbase);
+
 mascale = 1./(mamax-mamin);
 mabase  = bsxfun(@minus,bsxfun(@times,bsxfun(@minus,cha.ma,mamin),mascale.*(sfactor-1)),sfactor/2);
 % maint = int8(mabase);
 maint   = int16(mabase);
+
+maidscale = 1./(maidmax-maidmin);
+maidbase  = bsxfun(@minus,bsxfun(@times,bsxfun(@minus,cha.maid,maidmin),maidscale.*(sfactor-1)),sfactor/2);
+% maidint = int8(maidbase);
+maidint   = logical(maidbase);
+
 mpscale = 1./(mpmax-mpmin);
 mpbase  = bsxfun(@minus,bsxfun(@times,bsxfun(@minus,cha.mp,mpmin),mpscale.*(sfactor-1)),sfactor/2);
 % mpint = int8(mpbase);
 mpint   = int16(mpbase);
+
 miscale = 1./(mimax-mimin);
 mibase  = bsxfun(@minus,bsxfun(@times,bsxfun(@minus,cha.mi,mimin),miscale.*(sfactor-1)),sfactor/2);
 % miint = int8(mibase);
@@ -2046,6 +2048,16 @@ cha.macompress.covma   =         covma;
 cha.macompress.meanma  =        meanma;
 % cha.macompress.smpma =  int8(mabase);
 cha.macompress.smpma   = int16(mabase);
+% maid
+for ii = 1:size(maidint,1)
+  cha.maidcompress.nasp(ii).maidscale = maidscale(ii);
+  cha.maidcompress.nasp(ii).maidmax   =   maidmax(ii);
+  cha.maidcompress.nasp(ii).maidmin   =   maidmin(ii);
+end
+cha.maidcompress.covmaid   =         covmaid;
+cha.maidcompress.meanmaid  =        meanmaid;
+% cha.maidcompress.smpmaid =  int8(maidbase);
+cha.maidcompress.smpmaid   = logical(maidbase);
 % mp
 for ii = 1:size(mpint,1)
   cha.mpcompress.npol(ii).mpscale = mpscale(ii);
@@ -2219,7 +2231,7 @@ quiver(obs(1).alon,obs(1).alat,cal.smp(1:3:end)',cal.smp(2:3:end)','blue')
 end
 
 %% Show results for makeing FIGURES
-function MakeFigures(cha,blk,obs,rt,edg,lo_mc,up_mc,vec,bslip,mimean)
+function MakeFigures(cha,blk,obs,rt,lo_mc,up_mc,vec,bslip,bslipl,mimean)
 % Color palette(Polar)
 red  = [           0: 1/32:1     ones(1,32)]';
 green= [           0: 1/32:1 1-1/32:-1/32:0]';
@@ -2235,7 +2247,7 @@ end
 %---------Show kinematic coupling ------------------------
 figure(100); clf(100)
 % Bug to wait zero
-nn = 1;
+mm1 = 1;
 for nb1 = 1:blk(1).nblock
   for nb2 = nb1+1:blk(1).nblock
     if blk(1).bound(nb1,nb2).flag2 == 1
@@ -2243,8 +2255,8 @@ for nb1 = 1:blk(1).nblock
     else
       nf = size(blk(1).bound(nb1,nb2).blon,1);
       if nf~=0
-        patch(blk(1).bound(nb1,nb2).blon',blk(1).bound(nb1,nb2).blat', blk(1).bound(nb1,nb2).bdep',mean(cha.mc(nn:nn+nf-1,:),2));
-        nn = nn + nf;
+        patch(blk(1).bound(nb1,nb2).blon',blk(1).bound(nb1,nb2).blat', blk(1).bound(nb1,nb2).bdep',mean(cha.mc(mm1:mm1+nf-1,:),2));
+        mm1 = mm1 + nf;
         hold on
       end
     end
@@ -2257,30 +2269,25 @@ colorbar
 
 %---------Show mechanical backslip rate ------------------
 figure(110); clf(110)
-% kinslip = (G(1).E - Gpassive) * bslip
-nn = 1;
-na = 1;
+mm3 = 1;
 for nb1 = 1:blk(1).nblock
   for nb2 = nb1+1:blk(1).nblock
     if blk(1).bound(nb1,nb2).flag2 == 1
       nf = size(blk(1).bound(nb1,nb2).blon,1);
-      edg(na).lon(end+1) = edg(na).lon(1);
-      edg(na).lat(end+1) = edg(na).lat(1);
-      % Backslip rate
-      patch(blk(1).bound(nb1,nb2).blon',...
-            blk(1).bound(nb1,nb2).blat',...
-            sqrt(bslip(nn:nn+nf-1).^2+bslip(nn+nf:nn+2*nf-1).^2)); hold on
-      % Asperities
-      plot(edg(na).lon,edg(na).lat,'LineWidth',3,'Color','b'); hold on
-      %
-      nn = nn + 3*nf;
-      na = na + 1;
+      % Backslip rate (all)
+      subplot(1,2,1); patch(blk(1).bound(nb1,nb2).blon',...
+                            blk(1).bound(nb1,nb2).blat',...
+                            sqrt(bslip( mm3:mm3+nf-1).^2+bslip( mm3+nf:mm3+2*nf-1).^2)); hold on
+      % Backslip rate (locked)
+      subplot(1,2,2); patch(blk(1).bound(nb1,nb2).blon',...
+                            blk(1).bound(nb1,nb2).blat',...
+                            sqrt(bslipl(mm3:mm3+nf-1).^2+bslipl(mm3+nf:mm3+2*nf-1).^2)); hold on
+      mm3 = mm3 + 3*nf;
     else
       continue
     end
   end
 end
-
 c = flipud(hot);
 colormap(c)
 colorbar
@@ -2288,7 +2295,7 @@ colorbar
 %---------Show standard deviation for subfaults----------
 figure(120); clf(120)
 % bug to wait zero
-nn = 1;
+mm1 = 1;
 for nb1 = 1:blk(1).nblock
   for nb2 = nb1+1:blk(1).nblock
     if blk(1).bound(nb1,nb2).flag2 == 1
@@ -2296,8 +2303,8 @@ for nb1 = 1:blk(1).nblock
     else
       nf = size(blk(1).bound(nb1,nb2).blon,1);
       if nf ~= 0
-        patch(blk(1).bound(nb1,nb2).blon',blk(1).bound(nb1,nb2).blat',blk(1).bound(nb1,nb2).bdep',std(cha.mc(nn:nn+nf-1,:),0,2));
-        nn = nn + nf;
+        patch(blk(1).bound(nb1,nb2).blon',blk(1).bound(nb1,nb2).blat',blk(1).bound(nb1,nb2).bdep',std(cha.mc(mm1:mm1+nf-1,:),0,2));
+        mm1 = mm1 + nf;
         hold on
       end
     end
