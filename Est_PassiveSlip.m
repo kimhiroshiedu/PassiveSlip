@@ -1544,8 +1544,8 @@ alat = mean(obs(1).alat(:));
 alon = mean(obs(1).alon(:));
 
 % Heaviside of asperity limit line
-Hu = Heaviside(G(1).zulim - d(1).tricz);
-Hd = Heaviside(G(1).zdlim - d(1).tricz);
+Hu = Heaviside(G(1).zulim - G(1).zc);
+Hd = Heaviside(G(1).zdlim - G(1).zc);
 Hlim = Hd - Hu;
 
 % Initial value
