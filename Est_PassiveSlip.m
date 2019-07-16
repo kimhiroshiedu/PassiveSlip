@@ -1997,8 +1997,8 @@ mcmax = max(cha.mc,[],2);
 mcmin = min(cha.mc,[],2);
 mamax = max(cha.ma,[],2);
 mamin = min(cha.ma,[],2);
-maidmax = 1;
-maidmin = 0;
+maidmax = max(cha.maid,[],2);
+maidmin = min(cha.maid,[],2);
 mpmax = max(cha.mp,[],2);
 mpmin = min(cha.mp,[],2);
 mimax = max(cha.mi,[],2);
@@ -2014,11 +2014,6 @@ mabase  = bsxfun(@minus,bsxfun(@times,bsxfun(@minus,cha.ma,mamin),mascale.*(sfac
 % maint = int8(mabase);
 maint   = int16(mabase);
 
-maidscale = 1./(maidmax-maidmin);
-maidbase  = bsxfun(@minus,bsxfun(@times,bsxfun(@minus,cha.maid,maidmin),maidscale.*(sfactor-1)),sfactor/2);
-% maidint = int8(maidbase);
-maidint   = logical(maidbase);
-
 mpscale = 1./(mpmax-mpmin);
 mpbase  = bsxfun(@minus,bsxfun(@times,bsxfun(@minus,cha.mp,mpmin),mpscale.*(sfactor-1)),sfactor/2);
 % mpint = int8(mpbase);
@@ -2028,6 +2023,7 @@ miscale = 1./(mimax-mimin);
 mibase  = bsxfun(@minus,bsxfun(@times,bsxfun(@minus,cha.mi,mimin),miscale.*(sfactor-1)),sfactor/2);
 % miint = int8(mibase);
 miint   = int16(mibase);
+
 % mc
 for ii = 1:size(mcint,1)
   cha.mccompress.nflt(ii).mcscale = mcscale(ii);
@@ -2038,6 +2034,7 @@ cha.mccompress.covmc   =         covmc;
 cha.mccompress.meanmc  =        meanmc;
 % cha.mccompress.smpmc =  int8(mcbase);
 cha.mccompress.smpmc   = int16(mcbase);
+
 % ma
 for ii = 1:size(maint,1)
   cha.macompress.nasp(ii).mascale = mascale(ii);
@@ -2048,16 +2045,12 @@ cha.macompress.covma   =         covma;
 cha.macompress.meanma  =        meanma;
 % cha.macompress.smpma =  int8(mabase);
 cha.macompress.smpma   = int16(mabase);
+
 % maid
-for ii = 1:size(maidint,1)
-  cha.maidcompress.nasp(ii).maidscale = maidscale(ii);
-  cha.maidcompress.nasp(ii).maidmax   =   maidmax(ii);
-  cha.maidcompress.nasp(ii).maidmin   =   maidmin(ii);
-end
 cha.maidcompress.covmaid   =         covmaid;
 cha.maidcompress.meanmaid  =        meanmaid;
-% cha.maidcompress.smpmaid =  int8(maidbase);
-cha.maidcompress.smpmaid   = logical(maidbase);
+cha.maidcompress.smpmaid   = logical(cha.maid);
+
 % mp
 for ii = 1:size(mpint,1)
   cha.mpcompress.npol(ii).mpscale = mpscale(ii);
@@ -2068,6 +2061,7 @@ cha.mpcompress.covmp   =         covmp;
 cha.mpcompress.meanmp  =        meanmp;
 % cha.mpcompress.smpmp =  int8(mpbase);
 cha.mpcompress.smpmp   = int16(mpbase);
+
 % mi
 for ii = 1:size(miint,1)
   cha.micompress.nine(ii).miscale = miscale(ii);
@@ -2078,7 +2072,7 @@ cha.micompress.covmi   =         covmi;
 cha.micompress.meanmi  =        meanmi;
 % cha.micompress.smpmi =  int8(mibase);
 cha.micompress.smpmi   = int16(mibase);
-% 
+
 cha.ajr = nacc./prm.cha;
 save(fullfile(prm.dirresult,['cha_test',num2str(itr,'%03i')]),'cha','-v7.3');
 %
