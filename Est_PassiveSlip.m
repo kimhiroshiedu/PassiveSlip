@@ -1531,6 +1531,7 @@ end
 function [cal] = Proceed_MCMC_MH(blk,asp,tri,prm,obs,eul,d,G)
 % Test version coded by Hiroshi Kimura in 2019/2/1
 % Combined by Hiroshi Kimura in 2019/4/22
+% Revised by Hiroshi Kimura in 2019/7/16
 
 % Logging
 logfile = fullfile(prm.dirresult,'log.txt');
@@ -1587,8 +1588,8 @@ mi.old = 1e-10.*(-0.5+rand(mi.n,1,precision));
 mi.old = mi.old.*blk(1).idinter              ;
 % Substitute coordinates of up- and down-dip limit
 ma.old = zeros(ma.n./2,2);
-ma.old(:,1) = blk(1).asp_lline.*(0.3 + rand(ma.n./2,1) ./ 5  );
-ma.old(:,2) = blk(1).asp_lline.*(0.6 + rand(ma.n./2,1) ./ 2.5);
+ma.old(:,1) = blk(1).aline_zd.*(0.6 + rand(ma.n./2,1) ./ 5  );
+ma.old(:,2) = blk(1).aline_zd.*(0.3 + rand(ma.n./2,1) ./ 2.5);
 ma.old = reshape(ma.old,ma.n,1);
 
 la.old    = zeros(la.n,1,precision);
@@ -1597,16 +1598,9 @@ res.old   =   inf(   1,1,precision);
 
 % Scale adjastment of rwd
 mcscale  = rwd * 1e-3;
-mascale  = rwd * 5e+1;
+mascale  = rwd * 1e+1;
 mpscale  = rwd * 1e-12 .* ones(mp.n,1,precision) .* ~eul.id;
 miscale  = rwd * 1e-10;
-%{
-rwdscale =     1000 * rwd / prm.cha;
-mcscale  = rwdscale * 0.13;
-mascale  = rwdscale * 0.5;
-mpscale  = rwdscale * (1.3e-9) .* ones(mp.n,1,precision) .* ~eul.id;
-miscale  = rwdscale * 1e-10;
-%}
 
 % Initial chains
 cha.mp = zeros(mp.n,prm.kep,precision);
@@ -1661,9 +1655,12 @@ while not(count == prm.thr)
     mi.smp = mi.old + rwd .* miscale .* rmi(:,it);
     la.smp = la.old + rwd .*  la.std .* rla(:,it);
     ma.smp = ma.old + rwd .* mascale .* rma(:,it);
-    id_reject = [ma.smp(       1:ma.n/2) < 0 | ma.smp(1       :ma.n/2) > blk(1).asp_lline                                           ;...
-                 ma.smp(ma.n/2+1:   end) < 0 | ma.smp(ma.n/2+1:   end) > blk(1).asp_lline | ma.smp(1:ma.n/2) > ma.smp(ma.n/2+1:end)];
+    %     id_reject = [ma.smp(       1:ma.n/2) < 0 | ma.smp(       1:ma.n/2) > blk(1).aline_zd                                           ;...
+    %                  ma.smp(ma.n/2+1:   end) < 0 | ma.smp(ma.n/2+1:   end) > blk(1).aline_zd | ma.smp(1:ma.n/2) < ma.smp(ma.n/2+1:end)];
+    id_reject = [ false(ma.n/2,1)                                                  ;...
+                 ma.smp(ma.n/2+1:end) < 0 | ma.smp(ma.n/2+1:end) > blk(1).aline_zd];
     ma.smp(id_reject) = ma.old(id_reject);
+    ma.smp(1:ma.n/2) = max(min(ma.smp(1:ma.n/2),blk(1).aline_zd),ma.smp(ma.n/2+1:end));
 
     % Calc gpu memory free capacity
     if prm.gpu ~= 99
@@ -1671,29 +1668,6 @@ while not(count == prm.thr)
       byte2 = whos('mp');
       b = waitGPU(byte1.bytes+byte2.bytes);
     end
-
-    % Derive locked meshes from up- and down-dip limit of asperities
-    %     mt = 1;
-    %     md = 1;
-    %     for na = 1:size(asp,2)
-    %       nb1 = asp(na).nb1;
-    %       nb2 = asp(na).nb2;
-    %       np  =      blk(1).bound(nb1,nb2).naspline;
-    %       nf  = size(blk(1).bound(nb1,nb2).blon,1) ;
-    %       xd = blk(1).bound(nb1,nb2).asp_xd + (ma.smp(       mt:1:       mt+np-1)./blk(1).bound(nb1,nb2).asp_lline) .* blk(1).bound(nb1,nb2).asp_lx;
-    %       xu = blk(1).bound(nb1,nb2).asp_xd + (ma.smp(ma.n/2+mt:1:ma.n/2+mt+np-1)./blk(1).bound(nb1,nb2).asp_lline) .* blk(1).bound(nb1,nb2).asp_lx;
-    %       yd = blk(1).bound(nb1,nb2).asp_yd + (ma.smp(       mt:1:       mt+np-1)./blk(1).bound(nb1,nb2).asp_lline) .* blk(1).bound(nb1,nb2).asp_ly;
-    %       yu = blk(1).bound(nb1,nb2).asp_yd + (ma.smp(ma.n/2+mt:1:ma.n/2+mt+np-1)./blk(1).bound(nb1,nb2).asp_lline) .* blk(1).bound(nb1,nb2).asp_ly;
-    %       edge = [xd(  1: 1:end), yd(  1: 1:end);...
-    %               xu(end:-1:  1), yu(end:-1:  1)];
-    %       [edg(na).lat,edg(na).lon] = XYTPL(edge(:,1),edge(:,2),alat,alon);
-    %       idl(md:md+3*nf-1,1) = [repmat( inpolygon(tri(1).bound(nb1,nb2).clon,tri(1).bound(nb1,nb2).clat,edg(na).lon,edg(na).lat)',2,1);...
-    %                                     false(size(tri(1).bound(nb1,nb2).clon))'];
-    %       idc(md:md+3*nf-1,1) = [repmat(~inpolygon(tri(1).bound(nb1,nb2).clon,tri(1).bound(nb1,nb2).clat,edg(na).lon,edg(na).lat)',2,1);...
-    %                                     false(size(tri(1).bound(nb1,nb2).clon))'];
-    %       mt = mt +    np;
-    %       md = md + 3.*nf;
-    %     end
 
     idl1 = (Heaviside(G(1).zd*ma.smp-G(1).zc) - Heaviside(G(1).zu*ma.smp-G(1).zc)) .* Hlim;
     idl = logical(d(1).maid *  idl1);
@@ -1907,8 +1881,8 @@ mi.old = 1e-10.*(-0.5+rand(mi.n,1,precision));
 mi.old = mi.old.*blk(1).idinter              ;
 
 % substitude index of locking patches
-idl = d(1).maid *  d(1).idl;
-idc = d(1).maid * ~d(1).idl;
+idl = logical(d(1).maid *  d(1).idl);
+idc = logical(d(1).maid * ~d(1).idl);
 
 % Calculate back-slip on locked patches.
 bslip              = (G(1).tb_mec * mp.old) .* d(1).cfinv_mec .* idl;
@@ -1948,61 +1922,61 @@ function CompressData(cha,prm,itr,nacc)
 % sfactor = 2^8 ;  % int8
 sfactor = 2^16;  % int16
 % 
-cha.mc = single(cha.mc);
-cha.ma = single(cha.ma);
+cha.mc   =  single(cha.mc)  ;
+cha.ma   =  single(cha.ma)  ;
 cha.maid = logical(cha.maid);
-cha.mp = single(cha.mp);
-cha.mi = single(cha.mi);
+cha.mp   =  single(cha.mp)  ;
+cha.mi   =  single(cha.mi)  ;
 % if prm.gpu==99&&gpudevicecount==0
 if prm.gpu == 99
-  meanmc = mean(cha.mc,2);
-  meanma = mean(cha.ma,2);
+  meanmc   = mean(cha.mc,  2);
+  meanma   = mean(cha.ma,  2);
   meanmaid = mean(cha.maid,2);
-  meanmp = mean(cha.mp,2);
-  meanmi = mean(cha.mi,2);
-  covmc  =   cov(cha.mc');
-  covma  =   cov(cha.ma');
-  covmaid = cov(cha.maid');
-  covmp  =   cov(cha.mp');
-  covmi  =   cov(cha.mi');
+  meanmp   = mean(cha.mp,  2);
+  meanmi   = mean(cha.mi,  2);
+  covmc    =   cov(cha.mc')  ;
+  covma    =   cov(cha.ma')  ;
+  covmaid  =   cov(cha.maid');
+  covmp    =   cov(cha.mp')  ;
+  covmi    =   cov(cha.mi')  ;
 else
-  gcha.mc = gpuArray(cha.mc);
-  gcha.ma = gpuArray(cha.ma);
+  gcha.mc   = gpuArray(cha.mc)  ;
+  gcha.ma   = gpuArray(cha.ma)  ;
   gcha.maid = gpuArray(cha.maid);
-  gcha.mp = gpuArray(cha.mp);
-  gcha.mi = gpuArray(cha.mi);
-  meanmc  =  mean(gcha.mc,2);
-  meanma  =  mean(gcha.ma,2);
-  meanmaid = mean(gcha.maid,2);
-  meanmp  =  mean(gcha.mp,2);
-  meanmi  =  mean(gcha.mi,2);
-  covmc   =    cov(gcha.mc');
-  covma   =    cov(gcha.ma');
-  covmaid = cov(gcha.maid');
-  covmp   =    cov(gcha.mp');
-  covmi   =    cov(gcha.mi');
-  meanmc  =   gather(meanmc);
-  meanma  =   gather(meanma);
-  meanmaid = gather(meanmaid);
-  meanmp  =   gather(meanmp);
-  meanmi  =   gather(meanmi);
-  covmc   =    gather(covmc);
-  covma   =    gather(covma);
-  covmaid = gather(covmaid);
-  covmp   =    gather(covmp);
-  covmi   =    gather(covmi);
+  gcha.mp   = gpuArray(cha.mp)  ;
+  gcha.mi   = gpuArray(cha.mi)  ;
+  meanmc    =  mean(gcha.mc,  2);
+  meanma    =  mean(gcha.ma,  2);
+  meanmaid  =  mean(gcha.maid,2);
+  meanmp    =  mean(gcha.mp,  2);
+  meanmi    =  mean(gcha.mi,  2);
+  covmc     =    cov(gcha.mc')  ;
+  covma     =    cov(gcha.ma')  ;
+  covmaid   =    cov(gcha.maid');
+  covmp     =    cov(gcha.mp')  ;
+  covmi     =    cov(gcha.mi')  ;
+  meanmc    =   gather(meanmc)  ;
+  meanma    =   gather(meanma)  ;
+  meanmaid  =   gather(meanmaid);
+  meanmp    =   gather(meanmp)  ;
+  meanmi    =   gather(meanmi)  ;
+  covmc     =    gather(covmc)  ;
+  covma     =    gather(covma)  ;
+  covmaid   =    gather(covmaid);
+  covmp     =    gather(covmp)  ;
+  covmi     =    gather(covmi)  ;
 end
 % 
-mcmax = max(cha.mc,[],2);
-mcmin = min(cha.mc,[],2);
-mamax = max(cha.ma,[],2);
-mamin = min(cha.ma,[],2);
+mcmax   = max(cha.mc,  [],2);
+mcmin   = min(cha.mc,  [],2);
+mamax   = max(cha.ma,  [],2);
+mamin   = min(cha.ma,  [],2);
 maidmax = max(cha.maid,[],2);
 maidmin = min(cha.maid,[],2);
-mpmax = max(cha.mp,[],2);
-mpmin = min(cha.mp,[],2);
-mimax = max(cha.mi,[],2);
-mimin = min(cha.mi,[],2);
+mpmax   = max(cha.mp,  [],2);
+mpmin   = min(cha.mp,  [],2);
+mimax   = max(cha.mi,  [],2);
+mimin   = min(cha.mi,  [],2);
 % 
 mcscale = 1./(mcmax-mcmin);
 mcbase  = bsxfun(@minus,bsxfun(@times,bsxfun(@minus,cha.mc,mcmin),mcscale.*(sfactor-1)),sfactor/2);
@@ -2047,9 +2021,9 @@ cha.macompress.meanma  =        meanma;
 cha.macompress.smpma   = int16(mabase);
 
 % maid
-cha.maidcompress.covmaid   =         covmaid;
-cha.maidcompress.meanmaid  =        meanmaid;
-cha.maidcompress.smpmaid   = logical(cha.maid);
+cha.maidcompress.covmaid  =           covmaid;
+cha.maidcompress.meanmaid =          meanmaid;
+cha.maidcompress.smpmaid  = logical(cha.maid);
 
 % mp
 for ii = 1:size(mpint,1)
@@ -2085,7 +2059,8 @@ asp  = [];
 alat = mean(obs(1).alat(:));
 alon = mean(obs(1).alon(:));
 blk(1).naspline  =  0;
-blk(1).asp_lline = [];
+blk(1).aline_zu = [];
+blk(1).aline_zd = [];
 
 Nint = 10;  % default
 
@@ -2144,7 +2119,8 @@ for nb1 = 1:blk(1).nblock
         blk(1).bound(nb1,nb2).asp_lz_interp = blk(1).bound(nb1,nb2).asp_zd_interp - blk(1).bound(nb1,nb2).asp_zu_interp;
         np = np + 1;
         blk(1).naspline  =  blk(1).naspline + nasp;
-        blk(1).asp_lline = [blk(1).asp_lline, blk(1).bound(nb1,nb2).asp_lline];
+        blk(1).aline_zu = [blk(1).aline_zu; blk(1).bound(nb1,nb2).asp_depu];
+        blk(1).aline_zd = [blk(1).aline_zd; blk(1).bound(nb1,nb2).asp_depd];
 
         % Indexing trimesh with each strip
         hx_d = (blk(1).bound(nb1,nb2).asp_xd_interp(1:end-1) + blk(1).bound(nb1,nb2).asp_xd_interp(2:end)) ./ 2;
