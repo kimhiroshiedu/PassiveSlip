@@ -1522,7 +1522,7 @@ for nb1 = 1:blk(1).nblock
   end
 end
 d(1).idl = logical( d(1).idl);
-d(1).idc = logical(~d(1).idc);
+d(1).idc = logical(~d(1).idl);
 
 end
 
