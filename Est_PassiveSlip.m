@@ -1502,7 +1502,6 @@ function [d] = InitialLockingPatch(blk,tri,d)
 % d(1).idc : Creeping, slip passively (coupling = 0)
 % 
 d(1).idl = zeros(blk(1).ntmec,1);
-d(1).idc = zeros(blk(1).ntmec,1);
 mm = 1;
 for nb1 = 1:blk(1).nblock
   for nb2 = nb1+1:blk(1).nblock
@@ -1522,8 +1521,8 @@ for nb1 = 1:blk(1).nblock
     end
   end
 end
-d(1).idl = logical(d(1).id_lock);
-d(1).idc = logical(d(1).id_crep);
+d(1).idl = logical( d(1).idl);
+d(1).idc = logical(~d(1).idc);
 
 end
 
