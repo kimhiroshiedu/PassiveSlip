@@ -474,9 +474,8 @@ save(fullfile(a_dir,'obs.mat'),'obs','-v7.3')
 save(fullfile(a_dir,'cal.mat'),'cal','-v7.3')
 save(fullfile(a_dir,'grn.mat'),'d','G','-v7.3')
 % 
-movefile([prm.dirresult,'/cha_test*.mat'],a_dir)
-% 
 if mode == 1
+  movefile([prm.dirresult,'/cha_test*.mat'],a_dir)
   savefig(100,fullfile(f_fir,'coupling'))
   savefig(110,fullfile(f_fir,'bslip'))
   savefig(120,fullfile(f_fir,'std'))
@@ -1499,10 +1498,9 @@ end
 function [d] = InitialLockingPatch(blk,tri,d)
 % Coded by Hiroshi Kimura in 2019/2/14
 % d(1).idl : Locking, give back-slip  (coupling = 1)
-% d(1).idc : Creeping, slip passively (coupling = 0)
 % 
 d(1).idl = zeros(blk(1).ntmec,1);
-mm = 1;
+mm1 = 1;
 for nb1 = 1:blk(1).nblock
   for nb2 = nb1+1:blk(1).nblock
     if blk(1).bound(nb1,nb2).flag2 == 1
@@ -1515,14 +1513,13 @@ for nb1 = 1:blk(1).nblock
                            tri(1).bound(nb1,nb2).clat,...
                            blk(1).bound(nb1,nb2).patch(np).lon,...
                            blk(1).bound(nb1,nb2).patch(np).lat);
-        d(1).idl(mm:mm+nf-1) = d(1).idl(mm:mm+nf-1) | slipid';
+        d(1).idl(mm1:mm1+nf-1) = d(1).idl(mm1:mm1+nf-1) | slipid';
       end
-      mm = mm + nf;
+      mm1 = mm1 + nf;
     end
   end
 end
 d(1).idl = logical( d(1).idl);
-d(1).idc = logical(~d(1).idl);
 
 end
 
@@ -1863,6 +1860,7 @@ end
 
 %% Estimate passive slip distribution by forward simulation
 function [cal] = CalcPassiveSlip(blk,asp,tri,prm,obs,eul,d,G)
+precision = 'single';
 % initial parameters
 mc.int = 1e-2 ;
 mp.int = 1e-10;
@@ -1911,7 +1909,7 @@ if isempty(cal.ine); cal.ine = zeros(size(d(1).ind)); end
 % Total velocities
 cal.smp = cal.rig + cal.kin + cal.mec + cal.ine;
 
-MakeFigs(blk,tri,cal,obs)
+MakeFigs(blk,cal,bslip,obs)
 
 end
 
@@ -2166,18 +2164,18 @@ fprintf('=== Read Random Walk Lines === \n');
 end
 
 %% Make figures
-function MakeFigs(blk,tri,cal,obs)
+function MakeFigs(blk,cal,bslip,obs)
 % 
 figure(100); clf(100)
-mc = 1;
+mm3 = 1;
 for nb1 = 1:blk(1).nblock
   for nb2 = nb1+1:blk(1).nblock
     nf = size(blk(1).bound(nb1,nb2).blon,1);
-    if nf ~= 0
+    if blk(1).bound(nb1,nb2).flag2 == 1
       % Back-slip rate
       patch(blk(1).bound(nb1,nb2).blon',...
             blk(1).bound(nb1,nb2).blat',...
-      sqrt(cal.slip(mc:mc+nf-1).^2+cal.slip(mc+nf:mc+2*nf-1).^2))
+      sqrt(bslip(mm3:mm3+nf-1).^2+bslip(mm3+nf:mm3+2*nf-1).^2))
       % Initial patches
       for np = 1:size(blk(1).bound(nb1,nb2).patch,2)
         hold on
@@ -2185,7 +2183,7 @@ for nb1 = 1:blk(1).nblock
              blk(1).bound(nb1,nb2).patch(np).lat,...
              'LineWidth',3,'Color','b')
       end
-      mc = mc + 3*nf;
+      mm3 = mm3 + 3*nf;
     end
   end
 end
