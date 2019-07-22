@@ -1858,6 +1858,339 @@ fprintf(logfid,'=== finished MCMC part ===\n');
 fclose(logfid);
 end
 
+%% Estimate mechanical coupled area by MCMC (Hamiltonian Monte Carlo)
+function [cal] = Proceed_HMC(blk,asp,tri,prm,obs,eul,d,G)
+% Test version by Hiroshi Kimura in 2019/07/22
+
+% Logging
+logfile = fullfile(prm.dirresult,'log.txt');
+logfid  = fopen(logfile,'a');
+rr = (d(1).obs./d(1).err)'*(d(1).obs./d(1).err);
+fprintf('Residual=%9.3f \n',rr);
+fprintf(logfid,'Residual=%9.3f \n',rr);
+
+% Center of observation network
+alat = mean(obs(1).alat(:));
+alon = mean(obs(1).alon(:));
+
+% Heaviside of asperity limit line
+Hu = Heaviside(G(1).zulim - G(1).zc);
+Hd = Heaviside(G(1).zdlim - G(1).zc);
+Hlim = Hd - Hu;
+
+% Initial value
+if prm.gpu ~= 99
+  precision = 'single'     ;
+else
+  precision = 'double'     ;
+end
+rwd         = prm.rwd      ;
+
+% Initial value
+mc.int = 1e+1;
+mp.int = 1e-10;
+mi.int = 1e-10;
+ma.int = 1e-5;
+la.int = 1e+1;
+
+% Number of unknown parameter
+mp.n   = 3.*blk(1).nblock;
+mi.n   = 3.*blk(1).nblock;
+mc.n   = blk(1).ntkin;
+ma.n   = 2.*blk(1).naspline;
+la.n   = 1;
+
+% Initial std
+mp.std = mp.int.*ones(mp.n,1,precision);
+mi.std = mi.int.*ones(mi.n,1,precision);
+ma.std = ma.int.*ones(ma.n,1,precision);
+la.std = la.int.*ones(la.n,1,precision);
+
+% Substitute coupling ratio
+mc.old = randn(blk(1).ntkin,1);
+% Substitute euler pole vectors
+mp.old         = double(blk(1).pole);
+mp.old(eul.id) = 0                  ;
+mp.old         = mp.old+eul.fixw    ;
+% Substitute internal strain tensors
+mi.old = 1e-10.*(-0.5+rand(mi.n,1,precision));
+mi.old = mi.old.*blk(1).idinter              ;
+% Substitute coordinates of up- and down-dip limit
+ma.old = zeros(ma.n./2,2);
+ma.old(:,1) = blk(1).aline_zd.*(0.6 + rand(ma.n./2,1) ./ 5  );
+ma.old(:,2) = blk(1).aline_zd.*(0.3 + rand(ma.n./2,1) ./ 2.5);
+ma.old = reshape(ma.old,ma.n,1);
+
+la.old    = zeros(la.n,1,precision);
+res.old   =   inf(   1,1,precision);
+% pri.old =   inf(   1,1,precision);
+
+% Scale adjastment of rwd
+mcscale  = rwd * 1e-3;
+mascale  = rwd * 1e+1;
+mpscale  = rwd * 1e-12 .* ones(mp.n,1,precision) .* ~eul.id;
+miscale  = rwd * 1e-10;
+
+% Initial chains
+cha.mp = zeros(mp.n,prm.kep,precision);
+cha.mi = zeros(mi.n,prm.kep,precision);
+cha.ma = zeros(ma.n,prm.kep,precision);
+cha.mc = zeros(mc.n,prm.kep,precision);
+cha.la = zeros(la.n,prm.kep,precision);
+
+% GPU conversion
+if prm.gpu ~= 99
+  G(1).tb_mec    = gpuArray(single(full(G(1).tb_mec)));
+  G(1).tb_kin    = gpuArray(single(full(G(1).tb_kin)));
+  G(1).s         = gpuArray(single(full(G(1).s     )));
+  G(1).p         = gpuArray(single(     G(1).p      ));
+  G(1).c_kin     = gpuArray(single(     G(1).c_kin  ));
+  G(1).c_mec     = gpuArray(single(     G(1).c_mec  ));
+  G(1).i         = gpuArray(single(     G(1).i      ));
+  d(1).mcid      = gpuArray(single(     d(1).mcid     ));
+  d(1).cfinv_mec = gpuArray(single(     d(1).cfinv_mec));
+  d(1).cfinv_kin = gpuArray(single(     d(1).cfinv_kin));
+end
+
+% MCMC iteration
+rt      = 0     ;
+count   = 0     ;
+burn    = 1     ;
+up_mc   = 1     ;
+lo_mc   = 0     ;
+decrate = 0.9^ 1;
+incrate = 0.9^-1;
+while not(count == prm.thr)
+  rt   = rt+1;
+  nacc = 0;tic
+
+  % Random value for each parameter
+  logu      = log(rand(prm.cha,1,precision));
+  rmc       =  randn(mc.n,prm.cha,precision);
+  rma       =  randn(ma.n,prm.cha,precision);
+  rmp       =  randn(mp.n,prm.cha,precision);
+  rmi       =  randn(mi.n,prm.cha,precision);
+  rla       =  randn(la.n,prm.cha,precision);
+
+  rmp(         eul.id,:) = 0;
+  rmi(~blk(1).idinter,:) = 0;
+  for it = 1:prm.cha
+    % Sample section
+    mctmp            = mc.old+0.5.*rwd.*mcscale.*rmc(:,it);
+    id_reject        = mctmp>up_mc | mctmp<lo_mc;
+    mctmp(id_reject) = mc.old(id_reject);
+    mc.smp = mctmp                               ;
+    mp.smp = mp.old + rwd .* mpscale .* rmp(:,it);
+    mi.smp = mi.old + rwd .* miscale .* rmi(:,it);
+    la.smp = la.old + rwd .*  la.std .* rla(:,it);
+    ma.smp = ma.old + rwd .* mascale .* rma(:,it);
+    %     id_reject = [ma.smp(       1:ma.n/2) < 0 | ma.smp(       1:ma.n/2) > blk(1).aline_zd                                           ;...
+    %                  ma.smp(ma.n/2+1:   end) < 0 | ma.smp(ma.n/2+1:   end) > blk(1).aline_zd | ma.smp(1:ma.n/2) < ma.smp(ma.n/2+1:end)];
+    id_reject = [ false(ma.n/2,1)                                                  ;...
+                 ma.smp(ma.n/2+1:end) < 0 | ma.smp(ma.n/2+1:end) > blk(1).aline_zd];
+    ma.smp(id_reject) = ma.old(id_reject);
+    ma.smp(1:ma.n/2) = max(min(ma.smp(1:ma.n/2),blk(1).aline_zd),ma.smp(ma.n/2+1:end));
+
+    % Calc gpu memory free capacity
+    if prm.gpu ~= 99
+      byte1 = whos('G');
+      byte2 = whos('mp');
+      b = waitGPU(byte1.bytes+byte2.bytes);
+    end
+
+    idl1 = (Heaviside(G(1).zd*ma.smp-G(1).zc) - Heaviside(G(1).zu*ma.smp-G(1).zc)) .* Hlim;
+    idl = logical(d(1).maid *  idl1);
+    idc = logical(d(1).maid * ~idl1);
+    
+    % Calculate back-slip on locked patches.
+    bslip              = (G(1).tb_mec * mp.smp) .* d(1).cfinv_mec .* idl;
+    
+    % Calc inverse Green's function
+    %     Gcc        = G(1).s(idc,idc);    % creep -> creep
+    %     Gcl        = G(1).s(idc,idl);    % lock  -> creep
+    %     bslip(idc) = -Gcc \ (Gcl * bslip(idl));
+    bslip(idc) = -G(1).s(idc,idc) \ (G(1).s(idc,idl) * bslip(idl));
+ 
+    % Due to Rigid motion
+    cal.rig = G(1).p * mp.smp;
+    % Due to Kinematic coupling
+    cal.kin = G(1).c_kin * ((G(1).tb_kin * mp.smp) .* d(1).cfinv_kin .* (d(1).mcid * mc.smp));
+    % Due to Mechanical coupling
+%     cal.mec = G(1).c_mec * (G(1).E - Gpassive) * bslip;
+    cal.mec = G(1).c_mec * bslip;
+    % Due to Internal strain
+    cal.ine = G(1).i * mi.smp;
+    % Zero padding
+    if prm.gpu ~= 99
+      if isempty(cal.rig); cal.rig = zeros(size(d(1).ind),precision,'gpuArray'); end
+      if isempty(cal.kin); cal.kin = zeros(size(d(1).ind),precision,'gpuArray'); end
+      if isempty(cal.mec); cal.mec = zeros(size(d(1).ind),precision,'gpuArray'); end
+      if isempty(cal.ine); cal.ine = zeros(size(d(1).ind),precision,'gpuArray'); end
+    else
+      if isempty(cal.rig); cal.rig = zeros(size(d(1).ind)); end
+      if isempty(cal.kin); cal.kin = zeros(size(d(1).ind)); end
+      if isempty(cal.mec); cal.mec = zeros(size(d(1).ind)); end
+      if isempty(cal.ine); cal.ine = zeros(size(d(1).ind)); end
+    end        
+    % Total velocities
+    cal.smp = cal.rig + cal.kin + cal.mec + cal.ine;
+    
+    if prm.gpu ~= 99
+      clear('cal.rig','cal,kin','cal.mec','cal.ine');
+    end
+    % Calc residual section
+    res.smp = sum(((d(1).obs-cal.smp)./d(1).err).^2,1);
+    % Mc is better Zero
+    %     PRI.SMP = sum(abs(Mc.SMP),1);
+    %% MAKE Probably Density Function
+    % $$ PDF_{post}=\frac{\frac{1}{\sqrt{2\pi\exp(L)}\times\frac{1}{\sqrt{2\pi}\times\exp{\frac{-Re^{2}}{2}}\exp{\frac{-M^{2}}{2\times\exp{L}}}{\frac{1}{\sqrt{2\pi\exp(L_{old})}\times\frac{1}{\sqrt{2\pi}\times\exp{\frac{-Re^{2}_{old}}{2}}\exp{\frac{-M^{2}_{old}}{2\times\exp{L_{old}}}} $$%%
+    %  log(x(x>0));
+    %   q1 = logproppdf(x0,y);
+    %   q2 = logproppdf(y,x0);
+    % This is a generic formula.
+    %   rho = (q1+logpdf(y))-(q2+logpdf(x0));
+    pdf = -0.5.*...
+        ((res.smp+la.smp+exp(-la.smp))...
+        -(res.old+la.old+exp(-la.old)));
+    %   pdf = -0.5.*(res.smp-res.old);
+    acc = pdf > logu(it);
+    if acc
+      mc.old  =  mc.smp;
+      ma.old  =  ma.smp;
+      mp.old  =  mp.smp;
+      mi.old  =  mi.smp;
+      la.old  =  la.smp;
+      res.old = res.smp;
+      %pri.old = pri.smp;
+    end
+
+    % Keep section
+    if it > prm.cha - prm.kep
+      if prm.gpu ~= 99
+        cha.mc(:,it-(prm.cha-prm.kep)) = gather(mc.smp);
+        cha.ma(:,it-(prm.cha-prm.kep)) = gather(ma.smp);
+        cha.maid(:,it-(prm.cha-prm.kep)) = gather(idl1);
+        cha.mp(:,it-(prm.cha-prm.kep)) = gather(mp.smp);
+        cha.mi(:,it-(prm.cha-prm.kep)) = gather(mi.smp);
+        cha.la(:,it-(prm.cha-prm.kep)) = gather(la.smp);
+      else
+        cha.mc(:,it-(prm.cha-prm.kep)) =        mc.smp;
+        cha.ma(:,it-(prm.cha-prm.kep)) =        ma.smp;
+        cha.maid(:,it-(prm.cha-prm.kep)) =        idl1;
+        cha.mp(:,it-(prm.cha-prm.kep)) =        mp.smp;
+        cha.mi(:,it-(prm.cha-prm.kep)) =        mi.smp;
+        cha.la(:,it-(prm.cha-prm.kep)) =        la.smp;
+      end
+      if acc; nacc=nacc+1; end
+    end
+  end
+  
+% Compress data into int16 format
+  CompressData(cha,prm,rt,nacc);
+%
+  cha.ajr = nacc./prm.cha;
+  
+% Calc stds from samples
+  mc.std = std(cha.mc,1,2);
+  ma.std = std(cha.ma,1,2);
+  mp.std = std(cha.mp,1,2); 
+  mi.std = std(cha.mi,1,2); 
+  la.std = std(cha.la,1,2);
+  
+% Log and display
+  fprintf(       't=%3d res=%6.3f accept=%5.1f rwd=%5.2f time=%5.1fsec\n',...
+           rt,1-res.old./rr,100*cha.ajr,rwd,toc)
+  fprintf(logfid,'t=%3d res=%6.3f accept=%5.1f rwd=%5.2f time=%5.1fsec\n',...
+           rt,1-res.old./rr,100*cha.ajr,rwd,toc);
+  for bk=1:blk(1).nblock
+    [latp,lonp,ang]=xyzp2lla(cha.mp(3.*bk-2,:),cha.mp(3.*bk-1,:),cha.mp(3.*bk,:));
+    fprintf(       'pole of block %2i = lat:%7.2f deg. lon:%8.2f deg. ang:%9.2e deg./m.y. \n',...
+      bk,mean(latp),mean(lonp),mean(ang));
+    fprintf(logfid,'pole of block %2i = lat:%7.2f deg. lon:%8.2f deg. ang:%9.2e deg./m.y. \n',...
+      bk,mean(latp),mean(lonp),mean(ang));
+  end
+  fprintf(       'lamda = %7.2f \n',mean(cha.la));
+  fprintf(logfid,'lamda = %7.2f \n',mean(cha.la));
+
+% Adjust random walk distance
+  if burn == 0
+    if cha.ajr > 0.24
+      rwd = rwd * incrate;
+    elseif cha.ajr < 0.22
+      rwd = rwd * decrate;
+    end
+    count = count + 1;
+  else
+    if cha.ajr > 0.24
+      rwd = rwd * incrate;
+    elseif cha.ajr < 0.22
+      rwd = rwd * decrate;
+    else
+      count = count + 1;
+      burn = 0;
+    end
+  end
+  
+  cha.smp = cal.smp;
+  % Debug-----------
+  mpmean = mean(cha.mp,2);
+  mcmean = mean(cha.mc,2);
+  mamean = mean(cha.ma,2);
+  mimean = mean(cha.mi,2);
+
+  idl1 = (Heaviside(G(1).zd*mamean-G(1).zc) - Heaviside(G(1).zu*mamean-G(1).zc)) .* Hlim;
+  idl = logical(d(1).maid *  idl1);
+  idc = logical(d(1).maid * ~idl1);
+  
+  % Calculate back-slip on locked and creeping patches.
+  bslip      = (G(1).tb_mec * mpmean) .* d(1).cfinv_mec .* idl;
+  bslipl     = bslip;
+  bslip(idc) = -G(1).s(idc,idc) \ (G(1).s(idc,idl) * bslip(idl));
+
+  % Calc vectors for mean parameters
+  vec.rig = G(1).p * mpmean;
+  vec.kin = G(1).c_kin * ((G(1).tb_kin * mpmean) .* d(1).cfinv_kin .* (d(1).mcid * mcmean));
+  vec.mec = G(1).c_mec * bslip;
+  vec.ine = G(1).i * mimean;
+  % Zero padding
+  if prm.gpu ~= 99
+    if isempty(vec.rig); vec.rig = zeros(size(d(1).ind),precision,'gpuArray'); end
+    if isempty(vec.kin); vec.kin = zeros(size(d(1).ind),precision,'gpuArray'); end
+    if isempty(vec.mec); vec.mec = zeros(size(d(1).ind),precision,'gpuArray'); end
+    if isempty(vec.ine); vec.ine = zeros(size(d(1).ind),precision,'gpuArray'); end
+  else
+    if isempty(vec.rig); vec.rig = zeros(size(d(1).ind)); end
+    if isempty(vec.kin); vec.kin = zeros(size(d(1).ind)); end
+    if isempty(vec.mec); vec.mec = zeros(size(d(1).ind)); end
+    if isempty(vec.ine); vec.ine = zeros(size(d(1).ind)); end
+  end
+  % Total velocities
+  vec.sum = vec.rig + vec.kin + vec.mec + vec.ine;
+% vec.rel = g.c*((g.tb*poltmp).*cf);
+  % Debug-----------
+  if prm.gpu ~= 99
+    ccha.mc  = gather(cha.mc );
+    ccha.ma  = gather(cha.ma );
+    ccha.mp  = gather(cha.mp );
+    ccha.mi  = gather(cha.mi );
+    ccha.la  = gather(cha.la );
+    ccha.smp = gather(cha.smp);
+    MakeFigures(ccha,blk,obs,rt,gather(lo_mc),gather(up_mc),vec,bslip,bslipl,mimean)
+  else
+    MakeFigures( cha,blk,obs,rt,       lo_mc ,       up_mc ,vec,bslip,bslipl,mimean)
+  end
+  if rt > prm.itr; break; end
+end
+
+% Display
+cha.res = res.smp;
+fprintf(       'RMS=: %8.3f\n',cha.res)
+fprintf(logfid,'RMS=: %8.3f\n',cha.res);
+fprintf(       '=== Finished MCMC part ===\n')
+fprintf(logfid,'=== finished MCMC part ===\n');
+fclose(logfid);
+end
+
 %% Estimate passive slip distribution by forward simulation
 function [cal] = CalcPassiveSlip(blk,asp,tri,prm,obs,eul,d,G)
 precision = 'single';
