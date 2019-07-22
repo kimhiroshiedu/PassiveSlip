@@ -2191,6 +2191,68 @@ fprintf(logfid,'=== finished MCMC part ===\n');
 fclose(logfid);
 end
 
+%% Run HMC
+function [x] = proceed_HMC(tau, epsilon, T, ite, init, mu, sigma, G)
+x = init;
+for ni = 1:ite
+  x = [x, proceed_HMC_iteration(x(:,ni), tau, epsilon, T, mu, sigma, G)];
+end
+end
+
+%% Log probability
+function [logn] = log_normal(x, mu, sigma, G)
+% Normal distribution with average, mu and standard deviation, sigma
+% Corresponding to potential energy of phisics if one times -1
+logn = -0.5.*log(2.*pi.*sigma.^2) - sum((G*x-mu).^2/(2.*sigma.^2));
+end
+
+%% Derivative of log probability
+function [dlogn] = d_log_normal(x, mu, sigma, G)
+% dlogn = -(G*x-mu)./sigma.^2;
+dlogn = G'*((G*x-mu)./sigma.^2);
+end
+
+%% Kinetic energy
+function [Ek] = momentum(p, tau)
+Ek = sum(p.^2./(2.*tau.^2));
+end
+
+%% Derivative of kinetic energy
+function [dEk] = d_momentum(p, tau)
+dEk = p./tau.^2;
+end
+
+%% Hamiltonian
+function [H] = Hamiltonian(x, p, tau, mu, sigma, G)
+% Sum of kinetic and potential energy
+H = momentum(p, tau) + (-1.*log_normal(x, mu, sigma, G));
+end
+
+%% Run Leap-frog sample
+function [x, p] = proceed_leapflog(epsilon, x, p, tau, mu, sigma, G)
+x = x + (-0.5.*epsilon.*( -1.*d_momentum(p, tau)));
+p = p +        epsilon.*d_log_normal(x, mu, sigma, G);
+x = x +       -epsilon.*( -1.*d_momentum(p, tau)) ;
+end
+
+%% Process one step of HMC
+function [x_accepted] = proceed_HMC_iteration(x, tau, epsilon, T, mu, sigma, G)
+p = random('Normal', 0, tau, size(x));
+p_new = p;
+x_new = x;
+for ni = 1:T
+  [x_new, p_new] = proceed_leapflog(epsilon, x_new, p_new, tau, mu, sigma, G);
+end
+alpha = exp(Hamiltonian(x, p, tau, mu, sigma, G) - Hamiltonian(x_new, p_new, tau, mu, sigma, G));
+u = rand(1);
+if u < alpha
+  x_accepted = x_new;
+else
+  x_accepted = x;
+end
+
+end
+
 %% Estimate passive slip distribution by forward simulation
 function [cal] = CalcPassiveSlip(blk,asp,tri,prm,obs,eul,d,G)
 precision = 'single';
