@@ -1873,10 +1873,18 @@ fprintf(logfid,'Residual=%9.3f \n',rr);
 alat = mean(obs(1).alat(:));
 alon = mean(obs(1).alon(:));
 
-% Heaviside of asperity limit line
-Hu = Heaviside(G(1).zulim - G(1).zc);
-Hd = Heaviside(G(1).zdlim - G(1).zc);
-Hlim = Hd - Hu;
+% ----------------HMC parameters
+% Parameters
+tau     =    50;
+epsilon =    0.1;
+T       =   30;
+ite     = 30000;
+
+% Given distribution (curve)
+mu = Y;
+init = rand(size(m));
+sigma = 10;
+% ------------------------------
 
 % Initial value
 if prm.gpu ~= 99
@@ -1952,6 +1960,11 @@ if prm.gpu ~= 99
   d(1).cfinv_kin = gpuArray(single(     d(1).cfinv_kin));
 end
 
+% Heaviside of asperity limit line
+Hu = Heaviside(G(1).zulim - G(1).zc);
+Hd = Heaviside(G(1).zdlim - G(1).zc);
+Hlim = Hd - Hu;
+
 % MCMC iteration
 rt      = 0     ;
 count   = 0     ;
@@ -1984,8 +1997,6 @@ while not(count == prm.thr)
     mi.smp = mi.old + rwd .* miscale .* rmi(:,it);
     la.smp = la.old + rwd .*  la.std .* rla(:,it);
     ma.smp = ma.old + rwd .* mascale .* rma(:,it);
-    %     id_reject = [ma.smp(       1:ma.n/2) < 0 | ma.smp(       1:ma.n/2) > blk(1).aline_zd                                           ;...
-    %                  ma.smp(ma.n/2+1:   end) < 0 | ma.smp(ma.n/2+1:   end) > blk(1).aline_zd | ma.smp(1:ma.n/2) < ma.smp(ma.n/2+1:end)];
     id_reject = [ false(ma.n/2,1)                                                  ;...
                  ma.smp(ma.n/2+1:end) < 0 | ma.smp(ma.n/2+1:end) > blk(1).aline_zd];
     ma.smp(id_reject) = ma.old(id_reject);
@@ -2006,9 +2017,9 @@ while not(count == prm.thr)
     bslip              = (G(1).tb_mec * mp.smp) .* d(1).cfinv_mec .* idl;
     
     % Calc inverse Green's function
-    %     Gcc        = G(1).s(idc,idc);    % creep -> creep
-    %     Gcl        = G(1).s(idc,idl);    % lock  -> creep
-    %     bslip(idc) = -Gcc \ (Gcl * bslip(idl));
+    % Gcc        = G(1).s(idc,idc);    % creep -> creep
+    % Gcl        = G(1).s(idc,idl);    % lock  -> creep
+    % bslip(idc) = -Gcc \ (Gcl * bslip(idl));
     bslip(idc) = -G(1).s(idc,idc) \ (G(1).s(idc,idl) * bslip(idl));
  
     % Due to Rigid motion
@@ -2016,7 +2027,7 @@ while not(count == prm.thr)
     % Due to Kinematic coupling
     cal.kin = G(1).c_kin * ((G(1).tb_kin * mp.smp) .* d(1).cfinv_kin .* (d(1).mcid * mc.smp));
     % Due to Mechanical coupling
-%     cal.mec = G(1).c_mec * (G(1).E - Gpassive) * bslip;
+    % cal.mec = G(1).c_mec * (G(1).E - Gpassive) * bslip;
     cal.mec = G(1).c_mec * bslip;
     % Due to Internal strain
     cal.ine = G(1).i * mi.smp;
