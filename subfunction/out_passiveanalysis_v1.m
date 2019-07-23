@@ -13,9 +13,9 @@ load(fullfile(result_dir,'/grn.mat'));fprintf('load\n')
 ExportSlipDeficit(result_dir,cal,blk,d);
 ExportAsperities(folder,blk);
 ExportVectors(result_dir,obs,cal);
-ExportStressStrain(result_dir,blk,cal);
+ExportStressStrain(result_dir,blk,d,G,cal);
 
-fprintf('Files exported! \n');
+fprintf('Files exported. \n');
 end
 
 %% Save slip deficit to txt files
@@ -30,30 +30,34 @@ for nb1 = 1:blk(1).nblock
   for nb2 = nb1+1:blk(1).nblock
     nf = size(blk(1).bound(nb1,nb2).blon,1);
     if nf~=0
-      fid     = fopen([dir_out,'/bs_',num2str(nb1),'_',num2str(nb2),'.txt'],'w');
-      clon    = mean(blk(1).bound(nb1,nb2).blon,2);
-      clat    = mean(blk(1).bound(nb1,nb2).blat,2);
-      cdep    = mean(blk(1).bound(nb1,nb2).bdep,2);
-      sdr     = sqrt(  cal.slip(mm3     :mm3+  nf-1).^2 ...
-                     + cal.slip(mm3+  nf:mm3+2*nf-1).^2 ...
-                     + cal.slip(mm3+2*nf:mm3+3*nf-1).^2 );
-      sdr_int = sdr.*d(1).id_lock(mm3:mm3+nf-1);
-      flt_id  = mm1:mm1+nf-1;
-      
-      outdata = [flt_id' ...
-                 blk(1).bound(nb1,nb2).blon ...
-                 blk(1).bound(nb1,nb2).blat ...
-                 blk(1).bound(nb1,nb2).bdep ...
-                 clon clat cdep ...
-                 sdr sdr_int];
-      
-      fprintf(fid,'# %6s %7s %7s %7s %7s %7s %7s %7s %7s %7s %7s %7s %7s %10s %10s \n',...
-                      'tri_no','lon1','lon2','lon3','lat1','lat2','lat3','dep1','dep2','dep3',...
-                      'c_lon','c_lat','c_dep','sdr[mm/yr]','sdr_int');
-      fprintf(fid,'%8d %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %10.4f %10.4f \n',outdata');
-      fclose(fid);
-      mm1 = mm1 +   nf;
-      mm3 = mm3 + 3*nf;
+      if blk(1).bound(nb1,nb2).flag2 == 1
+        fid     = fopen([dir_out,'/bs_',num2str(nb1),'_',num2str(nb2),'.txt'],'w');
+        clon    = mean(blk(1).bound(nb1,nb2).blon,2);
+        clat    = mean(blk(1).bound(nb1,nb2).blat,2);
+        cdep    = mean(blk(1).bound(nb1,nb2).bdep,2);
+        sdr0    = sqrt(  cal.aslip(mm3     :mm3+  nf-1).^2 ...
+                       + cal.aslip(mm3+  nf:mm3+2*nf-1).^2 ...
+                       + cal.aslip(mm3+2*nf:mm3+3*nf-1).^2 );     % slip deficit before shear stress released
+        sdr1    = sqrt(  cal.bslip(mm3     :mm3+  nf-1).^2 ...
+                       + cal.bslip(mm3+  nf:mm3+2*nf-1).^2 ...
+                       + cal.bslip(mm3+2*nf:mm3+3*nf-1).^2 );     % slip deficit after shear stress released
+        flt_id  = mm1:mm1+nf-1;
+        
+        outdata = [flt_id' ...
+                   blk(1).bound(nb1,nb2).blon ...
+                   blk(1).bound(nb1,nb2).blat ...
+                   blk(1).bound(nb1,nb2).bdep ...
+                   clon clat cdep ...
+                   sdr1 sdr0];
+        
+        fprintf(fid,'# %6s %7s %7s %7s %7s %7s %7s %7s %7s %7s %7s %7s %7s %10s %10s \n',...
+                        'tri_no','lon1','lon2','lon3','lat1','lat2','lat3','dep1','dep2','dep3',...
+                        'c_lon','c_lat','c_dep','sdr[mm/yr]','sdr_int');
+        fprintf(fid,'%8d %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %10.4f %10.4f \n',outdata');
+        fclose(fid);
+        mm1 = mm1 +   nf;
+        mm3 = mm3 + 3*nf;
+      end
     end
   end
 end
@@ -69,14 +73,16 @@ for nb1 = 1:blk(1).nblock
   for nb2 = nb1+1:blk(1).nblock
     nf = size(blk(1).bound(nb1,nb2).blon,1);
     if nf ~= 0
-      fid = fopen([dir_out,'/patchb_',num2str(nb1),'_',num2str(nb2),'.txt'],'w');
-      for np = 1:size(blk(1).bound(nb1,nb2).patch,2)
-        fprintf(fid,'> \n');
-        patch = [blk(1).bound(nb1,nb2).patch(np).lon; ...
-                 blk(1).bound(nb1,nb2).patch(np).lat];
-        fprintf(fid,'%10.4f %10.4f \n',patch);
+      if blk(1).bound(nb1,nb2).flag2 == 1
+        fid = fopen([dir_out,'/patchb_',num2str(nb1),'_',num2str(nb2),'.txt'],'w');
+        for np = 1:size(blk(1).bound(nb1,nb2).patch,2)
+          fprintf(fid,'> \n');
+          patch = [blk(1).bound(nb1,nb2).patch(np).lon; ...
+                   blk(1).bound(nb1,nb2).patch(np).lat];
+          fprintf(fid,'%10.4f %10.4f \n',patch);
+        end
+        fclose(fid);
       end
-      fclose(fid);
     end
   end
 end
@@ -124,13 +130,21 @@ fclose(fid);
 end
 
 %% Export stress and strain
-function ExportStressStrain(result_dir,blk,cal)
+function ExportStressStrain(result_dir,blk,d,G,cal)
 % Stein and Wysession (2003)
 lambda = 30;  % [GPa]
 mu     = 30;  % [GPa]
-% 
-mr = 1;
-mc = 1;
+
+% substitude index of locking patches
+idl = logical(d(1).maid *  d(1).idl);
+idc = logical(d(1).maid * ~d(1).idl);
+
+% Calculate shear strain on meshes.
+strain0 = (G(1).s(idc,idl) * cal.aslip(idl));         % pre-released shear strain
+strain1 =               zeros(size(strain0));         % post-released shear strain
+
+mm1 = 1;
+mm3 = 1;
 odir = [result_dir,'/stress'];
 exid = exist(odir);
 if exid~=7; mkdir(odir); end
@@ -138,45 +152,47 @@ for nb1 = 1:blk(1).nblock
   for nb2 = nb1+1:blk(1).nblock
     nf = size(blk(1).bound(nb1,nb2).blon,1);
     if nf ~= 0
-      flt_id  = mr:mr+nf-1;
-      clon    = mean(blk(1).bound(nb1,nb2).blon,2);
-      clat    = mean(blk(1).bound(nb1,nb2).blat,2);
-      cdep    = mean(blk(1).bound(nb1,nb2).bdep,2);
-      e.xx = 1e-6.*zeros(nf,1);
-      e.xy = 1e-6.*zeros(nf,1);
-      e.yy = 1e-6.*zeros(nf,1);
-      e.xz = 1e-6.*cal.strain(mc     :mc+  nf-1);
-      e.yz = 1e-6.*cal.strain(mc+  nf:mc+2*nf-1);
-      e.zz = 1e-6.*cal.strain(mc+2*nf:mc+3*nf-1);
-      e_int.xx = 1e-6.*zeros(nf,1);
-      e_int.xy = 1e-6.*zeros(nf,1);
-      e_int.yy = 1e-6.*zeros(nf,1);
-      e_int.xz = 1e-6.*cal.intstrain(mc     :mc+  nf-1);
-      e_int.yz = 1e-6.*cal.intstrain(mc+  nf:mc+2*nf-1);
-      e_int.zz = 1e-6.*cal.intstrain(mc+2*nf:mc+3*nf-1);
-      [s]     = StrainToStress(e,lambda,mu);
-      [s_int] = StrainToStress(e_int,lambda,mu);
-      
-      fid = fopen([odir,'/stress_',num2str(nb1),'_',num2str(nb2),'.txt'],'w');
-      outdata = [flt_id' ...
-          blk(1).bound(nb1,nb2).blon ...
-          blk(1).bound(nb1,nb2).blat ...
-          blk(1).bound(nb1,nb2).bdep ...
-          clon clat cdep ...
-          e.xz e.yz e.zz ...
-          e_int.xz e_int.yz e_int.zz ...
-          s.xz s.yz s.zz ...
-          s_int.xz s_int.yz s_int.zz];
-      fprintf(fid,'# %6s %7s %7s %7s %7s %7s %7s %7s %7s %7s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s \n', ...
-                  'tri_no','lon1','lon2','lon3','lat1','lat2','lat3','dep1','dep2','dep3',...
-                  'c_lon','c_lat','c_dep', ...
-                  'e_st','e_dp','e_ts','e_ini_st','e_ini_dp','e_ini_ts', ...
-                  's_st','s_dp','s_ts','s_ini_st','s_ini_dp','s_ini_ts');
-      fprintf(fid,'%8d %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %10.4f %10.4f %10.4f %10.4e %10.4e %10.4e %10.4e %10.4e %10.4e %10.4e %10.4e %10.4e %10.4e %10.4e %10.4e \n',outdata');
-      fclose(fid);
+      if blk(1).bound(nb1,nb2).flag2 == 1
+        flt_id  = mm1:mm1+nf-1;
+        clon    = mean(blk(1).bound(nb1,nb2).blon,2);
+        clat    = mean(blk(1).bound(nb1,nb2).blat,2);
+        cdep    = mean(blk(1).bound(nb1,nb2).bdep,2);
+        e.xx = 1e-6 .* zeros(nf,1);
+        e.xy = 1e-6 .* zeros(nf,1);
+        e.yy = 1e-6 .* zeros(nf,1);
+        e.xz = 1e-6 .* strain1(mm3     :mm3+  nf-1);
+        e.yz = 1e-6 .* strain1(mm3+  nf:mm3+2*nf-1);
+        e.zz = 1e-6 .* strain1(mm3+2*nf:mm3+3*nf-1);
+        e_int.xx = 1e-6 .* zeros(nf,1);
+        e_int.xy = 1e-6 .* zeros(nf,1);
+        e_int.yy = 1e-6 .* zeros(nf,1);
+        e_int.xz = 1e-6 .* strain0(mm3     :mm3+  nf-1);
+        e_int.yz = 1e-6 .* strain0(mm3+  nf:mm3+2*nf-1);
+        e_int.zz = 1e-6 .* strain0(mm3+2*nf:mm3+3*nf-1);
+        [s]     = StrainToStress(e,lambda,mu);
+        [s_int] = StrainToStress(e_int,lambda,mu);
+        
+        fid = fopen([odir,'/stress_',num2str(nb1),'_',num2str(nb2),'.txt'],'w');
+        outdata = [flt_id' ...
+            blk(1).bound(nb1,nb2).blon ...
+            blk(1).bound(nb1,nb2).blat ...
+            blk(1).bound(nb1,nb2).bdep ...
+            clon clat cdep ...
+            e.xz e.yz e.zz ...
+            e_int.xz e_int.yz e_int.zz ...
+                s.xz     s.yz     s.zz ...
+            s_int.xz s_int.yz s_int.zz];
+        fprintf(fid,'# %6s %7s %7s %7s %7s %7s %7s %7s %7s %7s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s \n', ...
+                    'tri_no','lon1','lon2','lon3','lat1','lat2','lat3','dep1','dep2','dep3',...
+                    'c_lon','c_lat','c_dep', ...
+                    'e_st','e_dp','e_ts','e_ini_st','e_ini_dp','e_ini_ts', ...
+                    's_st','s_dp','s_ts','s_ini_st','s_ini_dp','s_ini_ts');
+        fprintf(fid,'%8d %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %10.4f %10.4f %10.4f %10.4e %10.4e %10.4e %10.4e %10.4e %10.4e %10.4e %10.4e %10.4e %10.4e %10.4e %10.4e \n',outdata');
+        fclose(fid);
 
-      mr = mr+  nf;
-      mc = mc+3*nf;
+        mm1 = mm1 +   nf;
+        mm3 = mm3 + 3*nf;
+      end
     end
   end
 end
