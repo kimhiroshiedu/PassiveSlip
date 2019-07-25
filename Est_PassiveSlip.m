@@ -1145,9 +1145,9 @@ for nb1 = 1:blk(1).nblock
         load(trimat);
         tri(1).bound(nb1,nb2) = trisave;
       else
-        tri(1).bound(nb1,nb2).gustr = zeros(3*nd,nfall);
-        tri(1).bound(nb1,nb2).gudip = zeros(3*nd,nfall);
-        tri(1).bound(nb1,nb2).gutns = zeros(3*nd,nfall);
+        tri(1).bound(nb1,nb2).gustr = zeros(3*nd,nf);
+        tri(1).bound(nb1,nb2).gudip = zeros(3*nd,nf);
+        tri(1).bound(nb1,nb2).gutns = zeros(3*nd,nf);
         tri(1).bound(nb1,nb2).gsstr = zeros(6*nfall,nf);
         tri(1).bound(nb1,nb2).gsdip = zeros(6*nfall,nf);
         tri(1).bound(nb1,nb2).gstns = zeros(6*nfall,nf);
