@@ -29,6 +29,8 @@ end
 [blk,prm] = ReadBoundaryTypes(blk,prm);
 % Read or generate block interfaces.
 [blk]     = ReadBlockInterface(blk,prm,obs);
+% Show block bound map
+ShowBlockBound(blk)
 % Read Euler pole vectors.
 [eul,prm] = ReadEulerPoles(blk,prm);
 % Read internal strain flag.
@@ -440,6 +442,68 @@ for nb1 = 1:blk(1).nblock
 end
 
 fprintf('=== Read Locked Patches=== \n');
+end
+
+%% Show block map
+function ShowBlockBound(blk)
+%
+minlat  = []; minlon  = []; maxlat  = []; maxlon  = [];
+minlatc = []; minlonc = []; maxlatc = []; maxlonc = [];
+for nb = 1:blk(1).nblock
+  minlatc = min([(min(blk(nb).lat) + max(blk(nb).lat))/2;minlatc]); 
+  minlonc = min([(min(blk(nb).lon) + max(blk(nb).lon))/2;minlonc]); 
+  maxlatc = max([(min(blk(nb).lat) + max(blk(nb).lat))/2;maxlatc]); 
+  maxlonc = max([(min(blk(nb).lon) + max(blk(nb).lon))/2;maxlonc]); 
+  minlat = min([blk(nb).lat;minlat]); 
+  minlon = min([blk(nb).lon;minlon]); 
+  maxlat = max([blk(nb).lat;maxlat]); 
+  maxlon = max([blk(nb).lon;maxlon]); 
+end
+
+% Blocks (world wide)
+figure(310); clf(310)
+h = worldmap([minlat,maxlat],[minlon,maxlon]);
+getm(h, 'MapProjection');
+geoshow('landareas.shp', 'FaceColor', [0.15 0.5 0.15])
+for nb = 1:blk(1).nblock
+  hold on
+  plotm(blk(nb).lat,blk(nb).lon,'red')
+  hold on
+  textm(mean(blk(nb).lat),mean(blk(nb).lon),int2str(nb))
+end
+drawnow
+
+% Blocks (regional)
+figure(320); clf(320)
+h = worldmap([minlatc,maxlatc],[minlonc,maxlonc]);
+getm(h, 'MapProjection');
+geoshow('landareas.shp', 'FaceColor', [0.15 0.5 0.15])
+for nb1=1:blk(1).nblock
+  hold on
+  plotm(blk(nb1).lat,blk(nb1).lon,'red')
+  hold on
+  textm(mean(blk(nb).lat),mean(blk(nb).lon),int2str(nb))
+  for nb2=nb1+1:blk(1).nblock
+    if ~isempty(blk(1).bound(nb1,nb2).lat)
+      hold on
+      plotm(blk(1).bound(nb1,nb2).lat,blk(1).bound(nb1,nb2).lon,'o')
+    end
+  end
+end
+drawnow
+
+% Block and trimesh
+figure(330); clf(330)
+for nb1 = 1:blk(1).nblock
+  for nb2 = nb1+1:blk(1).nblock
+    nf = size(blk(1).bound(nb1,nb2).blon,1);
+    if nf ~= 0
+      patch(blk(1).bound(nb1,nb2).blon',blk(1).bound(nb1,nb2).blat',blk(1).bound(nb1,nb2).bdep',blk(1).bound(nb1,nb2).bdep');
+      hold on
+    end
+  end
+end
+drawnow 
 end
 
 %% Save data
