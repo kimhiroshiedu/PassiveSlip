@@ -2554,7 +2554,7 @@ for nb1 = 1:blk(1).nblock
             nint = prm.interpint(n); break;
           end
         end
-        tmp = fscanf(fid,'%f %f %f %f \n',[6, Inf]);
+        tmp = fscanf(fid,'%f %f %f %f %f %f \n',[6, Inf]);
         nasp = size(tmp,2);
         blk(1).bound(nb1,nb2).asp_lond = tmp(1,:)';
         blk(1).bound(nb1,nb2).asp_latd = tmp(2,:)';

@@ -10,6 +10,11 @@ PAC*
 # Ignore files
 *.gz
 *.fig
+*.pdf
+*.eps
+*.svg
+*.png
+*.jpg
 *.m
 *.txt
 *.asv
