@@ -344,62 +344,65 @@ for nb1 = 1:blk(1).nblock
         fclose(fid_out);
       end
     end
-    % Calc angle and area of trimeshes
-    for nf=1:size(blk(1).bound(nb1,nb2).blon,1)
-      [trix, triy] = PLTXY(blk(1).bound(nb1,nb2).blat(nf,:), blk(1).bound(nb1,nb2).blon(nf,:), alat, alon);
-      triz         = -1.*blk(1).bound(nb1,nb2).bdep(nf,:);
-      f_loc       = [trix; triy; triz];
-      [f,da,nv,st,dp,phi,theta] = EstFaultTri(f_loc);
-      blk(1).bound(nb1,nb2).f(    nf,:) =     f ;
-      blk(1).bound(nb1,nb2).da(   nf,:) =    da ;
-      blk(1).bound(nb1,nb2).nv(   nf,:) =    nv';
-      blk(1).bound(nb1,nb2).st(   nf,:) =    st ;
-      blk(1).bound(nb1,nb2).dp(   nf,:) =    dp ;
-      blk(1).bound(nb1,nb2).phi(  nf,:) =   phi ;
-      blk(1).bound(nb1,nb2).theta(nf,:) = theta ;
-    end
-    
-    % Stack calculated value
-    blk(1).f     = [blk(1).f    ; blk(1).bound(nb1,nb2).f           ];
-    blk(1).da    = [blk(1).da   ; blk(1).bound(nb1,nb2).da          ];
-    blk(1).nv    = [blk(1).nv   ; blk(1).bound(nb1,nb2).nv          ];
-    blk(1).st    = [blk(1).st   ; blk(1).bound(nb1,nb2).st          ];
-    blk(1).dp    = [blk(1).dp   ; blk(1).bound(nb1,nb2).dp          ];
-    blk(1).phi   = [blk(1).phi  ; blk(1).bound(nb1,nb2).phi         ];
-    blk(1).theta = [blk(1).theta; blk(1).bound(nb1,nb2).theta       ];
-    blk(1).clon  = [blk(1).clon ; mean(blk(1).bound(nb1,nb2).blon,2)];
-    blk(1).clat  = [blk(1).clat ; mean(blk(1).bound(nb1,nb2).blat,2)];
-    blk(1).cdep  = [blk(1).cdep ; mean(blk(1).bound(nb1,nb2).bdep,2)];
 
-    % Grouping boundary type
-    blk(1).bound(nb1,nb2).flag1 = 0;
-    for ii = 1:size(blk(1).dipbo,1)
-      dippingid = ismember([nb1 nb2],blk(1).dipbo(ii,2:3));
-      ispair    = sum(dippingid);
-      if ispair == 2
-        if max(blk(1).dipbo(ii,2:3)) == blk(1).dipbo(ii,1)
-          blk(1).bound(nb1,nb2).flag1 = 1;
-        else
-          blk(1).bound(nb1,nb2).flag1 = 2;
+    if size(blk(1).bound(nb1,nb2).blon,1) ~= 0
+      % Calc angle and area of trimeshes
+      for nf=1:size(blk(1).bound(nb1,nb2).blon,1)
+        [trix, triy] = PLTXY(blk(1).bound(nb1,nb2).blat(nf,:), blk(1).bound(nb1,nb2).blon(nf,:), alat, alon);
+        triz         = -1.*blk(1).bound(nb1,nb2).bdep(nf,:);
+        f_loc       = [trix; triy; triz];
+        [f,da,nv,st,dp,phi,theta] = EstFaultTri(f_loc);
+        blk(1).bound(nb1,nb2).f(    nf,:) =     f ;
+        blk(1).bound(nb1,nb2).da(   nf,:) =    da ;
+        blk(1).bound(nb1,nb2).nv(   nf,:) =    nv';
+        blk(1).bound(nb1,nb2).st(   nf,:) =    st ;
+        blk(1).bound(nb1,nb2).dp(   nf,:) =    dp ;
+        blk(1).bound(nb1,nb2).phi(  nf,:) =   phi ;
+        blk(1).bound(nb1,nb2).theta(nf,:) = theta ;
+      end
+      
+      % Stack calculated value
+      blk(1).f     = [blk(1).f    ; blk(1).bound(nb1,nb2).f           ];
+      blk(1).da    = [blk(1).da   ; blk(1).bound(nb1,nb2).da          ];
+      blk(1).nv    = [blk(1).nv   ; blk(1).bound(nb1,nb2).nv          ];
+      blk(1).st    = [blk(1).st   ; blk(1).bound(nb1,nb2).st          ];
+      blk(1).dp    = [blk(1).dp   ; blk(1).bound(nb1,nb2).dp          ];
+      blk(1).phi   = [blk(1).phi  ; blk(1).bound(nb1,nb2).phi         ];
+      blk(1).theta = [blk(1).theta; blk(1).bound(nb1,nb2).theta       ];
+      blk(1).clon  = [blk(1).clon ; mean(blk(1).bound(nb1,nb2).blon,2)];
+      blk(1).clat  = [blk(1).clat ; mean(blk(1).bound(nb1,nb2).blat,2)];
+      blk(1).cdep  = [blk(1).cdep ; mean(blk(1).bound(nb1,nb2).bdep,2)];
+
+      % Grouping boundary type
+      blk(1).bound(nb1,nb2).flag1 = 0;
+      for ii = 1:size(blk(1).dipbo,1)
+        dippingid = ismember([nb1 nb2],blk(1).dipbo(ii,2:3));
+        ispair    = sum(dippingid);
+        if ispair == 2
+          if max(blk(1).dipbo(ii,2:3)) == blk(1).dipbo(ii,1)
+            blk(1).bound(nb1,nb2).flag1 = 1;
+          else
+            blk(1).bound(nb1,nb2).flag1 = 2;
+          end
+          break
         end
-        break
       end
-    end
-    blk(1).bound(nb1,nb2).flag2 = 0;
-    for ii = 1:size(blk(1).mechbo,1)
-      mechcpid  = ismember([nb1 nb2],blk(1).mechbo(ii,:));
-      ispair    = sum(mechcpid);
-      if ispair == 2
-        blk(1).bound(nb1,nb2).flag2 = 1;
-        break
+      blk(1).bound(nb1,nb2).flag2 = 0;
+      for ii = 1:size(blk(1).mechbo,1)
+        mechcpid  = ismember([nb1 nb2],blk(1).mechbo(ii,:));
+        ispair    = sum(mechcpid);
+        if ispair == 2
+          blk(1).bound(nb1,nb2).flag2 = 1;
+          break
+        end
       end
-    end
 
-    blk(1).nt = blk(1).nt + size(blk(1).bound(nb1,nb2).blon,1);
-    if blk(1).bound(nb1,nb2).flag2 == 1
-      blk(1).ntmec = blk(1).ntmec + size(blk(1).bound(nb1,nb2).blon,1);
-    else
-      blk(1).ntkin = blk(1).ntkin + size(blk(1).bound(nb1,nb2).blon,1);
+      blk(1).nt = blk(1).nt + size(blk(1).bound(nb1,nb2).blon,1);
+      if blk(1).bound(nb1,nb2).flag2 == 1
+        blk(1).ntmec = blk(1).ntmec + size(blk(1).bound(nb1,nb2).blon,1);
+      else
+        blk(1).ntkin = blk(1).ntkin + size(blk(1).bound(nb1,nb2).blon,1);
+      end
     end
   end
 end
@@ -1421,7 +1424,7 @@ d(1).obs   = tmp.obs(d(1).ind)';
 d(1).err   = tmp.err(d(1).ind)';
 d(1).mcid  = zeros(3*blk(1).ntkin,blk(1).nbkin);  % kinematic couple
 d(1).maid  = zeros(3*blk(1).ntmec,blk(1).nbmec);  % mechanical couple
-d(1).idmec = false(3*blk(1).ntmec,           1);
+d(1).idmec = false(3*blk(1).nt   ,           1);
 %
 % (G(1).C * (( G(1).T * ( G(1).B1 - G(1).B2 ) * Mp)*Mc ) + G(1).P * Mp
 % 
@@ -1540,8 +1543,8 @@ end
 tmp.c     = tmp.c(d(1).ind,:);
 tmp.tb    = G(1).t*G(1).b;
 tmp.cfinv = tmp.cf.*tmp.inv;
-tmp.zu     = [zeros(nasp),   eye(nasp)];
-tmp.zd     = [  eye(nasp), zeros(nasp)];
+tmp.zu     = [zeros(blk(1).naspline),   eye(blk(1).naspline)];
+tmp.zd     = [  eye(blk(1).naspline), zeros(blk(1).naspline)];
 tmp.zlimit = reshape(tmp.zlimit, 2*blk(1).naspline, 1);
 G(1).tb_kin = sparse(tmp.tb(~d(1).idmec,:));
 G(1).tb_mec = sparse(tmp.tb( d(1).idmec,:));
@@ -2534,98 +2537,98 @@ Nint = 10;  % default
 [tricx,tricy] = PLTXY(blk(1).clat,blk(1).clon,alat,alon);
 tricz = -blk(1).cdep;
 % 
-mc = 1;
-mt = 1;
+mm3 = 1;
+mm1 = 1;
 np = 1;
 for nb1 = 1:blk(1).nblock
   for nb2 = nb1+1:blk(1).nblock
     nf = size(blk(1).bound(nb1,nb2).blon,1);
-    if nf ~= 0 && blk(1).bound(nb1,nb2).flag2 == 1
-      rwlfile = fullfile(prm.dirblock_patch,['udlineb_',num2str(nb1),'_',num2str(nb2),'.txt']);
-      fid     = fopen(rwlfile,'r');
-      if fid >= 0
-        asp(np).nb1 = nb1;
-        asp(np).nb2 = nb2;
-        nint = Nint;
-        for n = 1:size(prm.interpb1, 1)
-          interpid = ismember([asp(n).nb1, asp(n).nb2], [prm.interpb1(n), prm.interpb2(n)]);
-          ispair   = sum(interpid);
-          if ispair == 2
-            nint = prm.interpint(n); break;
+    if nf ~= 0
+      if blk(1).bound(nb1,nb2).flag2 == 1
+        rwlfile = fullfile(prm.dirblock_patch,['udlineb_',num2str(nb1),'_',num2str(nb2),'.txt']);
+        fid     = fopen(rwlfile,'r');
+        if fid >= 0
+          asp(np).nb1 = nb1;
+          asp(np).nb2 = nb2;
+          nint = Nint;
+          for n = 1:size(prm.interpb1, 1)
+            interpid = ismember([asp(n).nb1, asp(n).nb2], [prm.interpb1(n), prm.interpb2(n)]);
+            ispair   = sum(interpid);
+            if ispair == 2
+              nint = prm.interpint(n); break;
+            end
           end
-        end
-        tmp = fscanf(fid,'%f %f %f %f %f %f \n',[6, Inf]);
-        nasp = size(tmp,2);
-        blk(1).bound(nb1,nb2).asp_lond = tmp(1,:)';
-        blk(1).bound(nb1,nb2).asp_latd = tmp(2,:)';
-        blk(1).bound(nb1,nb2).asp_depd = tmp(3,:)';
-        blk(1).bound(nb1,nb2).asp_lonu = tmp(4,:)';
-        blk(1).bound(nb1,nb2).asp_latu = tmp(5,:)';
-        blk(1).bound(nb1,nb2).asp_depu = tmp(6,:)';
-        [xd,yd] = PLTXY(blk(1).bound(nb1,nb2).asp_latd,blk(1).bound(nb1,nb2).asp_lond,alat,alon);
-        [xu,yu] = PLTXY(blk(1).bound(nb1,nb2).asp_latu,blk(1).bound(nb1,nb2).asp_lonu,alat,alon);
-        blk(1).bound(nb1,nb2).asp_lline=sqrt((xd-xu).^2 + (yd-yu).^2);
-        blk(1).bound(nb1,nb2).asp_xd =                             xd;
-        blk(1).bound(nb1,nb2).asp_yd =                             yd;
-        blk(1).bound(nb1,nb2).asp_zd = blk(1).bound(nb1,nb2).asp_depd;
-        blk(1).bound(nb1,nb2).asp_xu =                             xu;
-        blk(1).bound(nb1,nb2).asp_yu =                             yu;
-        blk(1).bound(nb1,nb2).asp_zu = blk(1).bound(nb1,nb2).asp_depu;
-        blk(1).bound(nb1,nb2).asp_lx = blk(1).bound(nb1,nb2).asp_xd - blk(1).bound(nb1,nb2).asp_xu;
-        blk(1).bound(nb1,nb2).asp_ly = blk(1).bound(nb1,nb2).asp_yd - blk(1).bound(nb1,nb2).asp_yu;
-        blk(1).bound(nb1,nb2).asp_lz = blk(1).bound(nb1,nb2).asp_zd - blk(1).bound(nb1,nb2).asp_zu;
-        % Interpolation of up- and down-dip point
-        blk(1).bound(nb1,nb2).asp_xd_interp = linspace2(blk(1).bound(nb1,nb2).asp_xd, nint);
-        blk(1).bound(nb1,nb2).asp_yd_interp = linspace2(blk(1).bound(nb1,nb2).asp_yd, nint);
-        blk(1).bound(nb1,nb2).asp_zd_interp = linspace2(blk(1).bound(nb1,nb2).asp_zd, nint);
-        blk(1).bound(nb1,nb2).asp_xu_interp = linspace2(blk(1).bound(nb1,nb2).asp_xu, nint);
-        blk(1).bound(nb1,nb2).asp_yu_interp = linspace2(blk(1).bound(nb1,nb2).asp_yu, nint);
-        blk(1).bound(nb1,nb2).asp_zu_interp = linspace2(blk(1).bound(nb1,nb2).asp_zu, nint);
-        blk(1).bound(nb1,nb2).asp_lx_interp = blk(1).bound(nb1,nb2).asp_xd_interp - blk(1).bound(nb1,nb2).asp_xu_interp;
-        blk(1).bound(nb1,nb2).asp_ly_interp = blk(1).bound(nb1,nb2).asp_yd_interp - blk(1).bound(nb1,nb2).asp_yu_interp;
-        blk(1).bound(nb1,nb2).asp_lz_interp = blk(1).bound(nb1,nb2).asp_zd_interp - blk(1).bound(nb1,nb2).asp_zu_interp;
-        np = np + 1;
-        blk(1).naspline  =  blk(1).naspline + nasp;
-        blk(1).aline_zu = [blk(1).aline_zu; blk(1).bound(nb1,nb2).asp_depu];
-        blk(1).aline_zd = [blk(1).aline_zd; blk(1).bound(nb1,nb2).asp_depd];
+          tmp = fscanf(fid,'%f %f %f %f %f %f \n',[6, Inf]);
+          nasp = size(tmp,2);
+          blk(1).bound(nb1,nb2).asp_lond = tmp(1,:)';
+          blk(1).bound(nb1,nb2).asp_latd = tmp(2,:)';
+          blk(1).bound(nb1,nb2).asp_depd = tmp(3,:)';
+          blk(1).bound(nb1,nb2).asp_lonu = tmp(4,:)';
+          blk(1).bound(nb1,nb2).asp_latu = tmp(5,:)';
+          blk(1).bound(nb1,nb2).asp_depu = tmp(6,:)';
+          [xd,yd] = PLTXY(blk(1).bound(nb1,nb2).asp_latd,blk(1).bound(nb1,nb2).asp_lond,alat,alon);
+          [xu,yu] = PLTXY(blk(1).bound(nb1,nb2).asp_latu,blk(1).bound(nb1,nb2).asp_lonu,alat,alon);
+          blk(1).bound(nb1,nb2).asp_lline=sqrt((xd-xu).^2 + (yd-yu).^2);
+          blk(1).bound(nb1,nb2).asp_xd =                             xd;
+          blk(1).bound(nb1,nb2).asp_yd =                             yd;
+          blk(1).bound(nb1,nb2).asp_zd = blk(1).bound(nb1,nb2).asp_depd;
+          blk(1).bound(nb1,nb2).asp_xu =                             xu;
+          blk(1).bound(nb1,nb2).asp_yu =                             yu;
+          blk(1).bound(nb1,nb2).asp_zu = blk(1).bound(nb1,nb2).asp_depu;
+          blk(1).bound(nb1,nb2).asp_lx = blk(1).bound(nb1,nb2).asp_xd - blk(1).bound(nb1,nb2).asp_xu;
+          blk(1).bound(nb1,nb2).asp_ly = blk(1).bound(nb1,nb2).asp_yd - blk(1).bound(nb1,nb2).asp_yu;
+          blk(1).bound(nb1,nb2).asp_lz = blk(1).bound(nb1,nb2).asp_zd - blk(1).bound(nb1,nb2).asp_zu;
+          % Interpolation of up- and down-dip point
+          blk(1).bound(nb1,nb2).asp_xd_interp = linspace2(blk(1).bound(nb1,nb2).asp_xd, nint);
+          blk(1).bound(nb1,nb2).asp_yd_interp = linspace2(blk(1).bound(nb1,nb2).asp_yd, nint);
+          blk(1).bound(nb1,nb2).asp_zd_interp = linspace2(blk(1).bound(nb1,nb2).asp_zd, nint);
+          blk(1).bound(nb1,nb2).asp_xu_interp = linspace2(blk(1).bound(nb1,nb2).asp_xu, nint);
+          blk(1).bound(nb1,nb2).asp_yu_interp = linspace2(blk(1).bound(nb1,nb2).asp_yu, nint);
+          blk(1).bound(nb1,nb2).asp_zu_interp = linspace2(blk(1).bound(nb1,nb2).asp_zu, nint);
+          blk(1).bound(nb1,nb2).asp_lx_interp = blk(1).bound(nb1,nb2).asp_xd_interp - blk(1).bound(nb1,nb2).asp_xu_interp;
+          blk(1).bound(nb1,nb2).asp_ly_interp = blk(1).bound(nb1,nb2).asp_yd_interp - blk(1).bound(nb1,nb2).asp_yu_interp;
+          blk(1).bound(nb1,nb2).asp_lz_interp = blk(1).bound(nb1,nb2).asp_zd_interp - blk(1).bound(nb1,nb2).asp_zu_interp;
+          np = np + 1;
+          blk(1).naspline  =  blk(1).naspline + nasp;
+          blk(1).aline_zu = [blk(1).aline_zu; blk(1).bound(nb1,nb2).asp_depu];
+          blk(1).aline_zd = [blk(1).aline_zd; blk(1).bound(nb1,nb2).asp_depd];
 
-        % Indexing trimesh with each strip
-        hx_d = (blk(1).bound(nb1,nb2).asp_xd_interp(1:end-1) + blk(1).bound(nb1,nb2).asp_xd_interp(2:end)) ./ 2;
-        hx_u = (blk(1).bound(nb1,nb2).asp_xu_interp(1:end-1) + blk(1).bound(nb1,nb2).asp_xu_interp(2:end)) ./ 2;
-        hy_d = (blk(1).bound(nb1,nb2).asp_yd_interp(1:end-1) + blk(1).bound(nb1,nb2).asp_yd_interp(2:end)) ./ 2;
-        hy_u = (blk(1).bound(nb1,nb2).asp_yu_interp(1:end-1) + blk(1).bound(nb1,nb2).asp_yu_interp(2:end)) ./ 2;
-        hx_d = [blk(1).bound(nb1,nb2).asp_xd_interp(1); hx_d; blk(1).bound(nb1,nb2).asp_xd_interp(end)];
-        hx_u = [blk(1).bound(nb1,nb2).asp_xu_interp(1); hx_u; blk(1).bound(nb1,nb2).asp_xu_interp(end)];
-        hy_d = [blk(1).bound(nb1,nb2).asp_yd_interp(1); hy_d; blk(1).bound(nb1,nb2).asp_yd_interp(end)];
-        hy_u = [blk(1).bound(nb1,nb2).asp_yu_interp(1); hy_u; blk(1).bound(nb1,nb2).asp_yu_interp(end)];
-        nstrip = size(hx_d,1)-1;
-        blk(1).bound(nb1,nb2).stripid = false(nf,nstrip);
-        for n = 1:nstrip
-          stripx = [hx_d(n),hx_d(n+1),hx_u(n+1),hx_u(n)];
-          stripy = [hy_d(n),hy_d(n+1),hy_u(n+1),hy_u(n)];
-          instrip = inpolygon(tricx(mt:mt+nf-1),tricy(mt:mt+nf-1),stripx,stripy);
-          blk(1).bound(nb1,nb2).stripid(:,n) = instrip;
-        end
-        nl = 1;
-        blk(1).bound(nb1,nb2).interpid = zeros(nint*(nasp-1)+1, nasp);
-        for n = 1:nasp
-          if n ~= nasp
-            blk(1).bound(nb1,nb2).interpid(nl:nl+nint-1,n  ) = 1-(0:nint-1)./nint;
-            blk(1).bound(nb1,nb2).interpid(nl:nl+nint-1,n+1) =   (0:nint-1)./nint;
-          else
-            blk(1).bound(nb1,nb2).interpid(end,end) = 1;
+          % Indexing trimesh with each strip
+          hx_d = (blk(1).bound(nb1,nb2).asp_xd_interp(1:end-1) + blk(1).bound(nb1,nb2).asp_xd_interp(2:end)) ./ 2;
+          hx_u = (blk(1).bound(nb1,nb2).asp_xu_interp(1:end-1) + blk(1).bound(nb1,nb2).asp_xu_interp(2:end)) ./ 2;
+          hy_d = (blk(1).bound(nb1,nb2).asp_yd_interp(1:end-1) + blk(1).bound(nb1,nb2).asp_yd_interp(2:end)) ./ 2;
+          hy_u = (blk(1).bound(nb1,nb2).asp_yu_interp(1:end-1) + blk(1).bound(nb1,nb2).asp_yu_interp(2:end)) ./ 2;
+          hx_d = [blk(1).bound(nb1,nb2).asp_xd_interp(1); hx_d; blk(1).bound(nb1,nb2).asp_xd_interp(end)];
+          hx_u = [blk(1).bound(nb1,nb2).asp_xu_interp(1); hx_u; blk(1).bound(nb1,nb2).asp_xu_interp(end)];
+          hy_d = [blk(1).bound(nb1,nb2).asp_yd_interp(1); hy_d; blk(1).bound(nb1,nb2).asp_yd_interp(end)];
+          hy_u = [blk(1).bound(nb1,nb2).asp_yu_interp(1); hy_u; blk(1).bound(nb1,nb2).asp_yu_interp(end)];
+          nstrip = size(hx_d,1)-1;
+          blk(1).bound(nb1,nb2).stripid = false(nf,nstrip);
+          for n = 1:nstrip
+            stripx = [hx_d(n),hx_d(n+1),hx_u(n+1),hx_u(n)];
+            stripy = [hy_d(n),hy_d(n+1),hy_u(n+1),hy_u(n)];
+            instrip = inpolygon(tricx(mm1:mm1+nf-1),tricy(mm1:mm1+nf-1),stripx,stripy);
+            blk(1).bound(nb1,nb2).stripid(:,n) = instrip;
           end
-          nl = nl + nint;
+          nl = 1;
+          blk(1).bound(nb1,nb2).interpid = zeros(nint*(nasp-1)+1, nasp);
+          for n = 1:nasp
+            if n ~= nasp
+              blk(1).bound(nb1,nb2).interpid(nl:nl+nint-1,n  ) = 1-(0:nint-1)./nint;
+              blk(1).bound(nb1,nb2).interpid(nl:nl+nint-1,n+1) =   (0:nint-1)./nint;
+            else
+              blk(1).bound(nb1,nb2).interpid(end,end) = 1;
+            end
+            nl = nl + nint;
+          end
+          blk(1).bound(nb1,nb2).naspline  = nasp;
+          blk(1).bound(nb1,nb2).interpint = nint;
+        else
+          error(['Not found ',rwlfile]);
         end
-        blk(1).bound(nb1,nb2).naspline  = nasp;
-        blk(1).bound(nb1,nb2).interpint = nint;
-      else
-        error(['Not found ',rwlfile]);
       end
-      mt = mt +   nf;
-      mc = mc + 3*nf;
-    else
-        
+      mm1 = mm1 +   nf;
+      mm3 = mm3 + 3*nf;
     end
   end
 end
