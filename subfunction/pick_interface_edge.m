@@ -65,6 +65,7 @@ while 1
     alon = [alon; [count, xc]];
     alat = [alat; [count, yc]];
     plot(xc,yc,'om')
+    text(xc,yc,[num2str(count)])
   elseif id1 == 3
     count = count + 1;
     [dp,Ip] = min((blon-x).^2+(blat-y).^2);
@@ -73,6 +74,7 @@ while 1
     slon = [slon; [count, xc]];
     slat = [slat; [count, yc]];
     plot(xc,yc,'sm')
+    text(xc,yc,[num2str(count)])
   else
     break
   end
