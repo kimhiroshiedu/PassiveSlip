@@ -1,6 +1,6 @@
 figure(10); clf(10)
 % Trimesh
-pre_tri_f = 'MODEL_JP/BLOCK_Int_japan/triPA_new.txt';
+pre_tri_f = 'MODEL_JP/BLOCK_Int_ne_japan/triB_5_8.txt';
 fid = fopen(pre_tri_f,'r');
 nf   = 0;
 blon = zeros(1,3);

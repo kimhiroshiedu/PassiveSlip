@@ -5,7 +5,7 @@ function Est_PassiveSlip(varargin)
 % Revised by Hiroshi Kimura      2019/02/16
 % Revised by Hiroshi Kimura      2019/07/09
 %--- 
-prm.input      = 'PARAMETER/parameter_inversiontest.txt';
+prm.input      = 'PARAMETER/parameter_inversion.txt';
 prm.optfile    = 'PARAMETER/opt_bound_par_forward.txt';
 prm.interpfile = 'PARAMETER/interp_randwalkline.txt';
 %--
