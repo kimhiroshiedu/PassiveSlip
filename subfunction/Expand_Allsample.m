@@ -28,6 +28,7 @@ sfactor = 2^16;
 mpbin = [-1e-7:1e-10:1e-7];
 mcbin = [-1:1e-3:1];
 mibin = [-1e-7:1e-10:1e-7];
+mabin = [0:0.1:100];
 smpint = 50; % sampling interval
 burnin = floor(burnin*nit/100)+1;
 acctotal = 0;
@@ -61,10 +62,10 @@ for ii = 1:nit
     medflt = zeros(nflt,1);
     medine = zeros(nine,1);
     medasp = zeros(nasp,1);
-    smppol = [];
-    smpflt = [];
-    smpine = [];
-    smpasp = [];
+    asmppol = [];
+    asmpflt = [];
+    asmpine = [];
+    asmpasp = [];
   end
   if ii>burnin
     %
@@ -160,10 +161,10 @@ for ii = 1:nit
   if accflag
     acctotal = acctotal + cha.ajr;
   end
-  smppol = [smppol smppol(:,smpid)];
-  smpflt = [smpflt smpflt(:,smpid)];
-  smpine = [smpine smpine(:,smpid)];
-  smpasp = [smpasp smpasp(:,smpid)];
+  asmppol = [asmppol smppol(:,smpid)];
+  asmpflt = [asmpflt smpflt(:,smpid)];
+  asmpine = [asmpine smpine(:,smpid)];
+  asmpasp = [asmpasp smpasp(:,smpid)];
   clear cha
   fprintf('now finised at %i/%i\n',ii,nit)
 end
@@ -238,8 +239,8 @@ tcha.ndatpol = single(ndatapol);
 tcha.ndatflt = single(ndataflt);
 tcha.ndatine = single(ndataine);
 tcha.ndatasp = single(ndataasp);
-tcha.smppol  = single(smppol);
-tcha.smpflt  = single(smpflt);
-tcha.smpine  = single(smpine);
-tcha.smpasp  = single(smpasp);
+tcha.smppol  = single(asmppol);
+tcha.smpflt  = single(asmpflt);
+tcha.smpine  = single(asmpine);
+tcha.smpasp  = single(asmpasp);
 end
