@@ -68,44 +68,44 @@ for ii = 1:nit
   end
   if ii>burnin
     %
-    for jj = 1:npol
-      infid = cha.mpcompress.npol(jj).mpscale==inf;
+    for np = 1:npol
+      infid = cha.mpcompress.npol(np).mpscale==inf;
       if ~infid
-        smppol(jj,:) = (double(cha.mpcompress.smpmp(jj,:))+(sfactor/2))./((sfactor-1).*cha.mpcompress.npol(jj).mpscale)+cha.mpcompress.npol(jj).mpmin;
+        smppol(np,:) = (double(cha.mpcompress.smpmp(np,:))+(sfactor/2))./((sfactor-1).*cha.mpcompress.npol(np).mpscale)+cha.mpcompress.npol(np).mpmin;
       else
-        smppol(jj,:) = ones(1,nch).*cha.mpcompress.npol(jj).mpmax;
+        smppol(np,:) = ones(1,nch).*cha.mpcompress.npol(np).mpmax;
       end
-      mphist(jj,:) = mphist(jj,:)+histcounts(smppol(jj,:),mpbin);
+      mphist(np,:) = mphist(np,:)+histcounts(smppol(np,:),mpbin);
     end
     %
-    for kk = 1:nflt
-      infid = cha.mccompress.nflt(kk).mcscale==inf;
+    for nf = 1:nflt
+      infid = cha.mccompress.nflt(nf).mcscale==inf;
       if ~infid
-        smpflt(kk,:) = (double(cha.mccompress.smpmc(kk,:))+(sfactor/2))./((sfactor-1).*cha.mccompress.nflt(kk).mcscale)+cha.mccompress.nflt(kk).mcmin;
+        smpflt(nf,:) = (double(cha.mccompress.smpmc(nf,:))+(sfactor/2))./((sfactor-1).*cha.mccompress.nflt(nf).mcscale)+cha.mccompress.nflt(nf).mcmin;
       else
-        smpflt(kk,:) = ones(1,nch).*cha.mccompress.nflt(kk).mcmax;
+        smpflt(nf,:) = ones(1,nch).*cha.mccompress.nflt(nf).mcmax;
       end
-      mchist(kk,:) = mchist(kk,:)+histcounts(smpflt(kk,:),mcbin);
+      mchist(nf,:) = mchist(nf,:)+histcounts(smpflt(nf,:),mcbin);
     end
     %
-    for ll = 1:nine
-      infid = cha.micompress.nine(ll).miscale==inf;
+    for ni = 1:nine
+      infid = cha.micompress.nine(ni).miscale==inf;
       if ~infid
-        smpine(ll,:) = (double(cha.micompress.smpmi(ll,:))+(sfactor/2))./((sfactor-1).*cha.micompress.nine(ll).miscale)+cha.micompress.nine(ll).mimin;
+        smpine(ni,:) = (double(cha.micompress.smpmi(ni,:))+(sfactor/2))./((sfactor-1).*cha.micompress.nine(ni).miscale)+cha.micompress.nine(ni).mimin;
       else
-        smpine(ll,:) = ones(1,nch).*cha.micompress.nine(ll).mimax;
+        smpine(ni,:) = ones(1,nch).*cha.micompress.nine(ni).mimax;
       end
-      mihist(ll,:) = mihist(ll,:)+histcounts(smpine(ll,:),mibin);
+      mihist(ni,:) = mihist(ni,:)+histcounts(smpine(ni,:),mibin);
     end
     %
-    for ll = 1:nasp
-      infid = cha.macompress.nasp(ll).mascale==inf;
+    for na = 1:nasp
+      infid = cha.macompress.nasp(na).mascale==inf;
       if ~infid
-        smpasp(ll,:) = (double(cha.macompress.smpma(ll,:))+(sfactor/2))./((sfactor-1).*cha.macompress.nasp(ll).mascale)+cha.macompress.nasp(ll).mamin;
+        smpasp(na,:) = (double(cha.macompress.smpma(na,:))+(sfactor/2))./((sfactor-1).*cha.macompress.nasp(na).mascale)+cha.macompress.nasp(na).mamin;
       else
-        smpasp(ll,:) = ones(1,nch).*cha.macompress.nasp(ll).mamax;
+        smpasp(na,:) = ones(1,nch).*cha.macompress.nasp(na).mamax;
       end
-      mahist(ll,:) = mahist(ll,:)+histcounts(smpasp(ll,:),mabin);
+      mahist(na,:) = mahist(na,:)+histcounts(smpasp(na,:),mabin);
     end
     ndatapol = ndatapol + nch;
     ndataflt = ndataflt + nch;
@@ -121,39 +121,39 @@ for ii = 1:nit
     sumasppair = sumasppair + smpasp*smpasp';
   else
     %
-    for jj = 1:npol
-      infid = cha.mpcompress.npol(jj).mpscale==inf;
+    for np = 1:npol
+      infid = cha.mpcompress.npol(np).mpscale==inf;
       if ~infid
-        smppol(jj,:) = (double(cha.mpcompress.smpmp(jj,:))+(sfactor/2))./((sfactor-1).*cha.mpcompress.npol(jj).mpscale)+cha.mpcompress.npol(jj).mpmin;
+        smppol(np,:) = (double(cha.mpcompress.smpmp(np,:))+(sfactor/2))./((sfactor-1).*cha.mpcompress.npol(np).mpscale)+cha.mpcompress.npol(np).mpmin;
       else
-        smppol(jj,:) = ones(1,nch).*cha.mpcompress.npol(jj).mpmax;
+        smppol(np,:) = ones(1,nch).*cha.mpcompress.npol(np).mpmax;
       end
     end
     %
-    for kk = 1:nflt
-      infid = cha.mccompress.nflt(kk).mcscale==inf;
+    for nf = 1:nflt
+      infid = cha.mccompress.nflt(nf).mcscale==inf;
       if ~infid
-        smpflt(kk,:) = (double(cha.mccompress.smpmc(kk,:))+(sfactor/2))./((sfactor-1).*cha.mccompress.nflt(kk).mcscale)+cha.mccompress.nflt(kk).mcmin;
+        smpflt(nf,:) = (double(cha.mccompress.smpmc(nf,:))+(sfactor/2))./((sfactor-1).*cha.mccompress.nflt(nf).mcscale)+cha.mccompress.nflt(nf).mcmin;
       else
-        smpflt(kk,:) = ones(1,nch).*cha.mccompress.nflt(kk).mcmax;
+        smpflt(nf,:) = ones(1,nch).*cha.mccompress.nflt(nf).mcmax;
       end
     end
     %
-    for ll = 1:nine
-      infid = cha.micompress.nine(ll).miscale==inf;
+    for ni = 1:nine
+      infid = cha.micompress.nine(ni).miscale==inf;
       if ~infid
-        smpine(ll,:) = (double(cha.micompress.smpmi(ll,:))+(sfactor/2))./((sfactor-1).*cha.micompress.nine(ll).miscale)+cha.micompress.nine(ll).mimin;
+        smpine(ni,:) = (double(cha.micompress.smpmi(ni,:))+(sfactor/2))./((sfactor-1).*cha.micompress.nine(ni).miscale)+cha.micompress.nine(ni).mimin;
       else
-        smpine(ll,:) = ones(1,nch).*cha.micompress.nine(ll).mimax;
+        smpine(ni,:) = ones(1,nch).*cha.micompress.nine(ni).mimax;
       end
     end
     %
-    for ll = 1:nasp
-      infid = cha.macompress.nasp(ll).mascale==inf;
+    for na = 1:nasp
+      infid = cha.macompress.nasp(na).mascale==inf;
       if ~infid
-        smpasp(ll,:) = (double(cha.macompress.smpma(ll,:))+(sfactor/2))./((sfactor-1).*cha.macompress.nasp(ll).mascale)+cha.macompress.nasp(ll).mamin;
+        smpasp(na,:) = (double(cha.macompress.smpma(na,:))+(sfactor/2))./((sfactor-1).*cha.macompress.nasp(na).mascale)+cha.macompress.nasp(na).mamin;
       else
-        smpasp(ll,:) = ones(1,nch).*cha.macompress.nasp(ll).mamax;
+        smpasp(na,:) = ones(1,nch).*cha.macompress.nasp(na).mamax;
       end
     end
   end
