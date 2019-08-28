@@ -1641,7 +1641,7 @@ ma.std = ma.int.*ones(ma.n,1,precision);
 la.std = la.int.*ones(la.n,1,precision);
 
 % Substitute coupling ratio
-mc.old = randn(blk(1).ntkin,1);
+mc.old = rand(blk(1).ntkin,1);
 % Substitute euler pole vectors
 mp.old         = double(blk(1).pole);
 mp.old(eul.id) = 0                  ;
