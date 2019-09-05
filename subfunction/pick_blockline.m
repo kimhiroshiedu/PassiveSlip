@@ -2,6 +2,17 @@ load('D:\MasterResearch\GMT\data\faults_jb1.txt')
 load('D:\MasterResearch\inversion\PassiveSlip\Result_win\Test_09\blk.mat')
 
 figure(10); clf(10)
+% Coast line
+latlim   = [ 10  50];
+lonlim   = [120 150];
+filename = gunzip('gshhs_l.b.gz', tempdir);
+japan    = gshhs(filename{1},latlim,lonlim);
+geoshow([japan.Lat], [japan.Lon])
+ax = gca;
+ax.XLim = [138 152]; % NE Japan
+ax.YLim = [ 32  48]; % NE Japan
+% ax.XLim = [130 142]; % SW Japan
+% ax.YLim = [ 30  37]; % SW Japan
 
 % JB1 block line
 alon1 = faults_jb1(:,2);
