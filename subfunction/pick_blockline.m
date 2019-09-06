@@ -13,6 +13,7 @@ ax.XLim = [138 152]; % NE Japan
 ax.YLim = [ 32  48]; % NE Japan
 % ax.XLim = [130 142]; % SW Japan
 % ax.YLim = [ 30  37]; % SW Japan
+hold on
 
 % JB1 block line
 alon1 = faults_jb1(:,2);
