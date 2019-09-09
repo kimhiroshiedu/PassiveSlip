@@ -44,10 +44,12 @@ jlon = [];
 jlat = [];
 klon = [];
 klat = [];
+flon = [];
+flat = [];
 count = 0;
 while 1
   [x,y,id1] = ginput(1);
-  if id1 == 1
+  if id1 == 1       % Mouse "L" click
     count = count + 1;
     [dp,Ip] = min((alon-x).^2+(alat-y).^2);
     xc = alon(Ip);
@@ -55,7 +57,7 @@ while 1
     jlon = [jlon; [count, xc]];
     jlat = [jlat; [count, yc]];
     plot(xc,yc,'ob')
-  elseif id1 == 3
+  elseif id1 == 3   % Mouse "R" click
     count = count + 1;
     [dp,Ip] = min((blon-x).^2+(blat-y).^2);
     xc = blon(Ip);
@@ -63,14 +65,21 @@ while 1
     klon = [klon; [count, xc]];
     klat = [klat; [count, yc]];
     plot(xc,yc,'sb')
+  elseif id1 == 32  % "space-key" type
+    count = count + 1;
+    xc = x;
+    yc = y;
+    flon = [flon; [count, xc]];
+    flat = [flat; [count, yc]];
+    plot(xc,yc,'sb')
   else
     break
   end
 end
 
 % Combine
-newlon = [jlon; klon];
-newlat = [jlat; klat];
+newlon = [jlon; klon; flon];
+newlat = [jlat; klat; flat];
 [~,id] = sort(newlon(:,1));
 newlon = newlon(id,:);
 newlat = newlat(id,:);
