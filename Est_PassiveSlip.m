@@ -2532,10 +2532,9 @@ blk(1).naspline  =  0;
 blk(1).aline_zu = [];
 blk(1).aline_zd = [];
 
-Nint = 10;  % default
+Nint = 1;  % default
 
 [tricx,tricy] = PLTXY(blk(1).clat,blk(1).clon,alat,alon);
-tricz = -blk(1).cdep;
 % 
 mm3 = 1;
 mm1 = 1;
