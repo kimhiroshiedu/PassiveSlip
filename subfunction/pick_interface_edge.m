@@ -23,12 +23,17 @@ patch(tri.lon',tri.lat',zeros(size(tri.lon))'); hold on
 colormap('white')
 
 % Coast line
-filename   = gunzip('gshhs_c.b.gz', tempdir);
-shorelines = gshhs(filename{1});
-figure(10)
-for ns = 1:size(shorelines,1)
-  plot(shorelines(ns).Lon,shorelines(ns).Lat,'b','LineWidth',1); hold on
-end
+latlim   = [ 10  50];
+lonlim   = [120 150];
+filename = gunzip('gshhs_l.b.gz', tempdir);
+japan    = gshhs(filename{1},latlim,lonlim);
+geoshow([japan.Lat], [japan.Lon])
+ax = gca;
+ax.XLim = [138 152]; % NE Japan
+ax.YLim = [ 32  48]; % NE Japan
+% ax.XLim = [130 142]; % SW Japan
+% ax.YLim = [ 30  37]; % SW Japan
+hold on
 
 % Block line
 prm.dirblock = 'MODEL_JP/BLOCK_ne_japan';

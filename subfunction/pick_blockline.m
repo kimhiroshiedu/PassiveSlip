@@ -109,31 +109,37 @@ plot(Newlon, Newlat, 'g')
 
 
 function temp_block
-load('Kuril_Forearc_block.txt')
-load('NEJapan_block.txt')
-load('NEJapan_backarc_block.txt')
-load('Niigata_block.txt')
-load('Okhotsk_block.txt')
+load('MODEL_JP/BLOCK_ne_japan/02_Niigata.txt')
+load('MODEL_JP/BLOCK_ne_japan/03_NE_Honshu_backarc.txt')
+load('MODEL_JP/BLOCK_ne_japan/04_Okhotsk.txt')
+load('MODEL_JP/BLOCK_ne_japan/05_Kuril_Forearc.txt')
+load('MODEL_JP/BLOCK_ne_japan/06_NE_Honshu_forearc.txt')
+load('MODEL_JP/BLOCK_ne_japan/01_Amur.txt')
 
-plot(Kuril_Forearc_block(:,1),Kuril_Forearc_block(:,2), 'r')
-plot(Kuril_Forearc_block(:,1),Kuril_Forearc_block(:,2),'xr')
-plot(NEJapan_block(:,1),NEJapan_block(:,2), 'r')
-plot(NEJapan_block(:,1),NEJapan_block(:,2),'xr')
-plot(NEJapan_backarc_block(:,1),NEJapan_backarc_block(:,2), 'r')
-plot(NEJapan_backarc_block(:,1),NEJapan_backarc_block(:,2),'xr')
-plot(Niigata_block(:,1),Niigata_block(:,2), 'r')
-plot(Niigata_block(:,1),Niigata_block(:,2),'xr')
-plot(Okhotsk_block(:,1),Okhotsk_block(:,2), 'r')
-plot(Okhotsk_block(:,1),Okhotsk_block(:,2),'xr')
+plot(X05_Kuril_Forearc(:,1),X05_Kuril_Forearc(:,2), 'r')
+plot(X05_Kuril_Forearc(:,1),X05_Kuril_Forearc(:,2),'xr')
+plot(X06_NE_Honshu_forearc(:,1),X06_NE_Honshu_forearc(:,2), 'r')
+plot(X06_NE_Honshu_forearc(:,1),X06_NE_Honshu_forearc(:,2),'xr')
+plot(X03_NE_Honshu_backarc(:,1),X03_NE_Honshu_backarc(:,2), 'r')
+plot(X03_NE_Honshu_backarc(:,1),X03_NE_Honshu_backarc(:,2),'xr')
+plot(X02_Niigata(:,1),X02_Niigata(:,2), 'r')
+plot(X02_Niigata(:,1),X02_Niigata(:,2),'xr')
+plot(X04_Okhotsk(:,1),X04_Okhotsk(:,2), 'r')
+plot(X04_Okhotsk(:,1),X04_Okhotsk(:,2),'xr')
+plot(X01_Amur(:,1),X01_Amur(:,2), 'r')
+plot(X01_Amur(:,1),X01_Amur(:,2),'xr')
 
-blon = [blon; Kuril_Forearc_block(:,1)];
-blat = [blat; Kuril_Forearc_block(:,2)];
-blon = [blon; NEJapan_block(:,1)];
-blat = [blat; NEJapan_block(:,2)];
-blon = [blon; NEJapan_backarc_block(:,1)];
-blat = [blat; NEJapan_backarc_block(:,2)];
-blon = [blon; Niigata_block(:,1)];
-blat = [blat; Niigata_block(:,2)];
-blon = [blon; Okhotsk_block(:,1)];
-blat = [blat; Okhotsk_block(:,2)];
+blon = [blon; X05_Kuril_Forearc(:,1)];
+blat = [blat; X05_Kuril_Forearc(:,2)];
+blon = [blon; X06_NE_Honshu_forearc(:,1)];
+blat = [blat; X06_NE_Honshu_forearc(:,2)];
+blon = [blon; X03_NE_Honshu_backarc(:,1)];
+blat = [blat; X03_NE_Honshu_backarc(:,2)];
+blon = [blon; X02_Niigata(:,1)];
+blat = [blat; X02_Niigata(:,2)];
+blon = [blon; X04_Okhotsk(:,1)];
+blat = [blat; X04_Okhotsk(:,2)];
+blon = [blon; X01_Amur(:,1)];
+blat = [blat; X01_Amur(:,2)];
+
 end
