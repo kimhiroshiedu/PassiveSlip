@@ -1,26 +1,52 @@
-figure(10); clf(10)
 % Trimesh
-pre_tri_f = 'MODEL_JP/BLOCK_Int_ne_japan/triB_5_8.txt';
-fid = fopen(pre_tri_f,'r');
-nf   = 0;
-blon = zeros(1,3);
-blat = zeros(1,3);
-bdep = zeros(1,3);
-while 1
-  nf    = nf+1;
-  loc_f = fscanf(fid,'%f %f %f \n', [3 3]);
-  tline = fgetl(fid); if ~ischar(tline); break; end
-  blon(nf,:) = loc_f(1,:);
-  blat(nf,:) = loc_f(2,:);
-  bdep(nf,:) = loc_f(3,:);
-  tline = fgetl(fid); if ~ischar(tline); break; end
+prm.dirblock = 'MODEL_JP/BLOCK_Int_ne_japan';
+ext = 'triB_*.txt';
+file = dir([prm.dirblock,'/',ext]);
+[nbound,~] = size(file);
+tri(1).nbound = nbound;
+figure(10); clf(10)
+for nb = 1:tri(1).nbound
+  fid = fopen(fullfile(prm.dirblock,file(nb).name),'r');
+  nf  = 0;
+  tri(nb).blon = zeros(1,3);
+  tri(nb).blat = zeros(1,3);
+  tri(nb).bdep = zeros(1,3);
+  while 1
+    nf    = nf+1;
+    loc_f = fscanf(fid,'%f %f %f \n', [3 3]);
+    tline = fgetl(fid); if ~ischar(tline); break; end
+    tri(nb).blon(nf,:) = loc_f(1,:);
+    tri(nb).blat(nf,:) = loc_f(2,:);
+    tri(nb).bdep(nf,:) = loc_f(3,:);
+    tline = fgetl(fid); if ~ischar(tline); break; end
+  end
+  fclose(fid);
+  patch(tri(nb).blon',tri(nb).blat',zeros(size(tri(nb).blon))'); hold on
+  colormap('white')
 end
-fclose(fid);
-tri.lon = blon;
-tri.lat = blat;
-tri.dep = bdep;
-patch(tri.lon',tri.lat',zeros(size(tri.lon))'); hold on
-colormap('white')
+
+% pre_tri_f = 'MODEL_JP/BLOCK_Int_ne_japan/triB_5_8.txt';
+% fid = fopen(pre_tri_f,'r');
+% nf   = 0;
+% blon = zeros(1,3);
+% blat = zeros(1,3);
+% bdep = zeros(1,3);
+% figure(10); clf(10)
+% while 1
+%   nf    = nf+1;
+%   loc_f = fscanf(fid,'%f %f %f \n', [3 3]);
+%   tline = fgetl(fid); if ~ischar(tline); break; end
+%   blon(nf,:) = loc_f(1,:);
+%   blat(nf,:) = loc_f(2,:);
+%   bdep(nf,:) = loc_f(3,:);
+%   tline = fgetl(fid); if ~ischar(tline); break; end
+% end
+% fclose(fid);
+% tri.lon = blon;
+% tri.lat = blat;
+% tri.dep = bdep;
+% patch(tri.lon',tri.lat',zeros(size(tri.lon))'); hold on
+% colormap('white')
 
 % Coast line
 latlim   = [ 10  50];
