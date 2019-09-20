@@ -186,6 +186,10 @@ for nb1 = 1:blk(1).nblock
     blk(1).bound(nb1,nb2).lat = [];
     blk(1).bound(nb1,nb2).lon = [];
     lca = inpolygon(blk(nb1).lon,blk(nb1).lat,blk(nb2).lon,blk(nb2).lat);
+    if (lca(1)==true && lca(end)==true) && (lca(2)==false && lca(end-1)==false)  % eliminate Quadruple-junction
+      lca( 1 ) = false;
+      lca(end) = false;
+    end
     ca  = find(lca);
     if ~isempty(ca) && sum(lca)~=1
       if and(lca(1),lca(end))
