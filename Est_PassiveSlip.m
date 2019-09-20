@@ -6,7 +6,7 @@ function Est_PassiveSlip(varargin)
 % Revised by Hiroshi Kimura      2019/07/09
 %--- 
 prm.input      = 'PARAMETER/parameter_inversion.txt';
-prm.optfile    = 'PARAMETER/opt_bound_par_forward.txt';
+prm.optfile    = 'PARAMETER/opt_bound_par.txt';
 prm.interpfile = 'PARAMETER/interp_randwalkline.txt';
 %--
 % Simulation mode select
@@ -311,7 +311,7 @@ for nb1 = 1:blk(1).nblock
         bslon = p(:,1);
         bslat = p(:,2);
         bsdep = f(bslon,bslat);
-       else
+      else
         bstri = [];
         leng  = length(blk(1).bound(nb1,nb2).lon);
         if leng~=0
