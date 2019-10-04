@@ -2711,23 +2711,24 @@ for nb1 = 1:blk(1).nblock
   for nb2 = nb1+1:blk(1).nblock
     if blk(1).bound(nb1,nb2).flag2 == 1
       nf = size(blk(1).bound(nb1,nb2).blon,1);
-      % Backslip rate (all)
+      % Backslip rate (locked)
       subplot(1,2,1); patch(blk(1).bound(nb1,nb2).blon',...
                             blk(1).bound(nb1,nb2).blat',...
-                            sqrt(bslip( mm3:mm3+nf-1).^2+bslip( mm3+nf:mm3+2*nf-1).^2)); hold on
-      % Backslip rate (locked)
+                            sqrt(bslipl(mm3:mm3+nf-1).^2+bslipl(mm3+nf:mm3+2*nf-1).^2)~=0); hold on
+      % Backslip rate (all)
       subplot(1,2,2); patch(blk(1).bound(nb1,nb2).blon',...
                             blk(1).bound(nb1,nb2).blat',...
-                            sqrt(bslipl(mm3:mm3+nf-1).^2+bslipl(mm3+nf:mm3+2*nf-1).^2)); hold on
+                            sqrt(bslip( mm3:mm3+nf-1).^2+bslip( mm3+nf:mm3+2*nf-1).^2)   ); hold on
       mm3 = mm3 + 3*nf;
     else
       continue
     end
   end
 end
-c = flipud(hot);
-colormap(c)
-colorbar
+subplot(1,2,1)
+c = flipud(gray); colormap(c); colorbar
+subplot(1,2,2)
+c = flipud( hot); colormap(c); colorbar
 
 %---------Show standard deviation for subfaults----------
 figure(120); clf(120)
