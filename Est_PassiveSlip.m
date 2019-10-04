@@ -2391,34 +2391,34 @@ MakeFigs(blk,cal,bslip,obs)
 end
 
 %% Compress CHA sampling
-function CompressData(cha,prm,itr,nacc)
+function CompressData(ccha,prm,itr,nacc)
 % Compressing CHA sampled parameter to int
 % sfactor = 2^8 ;  % int8
 sfactor = 2^16;  % int16
 % 
-cha.mc   =  single(cha.mc)  ;
-cha.ma   =  single(cha.ma)  ;
-cha.maid = logical(cha.maid);
-cha.mp   =  single(cha.mp)  ;
-cha.mi   =  single(cha.mi)  ;
+ccha.mc   =  single(ccha.mc)  ;
+ccha.ma   =  single(ccha.ma)  ;
+ccha.maid = logical(ccha.maid);
+ccha.mp   =  single(ccha.mp)  ;
+ccha.mi   =  single(ccha.mi)  ;
 % if prm.gpu==99&&gpudevicecount==0
 if prm.gpu == 99
-  meanmc   = mean(cha.mc,  2);
-  meanma   = mean(cha.ma,  2);
-  meanmaid = mean(cha.maid,2);
-  meanmp   = mean(cha.mp,  2);
-  meanmi   = mean(cha.mi,  2);
-  covmc    =   cov(cha.mc')  ;
-  covma    =   cov(cha.ma')  ;
-  covmaid  =   cov(cha.maid');
-  covmp    =   cov(cha.mp')  ;
-  covmi    =   cov(cha.mi')  ;
+  meanmc   = mean(ccha.mc,  2);
+  meanma   = mean(ccha.ma,  2);
+  meanmaid = mean(ccha.maid,2);
+  meanmp   = mean(ccha.mp,  2);
+  meanmi   = mean(ccha.mi,  2);
+  covmc    =   cov(ccha.mc')  ;
+  covma    =   cov(ccha.ma')  ;
+  covmaid  =   cov(ccha.maid');
+  covmp    =   cov(ccha.mp')  ;
+  covmi    =   cov(ccha.mi')  ;
 else
-  gcha.mc   = gpuArray(cha.mc)  ;
-  gcha.ma   = gpuArray(cha.ma)  ;
-  gcha.maid = gpuArray(cha.maid);
-  gcha.mp   = gpuArray(cha.mp)  ;
-  gcha.mi   = gpuArray(cha.mi)  ;
+  gcha.mc   = gpuArray(ccha.mc)  ;
+  gcha.ma   = gpuArray(ccha.ma)  ;
+  gcha.maid = gpuArray(ccha.maid);
+  gcha.mp   = gpuArray(ccha.mp)  ;
+  gcha.mi   = gpuArray(ccha.mi)  ;
   meanmc    =  mean(gcha.mc,  2);
   meanma    =  mean(gcha.ma,  2);
   meanmaid  =  mean(gcha.maid,2);
@@ -2441,34 +2441,34 @@ else
   covmi     =    gather(covmi)  ;
 end
 % 
-mcmax   = max(cha.mc,  [],2);
-mcmin   = min(cha.mc,  [],2);
-mamax   = max(cha.ma,  [],2);
-mamin   = min(cha.ma,  [],2);
-maidmax = max(cha.maid,[],2);
-maidmin = min(cha.maid,[],2);
-mpmax   = max(cha.mp,  [],2);
-mpmin   = min(cha.mp,  [],2);
-mimax   = max(cha.mi,  [],2);
-mimin   = min(cha.mi,  [],2);
+mcmax   = max(ccha.mc,  [],2);
+mcmin   = min(ccha.mc,  [],2);
+mamax   = max(ccha.ma,  [],2);
+mamin   = min(ccha.ma,  [],2);
+maidmax = max(ccha.maid,[],2);
+maidmin = min(ccha.maid,[],2);
+mpmax   = max(ccha.mp,  [],2);
+mpmin   = min(ccha.mp,  [],2);
+mimax   = max(ccha.mi,  [],2);
+mimin   = min(ccha.mi,  [],2);
 % 
 mcscale = 1./(mcmax-mcmin);
-mcbase  = bsxfun(@minus,bsxfun(@times,bsxfun(@minus,cha.mc,mcmin),mcscale.*(sfactor-1)),sfactor/2);
+mcbase  = bsxfun(@minus,bsxfun(@times,bsxfun(@minus,ccha.mc,mcmin),mcscale.*(sfactor-1)),sfactor/2);
 % mcint = int8(mcbase);
 mcint   = int16(mcbase);
 
 mascale = 1./(mamax-mamin);
-mabase  = bsxfun(@minus,bsxfun(@times,bsxfun(@minus,cha.ma,mamin),mascale.*(sfactor-1)),sfactor/2);
+mabase  = bsxfun(@minus,bsxfun(@times,bsxfun(@minus,ccha.ma,mamin),mascale.*(sfactor-1)),sfactor/2);
 % maint = int8(mabase);
 maint   = int16(mabase);
 
 mpscale = 1./(mpmax-mpmin);
-mpbase  = bsxfun(@minus,bsxfun(@times,bsxfun(@minus,cha.mp,mpmin),mpscale.*(sfactor-1)),sfactor/2);
+mpbase  = bsxfun(@minus,bsxfun(@times,bsxfun(@minus,ccha.mp,mpmin),mpscale.*(sfactor-1)),sfactor/2);
 % mpint = int8(mpbase);
 mpint   = int16(mpbase);
 
 miscale = 1./(mimax-mimin);
-mibase  = bsxfun(@minus,bsxfun(@times,bsxfun(@minus,cha.mi,mimin),miscale.*(sfactor-1)),sfactor/2);
+mibase  = bsxfun(@minus,bsxfun(@times,bsxfun(@minus,ccha.mi,mimin),miscale.*(sfactor-1)),sfactor/2);
 % miint = int8(mibase);
 miint   = int16(mibase);
 
