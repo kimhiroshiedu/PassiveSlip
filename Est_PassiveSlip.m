@@ -5,7 +5,7 @@ function Est_PassiveSlip(varargin)
 % Revised by Hiroshi Kimura      2019/02/16
 % Revised by Hiroshi Kimura      2019/07/09
 %--- 
-prm.input      = 'PARAMETER/parameter_inversion.txt';
+prm.input      = 'PARAMETER/parameter_inversion_nejp.txt';
 prm.optfile    = 'PARAMETER/opt_bound_par.txt';
 prm.interpfile = 'PARAMETER/interp_randwalkline.txt';
 %--
@@ -1655,8 +1655,8 @@ mi.old = 1e-10.*(-0.5+rand(mi.n,1,precision));
 mi.old = mi.old.*blk(1).idinter              ;
 % Substitute coordinates of up- and down-dip limit
 ma.old = zeros(ma.n./2,2);
-ma.old(:,1) = blk(1).aline_zd.*(0.6 + rand(ma.n./2,1) ./ 5  );
-ma.old(:,2) = blk(1).aline_zd.*(0.3 + rand(ma.n./2,1) ./ 2.5);
+ma.old(:,1) = blk(1).aline_zd.*(0.6 + rand(ma.n./2,1) ./ 5);
+ma.old(:,2) = blk(1).aline_zd.*(0.1 + rand(ma.n./2,1) ./ 5);
 ma.old = reshape(ma.old,ma.n,1);
 
 la.old    = zeros(la.n,1,precision);
@@ -1665,8 +1665,8 @@ res.old   =   inf(   1,1,precision);
 
 % Scale adjastment of rwd
 mcscale  = rwd * 1e-3;
-mascale  = rwd * 1e+1;
-mpscale  = rwd * 1e-12 .* ones(mp.n,1,precision) .* ~eul.id;
+mascale  = rwd * 1e-1;
+mpscale  = rwd * 1e-10 .* ones(mp.n,1,precision) .* ~eul.id;
 miscale  = rwd * 1e-10;
 
 % Initial chains
@@ -1725,7 +1725,7 @@ while not(count == prm.thr)
     %     id_reject = [ma.smp(       1:ma.n/2) < 0 | ma.smp(       1:ma.n/2) > blk(1).aline_zd                                           ;...
     %                  ma.smp(ma.n/2+1:   end) < 0 | ma.smp(ma.n/2+1:   end) > blk(1).aline_zd | ma.smp(1:ma.n/2) < ma.smp(ma.n/2+1:end)];
     id_reject = [ false(ma.n/2,1)                                                  ;...
-                 ma.smp(ma.n/2+1:end) < 0 | ma.smp(ma.n/2+1:end) > blk(1).aline_zd];
+                 ma.smp(ma.n/2+1:end) < blk(1).aline_zu | ma.smp(ma.n/2+1:end) > blk(1).aline_zd];
     ma.smp(id_reject) = ma.old(id_reject);
     ma.smp(1:ma.n/2) = max(min(ma.smp(1:ma.n/2),blk(1).aline_zd),ma.smp(ma.n/2+1:end));
 
