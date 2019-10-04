@@ -2680,6 +2680,9 @@ if lo_mc==-1
 else
   cmap=rw;
 end
+% Quiver plot scale factor
+vfactor = 1e-2; % vector
+cfactor = 5e+8; % strain
 
 %---------Show kinematic coupling ------------------------
 figure(100); clf(100)
@@ -2714,7 +2717,7 @@ for nb1 = 1:blk(1).nblock
       % Backslip rate (locked)
       subplot(1,2,1); patch(blk(1).bound(nb1,nb2).blon',...
                             blk(1).bound(nb1,nb2).blat',...
-                            sqrt(bslipl(mm3:mm3+nf-1).^2+bslipl(mm3+nf:mm3+2*nf-1).^2)~=0); hold on
+                            single(sqrt(bslipl(mm3:mm3+nf-1).^2+bslipl(mm3+nf:mm3+2*nf-1).^2)~=0)); hold on
       % Backslip rate (all)
       subplot(1,2,2); patch(blk(1).bound(nb1,nb2).blon',...
                             blk(1).bound(nb1,nb2).blat',...
@@ -2779,17 +2782,17 @@ hold on
 % blue  : Calculated velocities
 figure(140); clf(140)
 subplot(1,2,1)
-quiver(obs(1).alon,obs(1).alat,      obs(1).evec,      obs(1).nvec,'green')
+quiver(obs(1).alon,obs(1).alat,vfactor.*obs(1).evec,      vfactor.*obs(1).nvec,      'AutoScale','off','Color','green')
 hold on
-quiver(obs(1).alon,obs(1).alat,vec.sum(1:3:end)',vec.sum(2:3:end)', 'blue')
+quiver(obs(1).alon,obs(1).alat,vfactor.*vec.sum(1:3:end)',vfactor.*vec.sum(2:3:end)','AutoScale','off','Color', 'blue')
 hold on
 axis([obs(1).lonmin-1,obs(1).lonmax+1,obs(1).latmin-1,obs(1).latmax+1]);
 title(['Horizontal obs and cal motion (iteration number: ',num2str(rt),')']);
 
 subplot(1,2,2)
-quiver(obs(1).alon,obs(1).alat,zeros(size(obs(1).hvec)),      obs(1).hvec,'green')
+quiver(obs(1).alon,obs(1).alat,zeros(size(obs(1).hvec)),vfactor.*obs(1).hvec,      'AutoScale','off','Color','green')
 hold on
-quiver(obs(1).alon,obs(1).alat,zeros(size(obs(1).hvec)),vec.sum(3:3:end)', 'blue')
+quiver(obs(1).alon,obs(1).alat,zeros(size(obs(1).hvec)),vfactor.*vec.sum(3:3:end)','AutoScale','off','Color', 'blue')
 hold on
 axis([obs(1).lonmin-1,obs(1).lonmax+1,obs(1).latmin-1,obs(1).latmax+1]);
 title(['Vertical obs and cal motion (iteration number: ',num2str(rt),')']);
@@ -2800,22 +2803,22 @@ title(['Vertical obs and cal motion (iteration number: ',num2str(rt),')']);
 % red     : Elastic deformation due to slip deficit
 figure(150); clf(150)
 subplot(1,2,1)
-quiver(obs(1).alon,obs(1).alat, vec.rig(1:3:end)',vec.rig(2:3:end)','k')
+quiver(obs(1).alon,obs(1).alat, vfactor.*vec.rig(1:3:end)',vfactor.*vec.rig(2:3:end)','AutoScale','off','Color','k')
 hold on
-quiver(obs(1).alon,obs(1).alat, vec.kin(1:3:end)',vec.kin(2:3:end)','b')
+quiver(obs(1).alon,obs(1).alat, vfactor.*vec.kin(1:3:end)',vfactor.*vec.kin(2:3:end)','AutoScale','off','Color','b')
 hold on
-quiver(obs(1).alon,obs(1).alat, vec.mec(1:3:end)',vec.mec(2:3:end)','r')
+quiver(obs(1).alon,obs(1).alat, vfactor.*vec.mec(1:3:end)',vfactor.*vec.mec(2:3:end)','AutoScale','off','Color','r')
 % hold on
 % quiver(obs(1).alon,obs(1).alat,vec.rel(1:3:end)',vec.rel(2:3:end)','m')
 axis([obs(1).lonmin-1,obs(1).lonmax+1,obs(1).latmin-1,obs(1).latmax+1]);
 title(['Horizontal rigid and elastic motion (iteration number: ',num2str(rt),')']);
 
 subplot(1,2,2)
-quiver(obs(1).alon,obs(1).alat, zeros(size(vec.rig(3:3:end)))',vec.rig(3:3:end)','k')
+quiver(obs(1).alon,obs(1).alat, zeros(size(vec.rig(3:3:end)))',vfactor.*vec.rig(3:3:end)','AutoScale','off','Color','k')
 hold on
-quiver(obs(1).alon,obs(1).alat, zeros(size(vec.kin(3:3:end)))',vec.kin(3:3:end)','b')
+quiver(obs(1).alon,obs(1).alat, zeros(size(vec.kin(3:3:end)))',vfactor.*vec.kin(3:3:end)','AutoScale','off','Color','b')
 hold on
-quiver(obs(1).alon,obs(1).alat, zeros(size(vec.mec(3:3:end)))',vec.mec(3:3:end)','r')
+quiver(obs(1).alon,obs(1).alat, zeros(size(vec.mec(3:3:end)))',vfactor.*vec.mec(3:3:end)','AutoScale','off','Color','r')
 % hold on
 % quiver(obs(1).alon,obs(1).alat,vec.rel(1:3:end)',vec.rel(2:3:end)','m')
 axis([obs(1).lonmin-1,obs(1).lonmax+1,obs(1).latmin-1,obs(1).latmax+1]);
@@ -2826,7 +2829,6 @@ title(['Vertical rigid and elastic motion (iteration number: ',num2str(rt),')'])
 % cyan    : Principal strain 1, maximum
 % magenta : Principal strain 2, minimum
 figure(160); clf(160)
-efactor = 1e8;
 for nb = 1:blk(1).nblock
   hold on; plot(blk(nb).lon,blk(nb).lat,'red')
   hold on; text(mean(blk(nb).lon),mean(blk(nb).lat),int2str(nb),'color','r')
@@ -2838,10 +2840,10 @@ for nb = 1:blk(1).nblock
   if e1>=0; c1='c'; else; c1='m'; end
   if e2>=0; c2='c'; else; c2='m'; end
   figure(160)
-  hold on; quiver(blk(nb).loninter,blk(nb).latinter,efactor* e1*v1(1),efactor* e1*v1(2),c1,'showarrowhead','off','linewidth',1);
-  hold on; quiver(blk(nb).loninter,blk(nb).latinter,efactor*-e1*v1(1),efactor*-e1*v1(2),c1,'showarrowhead','off','linewidth',1);
-  hold on; quiver(blk(nb).loninter,blk(nb).latinter,efactor* e2*v2(1),efactor* e2*v2(2),c2,'showarrowhead','off','linewidth',1);
-  hold on; quiver(blk(nb).loninter,blk(nb).latinter,efactor*-e2*v2(1),efactor*-e2*v2(2),c2,'showarrowhead','off','linewidth',1);
+  hold on; quiver(blk(nb).loninter,blk(nb).latinter,cfactor* e1*v1(1),cfactor* e1*v1(2),'AutoScale','off','Color',c1,'showarrowhead','off','linewidth',1);
+  hold on; quiver(blk(nb).loninter,blk(nb).latinter,cfactor*-e1*v1(1),cfactor*-e1*v1(2),'AutoScale','off','Color',c1,'showarrowhead','off','linewidth',1);
+  hold on; quiver(blk(nb).loninter,blk(nb).latinter,cfactor* e2*v2(1),cfactor* e2*v2(2),'AutoScale','off','Color',c2,'showarrowhead','off','linewidth',1);
+  hold on; quiver(blk(nb).loninter,blk(nb).latinter,cfactor*-e2*v2(1),cfactor*-e2*v2(2),'AutoScale','off','Color',c2,'showarrowhead','off','linewidth',1);
   hold on; plot(blk(nb).loninter,blk(nb).latinter,'.k','markersize',5)
   hold on; text(blk(nb).loninter,blk(nb).latinter,int2str(nb),'color','k')
 end
