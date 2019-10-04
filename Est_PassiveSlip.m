@@ -2495,9 +2495,9 @@ cha.macompress.meanma  =        meanma;
 cha.macompress.smpma   = int16(mabase);
 
 % maid
-cha.maidcompress.covmaid  =           covmaid;
-cha.maidcompress.meanmaid =          meanmaid;
-cha.maidcompress.smpmaid  = logical(cha.maid);
+cha.maidcompress.covmaid  =            covmaid;
+cha.maidcompress.meanmaid =           meanmaid;
+cha.maidcompress.smpmaid  = logical(ccha.maid);
 
 % mp
 for ii = 1:size(mpint,1)
