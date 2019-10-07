@@ -1665,7 +1665,7 @@ res.old   =   inf(   1,1,precision);
 
 % Scale adjastment of rwd
 mcscale  = rwd * 1e-3;
-mascale  = rwd * 1e-1;
+mascale  = rwd * 1e+0;
 mpscale  = rwd * 1e-10 .* ones(mp.n,1,precision) .* ~eul.id;
 miscale  = rwd * 1e-10;
 
