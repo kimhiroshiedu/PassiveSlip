@@ -2587,9 +2587,12 @@ for nb1 = 1:blk(1).nblock
           blk(1).bound(nb1,nb2).asp_zu_interp = linspace2(blk(1).bound(nb1,nb2).asp_zu, nint);
           np = np + 1;
           blk(1).naspline  =  blk(1).naspline + nasp;
-          blk(1).aline_zu = [blk(1).aline_zu; blk(1).bound(nb1,nb2).asp_depu];
-          blk(1).aline_zd = [blk(1).aline_zd; blk(1).bound(nb1,nb2).asp_depd];
-
+          blk(1).aline_zu   = [blk(1).aline_zu  ; blk(1).bound(nb1,nb2).asp_depu];
+          blk(1).aline_zd   = [blk(1).aline_zd  ; blk(1).bound(nb1,nb2).asp_depd];
+          blk(1).aline_lonu = [blk(1).aline_lonu; blk(1).bound(nb1,nb2).asp_lonu];
+          blk(1).aline_lond = [blk(1).aline_lond; blk(1).bound(nb1,nb2).asp_lond];
+          blk(1).aline_latu = [blk(1).aline_latu; blk(1).bound(nb1,nb2).asp_latu];
+          blk(1).aline_latd = [blk(1).aline_latd; blk(1).bound(nb1,nb2).asp_latd];
           % Indexing trimesh with each strip
           hx_d = (blk(1).bound(nb1,nb2).asp_xd_interp(1:end-1) + blk(1).bound(nb1,nb2).asp_xd_interp(2:end)) ./ 2;
           hx_u = (blk(1).bound(nb1,nb2).asp_xu_interp(1:end-1) + blk(1).bound(nb1,nb2).asp_xu_interp(2:end)) ./ 2;
