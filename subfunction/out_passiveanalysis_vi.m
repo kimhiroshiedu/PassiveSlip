@@ -16,17 +16,103 @@ G(1).tb_kin = full(G(1).tb_kin);
 G(1).tb_mec = full(G(1).tb_mec);
 
 [bslip,vec] = CalcOptimumValue(prm,obs,tcha,G,d);
+[blk] = AsperityPoint(blk,obs);
 SavePoles(savedir,blk,tcha);
 SaveBackslip(savedir,blk,tcha,bslip);
 SaveVectors(savedir,obs,vec);
-SaveInternalStrain(savedir,tcha);
+SaveInternalStrain(savedir,tcha,blk,prm,obs,G);
 
 fprintf('Files exported. \n');
 end
 
 %% Save internal strains
-function SaveInternalStrain(folder,tcha)
+function SaveInternalStrain(folder,tcha,blk,prm,obs,G)
+if isfield(tcha,'aveine')==0; return; end  % old type
 
+NN=1;
+savefolder=[folder,'/innerdeform'];
+exid=exist(savefolder);
+if exid~=7; mkdir(savefolder); end
+
+fide = fopen([savefolder,'/Internal_Deformation_strain.txt'],'w');
+fidv = fopen([savefolder,'/Internal_Deformation_vector.txt'],'w');
+fprintf(fide,'# %5s %7s %7s %7s %7s %7s %7s %7s %10s %10s %10s %10s %10s %10s %10s %10s %s\n # Unit of strain is [nanostrain/yr] \n',...
+                  'Block','Lat','Lat','exx','exy','eyy','emax','emin','thetaP','shearMAX',...
+                  'sig_exx','sig_exy','sig_eyy','sig_emax','sig_emin','sig_thetaP','sig_shearMAX');
+fprintf(fidv,'# Latitude Longitude VE VN \n');
+vinternal = G(1).i * tcha.aveine;
+outdata = [obs(1).alat; obs(1).alon; vinternal(1:3:end)'; vinternal(2:3:end)'];
+fprintf(fidv,'%7.3f %7.3f %10.4f %10.4f \n',outdata); fclose(fidv);
+clear vinternal outdata
+for nb = 1:blk(1).nblock
+  Gb.i = zeros(size(G.i));
+  Gb.i(:,3*nb-2:3*nb) = G.i(:,3*nb-2:3*nb);
+  vinternal = Gb.i * tcha.aveine;  % Displacement due to internal deformation
+  outdata = [obs(1).alat; obs(1).alon; vinternal(1:3:end)'; vinternal(2:3:end)'];
+  fidv = fopen([savefolder,'/Internal_Deformation_vector_blk',num2str(nb),'.txt'],'w');
+  fprintf(fidv,'%7.3f %7.3f %10.4f %10.4f \n',outdata);
+  fclose(fidv);
+  exx = tcha.aveine(3*nb-2);
+  exy = tcha.aveine(3*nb-1);
+  eyy = tcha.aveine(3*nb  );
+  sigexx = tcha.stdine(3*nb-2);
+  sigexy = tcha.stdine(3*nb-1);
+  sigeyy = tcha.stdine(3*nb  );
+  E = [exx exy;...
+       exy eyy];
+  [eigv,eigd] = eig(E);
+  e1 = eigd(1,1); e2 = eigd(2,2);
+  v1 = eigv(:,1); v2 = eigv(:,2);
+  if e1 >= e2
+    emax = e1; axmax = v1;
+    emin = e2; axmin = v2;
+  else
+    emax = e2; axmax = v2;
+    emin = e1; axmin = v1;
+  end
+  thetaP = 90-rad2deg(atan2(axmax(2),axmax(1))); % Azimth from North
+  if thetaP<0; thetaP = thetaP+360; end
+  shearMAX    = sqrt((1/4)*(exx-eyy)^2+exy^2);
+  sigemax     = sqrt( ( 0.5 + 0.25*( (exx-eyy)^2 /4 + exy^2 )^-0.5 *( exx-eyy ) )^2 *sigexx^2 ...
+                     +(          1*( (exx-eyy)^2 /4 + exy^2 )^-0.5 *  exy       )^2 *sigexy^2 ...
+                     +( 0.5 - 0.25*( (exx-eyy)^2 /4 + exy^2 )^-0.5 *( exx-eyy ) )^2 *sigeyy^2 );
+  sigemin     = sqrt( ( 0.5 - 0.25*( (exx-eyy)^2 /4 + exy^2 )^-0.5 *( exx-eyy ) )^2 *sigexx^2 ...
+                     +(         -1*( (exx-eyy)^2 /4 + exy^2 )^-0.5 *  exy       )^2 *sigexy^2 ...
+                     +( 0.5 + 0.25*( (exx-eyy)^2 /4 + exy^2 )^-0.5 *( exx-eyy ) )^2 *sigeyy^2 );
+  sigshearMAX = sqrt( (       0.25*( (exx-eyy)^2 /4 + exy^2 )^-0.5 *( exx-eyy ) )^2 *sigexx^2 ...
+                     +(          1*( (exx-eyy)^2 /4 + exy^2 )^-0.5 *  exy       )^2 *sigexy^2 ...
+                     +(      -0.25*( (exx-eyy)^2 /4 + exy^2 )^-0.5 *( exx-eyy ) )^2 *sigeyy^2 );
+  sigthetaP   = sqrt( (     -exy  / ( 4*exy^2 - (exx-eyy)^2 )                   )^2 *sigexx^2 ...
+                     +( (exx-eyy) / ( 4*exy^2 - (exx-eyy)^2 )                   )^2 *sigexy^2 ...
+                     +(      exy  / ( 4*exy^2 - (exx-eyy)^2 )                   )^2 *sigeyy^2 );
+  fprintf(fide,'%7i %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %10.3f %10.3f %10.3f %10.3f %10.3f %10.3f %10.3f %10.3f %10.3f\n',...
+                    nb, blk(nb).latinter, blk(nb).loninter,...
+                    exx*1e9, exy*1e9, eyy*1e9,...
+                    emax*1e9, emin*1e9,...
+                    thetaP, shearMAX*1e9,...
+                    sigexx*1e9, sigexy*1e9, sigeyy*1e9,...
+                    sigemax*1e9, sigemin*1e9,...
+                    rad2deg(sigthetaP), sigshearMAX*1e9);
+  S(nb).exx = exx;
+  S(nb).exy = exy;
+  S(nb).eyy = eyy;
+  S(nb).sig_exx = sigexx;
+  S(nb).sig_exy = sigexy;
+  S(nb).sig_eyy = sigeyy;
+  S(nb).e1 = e1;
+  S(nb).e2 = e2;
+  S(nb).v1 = v1;
+  S(nb).v2 = v2;
+  S(nb).p_theta = thetaP;
+  S(nb).shearMAX = shearMAX;
+  S(nb).sig_emax = sigemax;
+  S(nb).sig_emin = sigemin;
+  S(nb).sig_thetaP = rad2deg(sigthetaP);
+  S(nb).sig_shearmax = sigshearMAX;
+end
+fclose(fide);
+strainfile=[savefolder,'/strain'];
+save(strainfile,'S','-v7.3')
 end
 
 %% Save obs-, cal-, and res-vectors
@@ -133,10 +219,10 @@ end
 %% Save Euler vectors
 function SavePoles(folder,blk,tcha)
 fid = fopen(fullfile(folder,'/est_euler_pole.txt'),'wt');
-fprintf(fid,'# %6s %8s %7s %8s %11s %9s %9s %9s %9s %9s %9s\n',...
+fprintf(fid,'# %6s %8s %7s %8s %9s %9s %9s %9s %9s %9s \n',...
     'Blk_no','Lat(deg)','Lon(deg)','Ang(deg/my)',...
     'sigxx','sigxy','sigxz','sigyy','sigyz','sigzz');
-fprintf('# %6s %8s %7s %8s %11s %9s %9s %9s %9s %9s %9s\n',...
+fprintf('# %6s %8s %7s %8s %9s %9s %9s %9s %9s %9s \n',...
     'Blk_no','Lat(deg)','Lon(deg)','Ang(deg/my)',...
     'sigxx','sigxy','sigxz','sigyy','sigyz','sigzz');
 for bk = 1:blk(1).nblock
@@ -159,6 +245,30 @@ c=covpol(1,3);
 d=covpol(2,2);
 e=covpol(2,3);
 f=covpol(3,3);
+end
+
+%% Show asperity edge point indices
+function [blk] = AsperityPoint(blk,obs)
+blk(1).naspline  =  0;
+blk(1).aline_lonu = [];
+blk(1).aline_lond = [];
+blk(1).aline_latu = [];
+blk(1).aline_latd = [];
+%
+for nb1 = 1:blk(1).nblock
+  for nb2 = nb1+1:blk(1).nblock
+    nf = size(blk(1).bound(nb1,nb2).blon,1);
+    if nf ~= 0
+      if blk(1).bound(nb1,nb2).flag2 == 1
+        blk(1).aline_lonu = [blk(1).aline_lonu; blk(1).bound(nb1,nb2).asp_lonu];
+        blk(1).aline_lond = [blk(1).aline_lond; blk(1).bound(nb1,nb2).asp_lond];
+        blk(1).aline_latu = [blk(1).aline_latu; blk(1).bound(nb1,nb2).asp_latu];
+        blk(1).aline_latd = [blk(1).aline_latd; blk(1).bound(nb1,nb2).asp_latd];
+      end
+    end
+  end
+end
+fprintf('=== Asperity edge points, below === \n');
 end
 
 %% Calc optimum value from tcha.mat
