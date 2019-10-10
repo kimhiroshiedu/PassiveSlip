@@ -2532,9 +2532,13 @@ function [blk,asp] = DefRandomWalkLine(blk,prm,obs)
 asp  = [];
 alat = mean(obs(1).alat(:));
 alon = mean(obs(1).alon(:));
-blk(1).naspline  =  0;
-blk(1).aline_zu = [];
-blk(1).aline_zd = [];
+blk(1).naspline   =  0;
+blk(1).aline_zu   = [];
+blk(1).aline_zd   = [];
+blk(1).aline_lonu = [];
+blk(1).aline_lond = [];
+blk(1).aline_latu = [];
+blk(1).aline_latd = [];
 
 Nint = 1;  % default
 
