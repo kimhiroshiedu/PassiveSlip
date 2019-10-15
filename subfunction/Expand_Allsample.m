@@ -37,35 +37,41 @@ for ii = 1:nit
   accflag = isfield(cha,'ajr');
   if ii==1
     nch = size(cha.mpcompress.smpmp,2);
-    npol = length(cha.mpcompress.npol);
-    nflt = length(cha.mccompress.nflt);
-    nine = length(cha.micompress.nine);
-    nasp = length(cha.macompress.nasp);
-    sumpol = zeros(npol,1);
-    sumflt = zeros(nflt,1);
-    sumine = zeros(nine,1);
-    sumasp = zeros(nasp,1);
-    sumpolpair = zeros(npol,npol);
-    sumfltpair = zeros(nflt,nflt);
-    suminepair = zeros(nine,nine);
-    sumasppair = zeros(nasp,nasp);
-    ndatapol = 0;
-    ndataflt = 0;
-    ndataine = 0;
-    ndataasp = 0;
+    npol   = size(cha.mpcompress.npol,2);
+    nflt   = size(cha.mccompress.nflt,2);
+    nine   = size(cha.micompress.nine,2);
+    nasp   = size(cha.macompress.nasp,2);
+    naspid = size(cha.maidcompress.smpmaid,1);
+    sumpol   = zeros(npol,1);
+    sumflt   = zeros(nflt,1);
+    sumine   = zeros(nine,1);
+    sumasp   = zeros(nasp,1);
+    sumaspid = zeros(naspid,1);
+    sumpolpair   = zeros(npol,npol);
+    sumfltpair   = zeros(nflt,nflt);
+    suminepair   = zeros(nine,nine);
+    sumasppair   = zeros(nasp,nasp);
+    sumaspidpair = zeros(naspid,naspid);
+    ndatapol   = 0;
+    ndataflt   = 0;
+    ndataine   = 0;
+    ndataasp   = 0;
+    ndataaspid = 0;
     mphist = zeros(npol,size(mpbin,2)-1);
     mchist = zeros(nflt,size(mcbin,2)-1);
     mihist = zeros(nine,size(mibin,2)-1);
     mahist = zeros(nasp,size(mabin,2)-1);
     smpid = [1:smpint:nch];
-    medpol = zeros(npol,1);
-    medflt = zeros(nflt,1);
-    medine = zeros(nine,1);
-    medasp = zeros(nasp,1);
-    asmppol = [];
-    asmpflt = [];
-    asmpine = [];
-    asmpasp = [];
+    medpol   = zeros(npol,1);
+    medflt   = zeros(nflt,1);
+    medine   = zeros(nine,1);
+    medasp   = zeros(nasp,1);
+    medaspid = zeros(naspid,1);
+    asmppol   = [];
+    asmpflt   = [];
+    asmpine   = [];
+    asmpasp   = [];
+    asmpaspid = [];
   end
   if ii>burnin
     %
@@ -108,18 +114,24 @@ for ii = 1:nit
       end
       mahist(na,:) = mahist(na,:)+histcounts(smpasp(na,:),mabin);
     end
-    ndatapol = ndatapol + nch;
-    ndataflt = ndataflt + nch;
-    ndataine = ndataine + nch;
-    ndataasp = ndataasp + nch;
-    sumpol = sumpol + sum(smppol,2);
-    sumflt = sumflt + sum(smpflt,2);
-    sumine = sumine + sum(smpine,2);
-    sumasp = sumasp + sum(smpasp,2);
-    sumpolpair = sumpolpair + smppol*smppol';
-    sumfltpair = sumfltpair + smpflt*smpflt';
-    suminepair = suminepair + smpine*smpine';
-    sumasppair = sumasppair + smpasp*smpasp';
+    %
+    smpaspid = cha.maidcompress.smpmaid;
+    
+    ndatapol   = ndatapol   + nch;
+    ndataflt   = ndataflt   + nch;
+    ndataine   = ndataine   + nch;
+    ndataasp   = ndataasp   + nch;
+    ndataaspid = ndataaspid + nch;
+    sumpol   = sumpol   + sum(smppol,2);
+    sumflt   = sumflt   + sum(smpflt,2);
+    sumine   = sumine   + sum(smpine,2);
+    sumasp   = sumasp   + sum(smpasp,2);
+    sumaspid = sumaspid + sum(smpaspid,2);
+    sumpolpair   = sumpolpair   + smppol*smppol';
+    sumfltpair   = sumfltpair   + smpflt*smpflt';
+    suminepair   = suminepair   + smpine*smpine';
+    sumasppair   = sumasppair   + smpasp*smpasp';
+    sumaspidpair = sumaspidpair + smpaspid*smpaspid';
   else
     %
     for np = 1:npol
@@ -157,21 +169,25 @@ for ii = 1:nit
         smpasp(na,:) = ones(1,nch).*cha.macompress.nasp(na).mamax;
       end
     end
+    %
+    smpaspid = cha.maidcompress.smpmaid;
   end
   if accflag
     acctotal = acctotal + cha.ajr;
   end
-  asmppol = [asmppol smppol(:,smpid)];
-  asmpflt = [asmpflt smpflt(:,smpid)];
-  asmpine = [asmpine smpine(:,smpid)];
-  asmpasp = [asmpasp smpasp(:,smpid)];
+  asmppol   = [asmppol smppol(:,smpid)];
+  asmpflt   = [asmpflt smpflt(:,smpid)];
+  asmpine   = [asmpine smpine(:,smpid)];
+  asmpasp   = [asmpasp smpasp(:,smpid)];
+  asmpaspid = [asmpaspid smpaspid(:,smpid)];
   clear cha
   fprintf('now finised at %i/%i\n',ii,nit)
 end
-avepol = sumpol./ndatapol;
-aveflt = sumflt./ndataflt;
-aveine = sumine./ndataine;
-aveasp = sumasp./ndataine;
+avepol   = sumpol./ndatapol;
+aveflt   = sumflt./ndataflt;
+aveine   = sumine./ndataine;
+aveasp   = sumasp./ndataine;
+aveaspid = sumaspid./ndataaspid;
 [~,medpolid] = max(mphist,[],2);
 [~,medfltid] = max(mchist,[],2);
 [~,medineid] = max(mihist,[],2);
@@ -188,59 +204,68 @@ end
 for na = 1:nasp
   medasp(na) = 0.5*(mabin(medaspid(na))+mabin(medaspid(na)+1));
 end
-covpol = sumpolpair./ndatapol - avepol*avepol';
-covflt = sumfltpair./ndataflt - aveflt*aveflt';
-covine = suminepair./ndataine - aveine*aveine';
-covasp = sumasppair./ndataasp - aveasp*aveasp';
-stdpol = sqrt(diag(covpol));
-stdflt = sqrt(diag(covflt));
-stdine = sqrt(diag(covine));
-stdasp = sqrt(diag(covasp));
-corpol = covpol./(stdpol*stdpol');
-corflt = covflt./(stdflt*stdflt');
-corine = covine./(stdine*stdine');
-corasp = covasp./(stdasp*stdasp');
+covpol   = sumpolpair./ndatapol - avepol*avepol';
+covflt   = sumfltpair./ndataflt - aveflt*aveflt';
+covine   = suminepair./ndataine - aveine*aveine';
+covasp   = sumasppair./ndataasp - aveasp*aveasp';
+covaspid = sumaspidpair./ndataaspid - aveaspid*aveaspid';
+stdpol   = sqrt(diag(covpol));
+stdflt   = sqrt(diag(covflt));
+stdine   = sqrt(diag(covine));
+stdasp   = sqrt(diag(covasp));
+stdaspid = sqrt(diag(covaspid));
+corpol   = covpol./(stdpol*stdpol');
+corflt   = covflt./(stdflt*stdflt');
+corine   = covine./(stdine*stdine');
+corasp   = covasp./(stdasp*stdasp');
+coraspid = covaspid./(stdaspid*stdaspid');
 
 % Save
 if accflag
   tcha.acctotal = acctotal;
 end
-tcha.burnin  = burnin;
-tcha.smpint  = smpint;
-tcha.mpbin   = mpbin;
-tcha.mcbin   = mcbin;
-tcha.mibin   = mibin;
-tcha.mabin   = mabin;
-tcha.avepol  = single(avepol);
-tcha.aveflt  = single(aveflt);
-tcha.aveine  = single(aveine);
-tcha.aveasp  = single(aveasp);
-tcha.medpol  = single(medpol);
-tcha.medflt  = single(medflt);
-tcha.medine  = single(medine);
-tcha.medasp  = single(medasp);
-tcha.stdpol  = single(stdpol);
-tcha.stdflt  = single(stdflt);
-tcha.stdine  = single(stdine);
-tcha.stdasp  = single(stdasp);
-tcha.covpol  = single(covpol);
-tcha.covflt  = single(covflt);
-tcha.covine  = single(covine);
-tcha.covasp  = single(covasp);
-tcha.corpol  = single(corpol);
-tcha.corflt  = single(corflt);
-tcha.corine  = single(corine);
-tcha.corasp  = single(corasp);
-tcha.histpol = single(mphist);
-tcha.histflt = single(mchist);
-tcha.histine = single(mihist);
-tcha.histasp = single(mahist);
-tcha.ndatpol = single(ndatapol);
-tcha.ndatflt = single(ndataflt);
-tcha.ndatine = single(ndataine);
-tcha.ndatasp = single(ndataasp);
-tcha.smppol  = single(asmppol);
-tcha.smpflt  = single(asmpflt);
-tcha.smpine  = single(asmpine);
-tcha.smpasp  = single(asmpasp);
+tcha.burnin   = burnin;
+tcha.smpint   = smpint;
+tcha.mpbin    = mpbin;
+tcha.mcbin    = mcbin;
+tcha.mibin    = mibin;
+tcha.mabin    = mabin;
+tcha.avepol   = single(avepol);
+tcha.aveflt   = single(aveflt);
+tcha.aveine   = single(aveine);
+tcha.aveasp   = single(aveasp);
+tcha.aveaspid = single(aveaspid);
+tcha.medpol   = single(medpol);
+tcha.medflt   = single(medflt);
+tcha.medine   = single(medine);
+tcha.medasp   = single(medasp);
+tcha.stdpol   = single(stdpol);
+tcha.stdflt   = single(stdflt);
+tcha.stdine   = single(stdine);
+tcha.stdasp   = single(stdasp);
+tcha.stdaspid = single(stdaspid);
+tcha.covpol   = single(covpol);
+tcha.covflt   = single(covflt);
+tcha.covine   = single(covine);
+tcha.covasp   = single(covasp);
+tcha.covaspid = single(covaspid);
+tcha.corpol   = single(corpol);
+tcha.corflt   = single(corflt);
+tcha.corine   = single(corine);
+tcha.corasp   = single(corasp);
+tcha.coraspid = single(coraspid);
+tcha.histpol  = single(mphist);
+tcha.histflt  = single(mchist);
+tcha.histine  = single(mihist);
+tcha.histasp  = single(mahist);
+tcha.smppol   = single(asmppol);
+tcha.smpflt   = single(asmpflt);
+tcha.smpine   = single(asmpine);
+tcha.smpasp   = single(asmpasp);
+tcha.smpaspid = single(asmpaspid);
+tcha.ndatpol   = single(ndatapol);
+tcha.ndatflt   = single(ndataflt);
+tcha.ndatine   = single(ndataine);
+tcha.ndatasp   = single(ndataasp);
+tcha.ndataspid = single(ndataaspid);
 end
