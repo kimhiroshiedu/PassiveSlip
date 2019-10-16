@@ -1,7 +1,7 @@
 % load('D:\MasterResearch\GMT\data\faults_jb1.txt')
 % load('D:\MasterResearch\inversion\PassiveSlip\Result_win\Test_09\blk.mat')
 load('~/MasterResearch/GMT/data/faults_jb1.txt')
-load('~/MasterResearch/inversion/PassiveSlip/Result_red/Test_08/blk.mat')
+load('~/MasterResearch/inversion/PassiveSlip/Result_red/Test_11/blk.mat')
 load('~/MasterResearch/inversion/MCMC_Estslip/Result_red/Test_58/BLK.mat')
 
 figure(10); clf(10)

@@ -17,6 +17,7 @@ G(1).tb_mec = full(G(1).tb_mec);
 
 [bslip,vec] = CalcOptimumValue(prm,obs,tcha,G,d);
 [blk] = AsperityPoint(blk,obs);
+SaveAsperityPoint(savedir,blk)
 SavePoles(savedir,blk,tcha);
 SaveBackslip(savedir,blk,tcha,bslip);
 SaveVectors(savedir,obs,vec);
@@ -178,15 +179,17 @@ for nb1 = 1:blk(1).nblock
         bslipl_st = bslip.mecl(mm3m     :mm3m+  nf-1);
         bslipl_dp = bslip.mecl(mm3m+  nf:mm3m+2*nf-1);
         bslipl_ts = bslip.mecl(mm3m+2*nf:mm3m+3*nf-1);
+        pc = tcha.aveaspid(mm1m:mm1m+nf-1);
         outdata = [fltnum',...
             blk(1).bound(nb1,nb2).blon,...
             blk(1).bound(nb1,nb2).blat,...
             blk(1).bound(nb1,nb2).bdep,...
             clon,clat,cdep,...
             bslip_st, bslip_dp, bslip_ts,...
-            bslipl_st,bslipl_dp,bslipl_ts];
-        fprintf(fmec,'# tri lon1 lon2 lon3 lat1 lat2 lat3 dep1 dep2 dep3 clon clat cdep bslip_st bslip_dp bslip_ts bslipl_st bslipl_dp bslipl_ts\n');
-        fprintf(fmec,'%6i %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f\n',outdata');
+            bslipl_st,bslipl_dp,bslipl_ts,...
+            pc];
+        fprintf(fmec,'# tri lon1 lon2 lon3 lat1 lat2 lat3 dep1 dep2 dep3 clon clat cdep bslip_st bslip_dp bslip_ts bslipl_st bslipl_dp bslipl_ts p_coupling\n');
+        fprintf(fmec,'%6i %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f\n',outdata');
         fclose(fmec);
         mm1m = mm1m +   nf;
         mm3m = mm3m + 3*nf;
@@ -245,6 +248,18 @@ c=covpol(1,3);
 d=covpol(2,2);
 e=covpol(2,3);
 f=covpol(3,3);
+end
+
+%% Save Asperity Points
+function SaveAsperityPoint(folder,blk)
+savedir = fullfile(folder,'backslip');
+if exist(savedir) ~=7; mkdir(savedir); end
+fid = fopen(fullfile(savedir,'/udline.txt'),'wt');
+fprintf(fid,'# N      lon_d      lat_d      lon_u      lat_u \n');
+lineid = [1:size(blk(1).aline_lonu,1)]';
+fprintf(fid,'%3i %10.4f %10.4f %10.4f %10.4f \n',...
+            [lineid,blk(1).aline_lond,blk(1).aline_latd,blk(1).aline_lonu,blk(1).aline_latu]');
+fclose(fid);
 end
 
 %% Show asperity edge point indices
