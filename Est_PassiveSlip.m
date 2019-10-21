@@ -46,7 +46,8 @@ ShowBlockBound(blk)
 
 if mode == 1
 % MCMC simulation for coupling estimattion
-  [cal]   = Proceed_MCMC_MH(blk,asp,tri,prm,obs,eul,d,G);
+  [cal]   = Proceed_MCMC_MH(blk,asp,tri,prm,obs,eul,d,G);     % Metropolis-Hasting
+  %   [cal]   = Proceed_MCMC_RE(blk,asp,tri,prm,obs,eul,d,G);     % Replica exchange
 elseif mode == 0
 % Read asperity areas.
   [blk]   = ReadLockedPatch(blk,prm);
@@ -95,7 +96,10 @@ prm.itr = fscanf(fid,'%d \n',[1,1]); [~] = fgetl(fid);
 prm.thr = fscanf(fid,'%d \n',[1,1]); [~] = fgetl(fid);
 prm.cha = fscanf(fid,'%d \n',[1,1]); [~] = fgetl(fid);
 prm.kep = fscanf(fid,'%d \n',[1,1]); [~] = fgetl(fid);
-prm.rwd = fscanf(fid,'%f \n',[1,1]);
+prm.rwd = fscanf(fid,'%f \n',[1,1]); [~] = fgetl(fid);
+prm.nrep= fscanf(fid,'%i \n',[1,1]); [~] = fgetl(fid);
+prm.efrq= fscanf(fid,'%i \n',[1,1]); [~] = fgetl(fid);
+prm.fmag= fscanf(fid,'%f \n',[1,1]);
 fclose(fid);
 %====================================================
 tmp = load(prm.optfile);
@@ -125,6 +129,9 @@ fprintf('ITR(Threshold_Nitr)       : %i \n',prm.thr)
 fprintf('CHA(Chain)                : %i \n',prm.cha) 
 fprintf('KEP(KEEP)                 : %i \n',prm.kep) 
 fprintf('RWD(Walk_dis)             : %4.2f \n',prm.rwd) 
+fprintf('Number of Replica         : %i \n',prm.nrep) 
+fprintf('Exchange Frequency        : %i \n',prm.efrq) 
+fprintf('Final Magnification       : %4.2f \n',prm.fmag) 
 fprintf('==================\n') 
 %====================================================
 disp('PASS READ_PARAMETERS')
@@ -1748,7 +1755,7 @@ while not(count == prm.thr)
     %     Gcl        = G(1).s(idc,idl);    % lock  -> creep
     %     bslip(idc) = -Gcc \ (Gcl * bslip(idl));
     bslip(idc) = -G(1).s(idc,idc) \ (G(1).s(idc,idl) * bslip(idl));
- 
+
     % Due to Rigid motion
     cal.rig = G(1).p * mp.smp;
     % Due to Kinematic coupling
@@ -1929,9 +1936,11 @@ fprintf(logfid,'=== finished MCMC part ===\n');
 fclose(logfid);
 end
 
-%% Estimate mechanical coupled area by MCMC (Hamiltonian Monte Carlo)
-function [cal] = Proceed_HMC(blk,asp,tri,prm,obs,eul,d,G)
-% Test version by Hiroshi Kimura in 2019/07/22
+%% Estimate mechanical coupled area by MCMC (Replica exchange method)
+function [cal] = Proceed_MCMC_RE(blk,asp,tri,prm,obs,eul,d,G)
+% Test version coded by Hiroshi Kimura in 2019/2/1
+% Combined by Hiroshi Kimura in 2019/4/22
+% Revised by Hiroshi Kimura in 2019/7/16
 
 % Logging
 logfile = fullfile(prm.dirresult,'log.txt');
@@ -1944,18 +1953,10 @@ fprintf(logfid,'Residual=%9.3f \n',rr);
 alat = mean(obs(1).alat(:));
 alon = mean(obs(1).alon(:));
 
-% ----------------HMC parameters
-% Parameters
-tau     =    50;
-epsilon =    0.1;
-T       =   30;
-ite     = 30000;
-
-% Given distribution (curve)
-mu = Y;
-init = rand(size(m));
-sigma = 10;
-% ------------------------------
+% Heaviside of asperity limit line
+Hu = Heaviside(G(1).zulim - G(1).zc);
+Hd = Heaviside(G(1).zdlim - G(1).zc);
+Hlim = Hd - Hu;
 
 % Initial value
 if prm.gpu ~= 99
@@ -1986,7 +1987,7 @@ ma.std = ma.int.*ones(ma.n,1,precision);
 la.std = la.int.*ones(la.n,1,precision);
 
 % Substitute coupling ratio
-mc.old = randn(blk(1).ntkin,1);
+mc.old = rand(blk(1).ntkin,1);
 % Substitute euler pole vectors
 mp.old         = double(blk(1).pole);
 mp.old(eul.id) = 0                  ;
@@ -1996,8 +1997,8 @@ mi.old = 1e-10.*(-0.5+rand(mi.n,1,precision));
 mi.old = mi.old.*blk(1).idinter              ;
 % Substitute coordinates of up- and down-dip limit
 ma.old = zeros(ma.n./2,2);
-ma.old(:,1) = blk(1).aline_zd.*(0.6 + rand(ma.n./2,1) ./ 5  );
-ma.old(:,2) = blk(1).aline_zd.*(0.3 + rand(ma.n./2,1) ./ 2.5);
+ma.old(:,1) = blk(1).aline_zd.*(0.6 + rand(ma.n./2,1) ./ 5);
+ma.old(:,2) = blk(1).aline_zd.*(0.1 + rand(ma.n./2,1) ./ 5);
 ma.old = reshape(ma.old,ma.n,1);
 
 la.old    = zeros(la.n,1,precision);
@@ -2006,8 +2007,8 @@ res.old   =   inf(   1,1,precision);
 
 % Scale adjastment of rwd
 mcscale  = rwd * 1e-3;
-mascale  = rwd * 1e+1;
-mpscale  = rwd * 1e-12 .* ones(mp.n,1,precision) .* ~eul.id;
+mascale  = rwd * 1e+0;
+mpscale  = rwd * 1e-10 .* ones(mp.n,1,precision) .* ~eul.id;
 miscale  = rwd * 1e-10;
 
 % Initial chains
@@ -2030,11 +2031,6 @@ if prm.gpu ~= 99
   d(1).cfinv_mec = gpuArray(single(     d(1).cfinv_mec));
   d(1).cfinv_kin = gpuArray(single(     d(1).cfinv_kin));
 end
-
-% Heaviside of asperity limit line
-Hu = Heaviside(G(1).zulim - G(1).zc);
-Hd = Heaviside(G(1).zdlim - G(1).zc);
-Hlim = Hd - Hu;
 
 % MCMC iteration
 rt      = 0     ;
@@ -2068,8 +2064,10 @@ while not(count == prm.thr)
     mi.smp = mi.old + rwd .* miscale .* rmi(:,it);
     la.smp = la.old + rwd .*  la.std .* rla(:,it);
     ma.smp = ma.old + rwd .* mascale .* rma(:,it);
+    %     id_reject = [ma.smp(       1:ma.n/2) < 0 | ma.smp(       1:ma.n/2) > blk(1).aline_zd                                           ;...
+    %                  ma.smp(ma.n/2+1:   end) < 0 | ma.smp(ma.n/2+1:   end) > blk(1).aline_zd | ma.smp(1:ma.n/2) < ma.smp(ma.n/2+1:end)];
     id_reject = [ false(ma.n/2,1)                                                  ;...
-                 ma.smp(ma.n/2+1:end) < 0 | ma.smp(ma.n/2+1:end) > blk(1).aline_zd];
+                 ma.smp(ma.n/2+1:end) < blk(1).aline_zu | ma.smp(ma.n/2+1:end) > blk(1).aline_zd];
     ma.smp(id_reject) = ma.old(id_reject);
     ma.smp(1:ma.n/2) = max(min(ma.smp(1:ma.n/2),blk(1).aline_zd),ma.smp(ma.n/2+1:end));
 
@@ -2088,17 +2086,17 @@ while not(count == prm.thr)
     bslip              = (G(1).tb_mec * mp.smp) .* d(1).cfinv_mec .* idl;
     
     % Calc inverse Green's function
-    % Gcc        = G(1).s(idc,idc);    % creep -> creep
-    % Gcl        = G(1).s(idc,idl);    % lock  -> creep
-    % bslip(idc) = -Gcc \ (Gcl * bslip(idl));
+    %     Gcc        = G(1).s(idc,idc);    % creep -> creep
+    %     Gcl        = G(1).s(idc,idl);    % lock  -> creep
+    %     bslip(idc) = -Gcc \ (Gcl * bslip(idl));
     bslip(idc) = -G(1).s(idc,idc) \ (G(1).s(idc,idl) * bslip(idl));
- 
+
     % Due to Rigid motion
     cal.rig = G(1).p * mp.smp;
     % Due to Kinematic coupling
     cal.kin = G(1).c_kin * ((G(1).tb_kin * mp.smp) .* d(1).cfinv_kin .* (d(1).mcid * mc.smp));
     % Due to Mechanical coupling
-    % cal.mec = G(1).c_mec * (G(1).E - Gpassive) * bslip;
+%     cal.mec = G(1).c_mec * (G(1).E - Gpassive) * bslip;
     cal.mec = G(1).c_mec * bslip;
     % Due to Internal strain
     cal.ine = G(1).i * mi.smp;
