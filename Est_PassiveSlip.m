@@ -1602,7 +1602,7 @@ d(1).idl = logical( d(1).idl);
 end
 
 %% Prior function for coupling ratio
-function [pdfmc] = prior_mc(mc,maxmc,minmc)
+function [pdfmc] = prior_mc(mc,minmc,maxmc)
 pdfmc = mc<=maxmc & mc>=minmc;
 end
 
