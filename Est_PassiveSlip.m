@@ -1674,8 +1674,8 @@ mi.old = 1e-10.*(-0.5+rand(mi.n,1,precision));
 mi.old = mi.old.*blk(1).idinter              ;
 % Substitute coordinates of up- and down-dip limit
 ma.old = zeros(ma.n./2,2);
-ma.old(:,1) = blk(1).aline_zd.*(0.6 + rand(ma.n./2,1) ./ 5);
-ma.old(:,2) = blk(1).aline_zd.*(0.1 + rand(ma.n./2,1) ./ 5);
+ma.old(:,1) = blk(1).aline_zu + (blk(1).aline_zd-blk(1).aline_zu).*(0.6 + rand(ma.n./2,1) ./ 5);
+ma.old(:,2) = blk(1).aline_zu + (blk(1).aline_zd-blk(1).aline_zu).*(0.1 + rand(ma.n./2,1) ./ 5);
 ma.old = reshape(ma.old,ma.n,1);
 
 la.old    = zeros(la.n,1,precision);
