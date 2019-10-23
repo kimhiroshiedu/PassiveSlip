@@ -135,7 +135,15 @@ savevector(file,obs,vec.sum);
 % Save vres
 file = fullfile(savedir,'res_vector.txt');
 savevector(file,obs,vec.res);
-
+% Save vrig
+file = fullfile(savedir,'rig_vector.txt');
+savevector(file,obs,vec.rig);
+% Save vmec
+file = fullfile(savedir,'mec_vector.txt');
+savevector(file,obs,vec.mec);
+% Save vkin
+file = fullfile(savedir,'kin_vector.txt');
+savevector(file,obs,vec.kin);
 end
 
 function savevector(file,obs,v)
