@@ -1764,7 +1764,7 @@ while not(count == prm.thr)
     pdfma = prior_ma(blk,ma);
     while sum(~pdfma) > 0
       pdfma = repmat(pdfma,2,1);
-      ma.smp(~pdfmc) = ma.old(~pdfmc) + rwd .* mascale .* -randw + (2 * randw) .* rand(sum(~pdfma),1,precision);
+      ma.smp(~pdfma) = ma.old(~pdfma) + rwd .* mascale .* -randw + (2 * randw) .* rand(sum(~pdfma),1,precision);
       pdfma = prior_ma(blk,ma);
     end
     
