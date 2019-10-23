@@ -1601,6 +1601,18 @@ d(1).idl = logical( d(1).idl);
 
 end
 
+%% Prior function for coupling ratio
+function [pdfmc] = prior_mc(mc,maxmc,minmc)
+pdfmc = mc<=maxmc & mc>=minmc;
+end
+
+%% Prior function for asperity line
+function [pdfma] = prior_ma(blk,ma)
+pdfma = Heaviside(ma.smp(ma.n/2+1:   end)-blk(1).aline_zu) - Heaviside(ma.smp(ma.n/2+1:   end)-blk(1).aline_zd)...
+      .*Heaviside(ma.smp(       1:ma.n/2)-blk(1).aline_zu) - Heaviside(ma.smp(       1:ma.n/2)-blk(1).aline_zu)...
+      .*Heaviside(ma.smp(1:ma.n/2) - ma.smp(ma.n/2+1:end));
+end
+
 %% Estimate mechanical coupled area by MCMC (Metropolis-Hasting)
 function [cal] = Proceed_MCMC_MH(blk,asp,tri,prm,obs,eul,d,G)
 % Test version coded by Hiroshi Kimura in 2019/2/1
@@ -1671,7 +1683,7 @@ res.old   =   inf(   1,1,precision);
 % pri.old =   inf(   1,1,precision);
 
 % Scale adjastment of rwd
-mcscale  = rwd * 1e-3;
+mcscale  = rwd * 5e-4;
 mascale  = rwd * 1e+0;
 mpscale  = rwd * 1e-10 .* ones(mp.n,1,precision) .* ~eul.id;
 miscale  = rwd * 1e-10;
@@ -1708,34 +1720,54 @@ incrate = 0.9^-1;
 while not(count == prm.thr)
   rt   = rt+1;
   nacc = 0;tic
-
+  randw = 1;
   % Random value for each parameter
   logu      = log(rand(prm.cha,1,precision));
-  rmc       =  randn(mc.n,prm.cha,precision);
-  rma       =  randn(ma.n,prm.cha,precision);
-  rmp       =  randn(mp.n,prm.cha,precision);
-  rmi       =  randn(mi.n,prm.cha,precision);
-  rla       =  randn(la.n,prm.cha,precision);
+  rmc       = -randw + (2 * randw) .* rand(mc.n,prm.cha,precision);
+  rma       = -randw + (2 * randw) .* rand(ma.n,prm.cha,precision);
+  rmp       = -randw + (2 * randw) .* rand(mp.n,prm.cha,precision);
+  rmi       = -randw + (2 * randw) .* rand(mi.n,prm.cha,precision);
+  rla       = -randw + (2 * randw) .* rand(la.n,prm.cha,precision);
 
   rmp(         eul.id,:) = 0;
   rmi(~blk(1).idinter,:) = 0;
   for it = 1:prm.cha
-    % Sample section
-    mctmp            = mc.old+0.5.*rwd.*mcscale.*rmc(:,it);
-    id_reject        = mctmp>up_mc | mctmp<lo_mc;
-    mctmp(id_reject) = mc.old(id_reject);
-    mc.smp = mctmp                               ;
+    %% Sample section
+    %     mctmp            = mc.old+rwd.*mcscale.*rmc(:,it);
+    %     id_reject        = mctmp>up_mc | mctmp<lo_mc;
+    %     mctmp(id_reject) = mc.old(id_reject);
+    %     mc.smp = mctmp                               ;
+    %     mp.smp = mp.old + rwd .* mpscale .* rmp(:,it);
+    %     mi.smp = mi.old + rwd .* miscale .* rmi(:,it);
+    %     la.smp = la.old + rwd .*  la.std .* rla(:,it);
+    %     ma.smp = ma.old + rwd .* mascale .* rma(:,it);
+    %     %     id_reject = [ma.smp(       1:ma.n/2) < 0 | ma.smp(       1:ma.n/2) > blk(1).aline_zd                                           ;...
+    %     %                  ma.smp(ma.n/2+1:   end) < 0 | ma.smp(ma.n/2+1:   end) > blk(1).aline_zd | ma.smp(1:ma.n/2) < ma.smp(ma.n/2+1:end)];
+    %     id_reject = [ false(ma.n/2,1)                                                  ;...
+    %                  ma.smp(ma.n/2+1:end) < blk(1).aline_zu | ma.smp(ma.n/2+1:end) > blk(1).aline_zd];
+    %     ma.smp(id_reject) = ma.old(id_reject);
+    %     ma.smp(1:ma.n/2) = max(min(ma.smp(1:ma.n/2),blk(1).aline_zd),ma.smp(ma.n/2+1:end));
+
+    %% Sample section (new method)
+    mc.smp = mc.old + rwd .* mcscale .* rmc(:,it);
     mp.smp = mp.old + rwd .* mpscale .* rmp(:,it);
     mi.smp = mi.old + rwd .* miscale .* rmi(:,it);
     la.smp = la.old + rwd .*  la.std .* rla(:,it);
     ma.smp = ma.old + rwd .* mascale .* rma(:,it);
-    %     id_reject = [ma.smp(       1:ma.n/2) < 0 | ma.smp(       1:ma.n/2) > blk(1).aline_zd                                           ;...
-    %                  ma.smp(ma.n/2+1:   end) < 0 | ma.smp(ma.n/2+1:   end) > blk(1).aline_zd | ma.smp(1:ma.n/2) < ma.smp(ma.n/2+1:end)];
-    id_reject = [ false(ma.n/2,1)                                                  ;...
-                 ma.smp(ma.n/2+1:end) < blk(1).aline_zu | ma.smp(ma.n/2+1:end) > blk(1).aline_zd];
-    ma.smp(id_reject) = ma.old(id_reject);
-    ma.smp(1:ma.n/2) = max(min(ma.smp(1:ma.n/2),blk(1).aline_zd),ma.smp(ma.n/2+1:end));
-
+    % Re-sampling coupling ratio
+    pdfmc = prior_mc(mc.smp,lo_mc,up_mc);
+    while sum(~pdfmc) > 0
+      mc.smp(~pdfmc) = mc.old(~pdfmc) + rwd .* mcscale .* randn(sum(~pdfmc),1);
+      pdfmc = prior_mc(mc.smp,lo_mc,up_mc);
+    end
+    % Re-sampling asperity line
+    pdfma = prior_ma(blk,ma);
+    while sum(~pdfma) > 0
+      pdfma = repmat(pdfma,2,1);
+      ma.smp(~pdfmc) = ma.old(~pdfmc) + rwd .* mascale .* randn(sum(~pdfma),1);
+      pdfma = prior_ma(blk,ma);
+    end
+    
     % Calc gpu memory free capacity
     if prm.gpu ~= 99
       byte1 = whos('G');
