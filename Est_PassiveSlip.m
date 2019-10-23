@@ -1757,14 +1757,14 @@ while not(count == prm.thr)
     % Re-sampling coupling ratio
     pdfmc = prior_mc(mc.smp,lo_mc,up_mc);
     while sum(~pdfmc) > 0
-      mc.smp(~pdfmc) = mc.old(~pdfmc) + rwd .* mcscale .* randn(sum(~pdfmc),1);
+      mc.smp(~pdfmc) = mc.old(~pdfmc) + rwd .* mcscale .* -randw + (2 * randw) .* rand(sum(~pdfmc),1,precision);
       pdfmc = prior_mc(mc.smp,lo_mc,up_mc);
     end
     % Re-sampling asperity line
     pdfma = prior_ma(blk,ma);
     while sum(~pdfma) > 0
       pdfma = repmat(pdfma,2,1);
-      ma.smp(~pdfmc) = ma.old(~pdfmc) + rwd .* mascale .* randn(sum(~pdfma),1);
+      ma.smp(~pdfmc) = ma.old(~pdfmc) + rwd .* mascale .* -randw + (2 * randw) .* rand(sum(~pdfma),1,precision);
       pdfma = prior_ma(blk,ma);
     end
     
