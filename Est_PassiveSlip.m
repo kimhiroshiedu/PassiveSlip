@@ -1581,19 +1581,18 @@ d(1).idl = zeros(blk(1).ntmec,1);
 mm1 = 1;
 for nb1 = 1:blk(1).nblock
   for nb2 = nb1+1:blk(1).nblock
-    if blk(1).bound(nb1,nb2).flag2 == 1
-    else
-    end
     nf = size(tri(1).bound(nb1,nb2).clon,2);
     if nf ~= 0
-      for np = 1:size(blk(1).bound(nb1,nb2).patch,2)
-        slipid = inpolygon(tri(1).bound(nb1,nb2).clon,...
-                           tri(1).bound(nb1,nb2).clat,...
-                           blk(1).bound(nb1,nb2).patch(np).lon,...
-                           blk(1).bound(nb1,nb2).patch(np).lat);
-        d(1).idl(mm1:mm1+nf-1) = d(1).idl(mm1:mm1+nf-1) | slipid';
+      if blk(1).bound(nb1,nb2).flag2 == 1
+        for np = 1:size(blk(1).bound(nb1,nb2).patch,2)
+          slipid = inpolygon(tri(1).bound(nb1,nb2).clon,...
+                             tri(1).bound(nb1,nb2).clat,...
+                             blk(1).bound(nb1,nb2).patch(np).lon,...
+                             blk(1).bound(nb1,nb2).patch(np).lat);
+          d(1).idl(mm1:mm1+nf-1) = d(1).idl(mm1:mm1+nf-1) | slipid';
+        end
+        mm1 = mm1 + nf;
       end
-      mm1 = mm1 + nf;
     end
   end
 end
