@@ -10,123 +10,12 @@ load(fullfile(result_dir,'/cal.mat'));fprintf('load\n')
 fprintf('Now loading %s ...',fullfile(result_dir,'/grn.mat'))
 load(fullfile(result_dir,'/grn.mat'));fprintf('load\n')
 
-ExportSlipDeficit(result_dir,cal,blk,d);
+ExportBackSlip(result_dir,cal,blk);
 ExportAsperities(folder,blk);
 ExportVectors(result_dir,obs,cal);
-ExportStressStrain(result_dir,blk,d,G,cal);
+% ExportStressStrain(result_dir,blk,d,G,cal);
 
 fprintf('Files exported. \n');
-end
-
-%% Save slip deficit to txt files
-function ExportSlipDeficit(folder,cal,blk,d)
-mm3 = 1;
-mm1 = 1;
-dir_out = [folder,'/backslip'];
-exid = exist(dir_out);
-if exid~=7; mkdir(dir_out); end
-
-for nb1 = 1:blk(1).nblock
-  for nb2 = nb1+1:blk(1).nblock
-    nf = size(blk(1).bound(nb1,nb2).blon,1);
-    if nf~=0
-      if blk(1).bound(nb1,nb2).flag2 == 1
-        fid     = fopen([dir_out,'/bs_',num2str(nb1),'_',num2str(nb2),'.txt'],'w');
-        clon    = mean(blk(1).bound(nb1,nb2).blon,2);
-        clat    = mean(blk(1).bound(nb1,nb2).blat,2);
-        cdep    = mean(blk(1).bound(nb1,nb2).bdep,2);
-        sdr0    = sqrt(  cal.aslip(mm3     :mm3+  nf-1).^2 ...
-                       + cal.aslip(mm3+  nf:mm3+2*nf-1).^2 ...
-                       + cal.aslip(mm3+2*nf:mm3+3*nf-1).^2 );     % slip deficit before shear stress released
-        sdr1    = sqrt(  cal.bslip(mm3     :mm3+  nf-1).^2 ...
-                       + cal.bslip(mm3+  nf:mm3+2*nf-1).^2 ...
-                       + cal.bslip(mm3+2*nf:mm3+3*nf-1).^2 );     % slip deficit after shear stress released
-        flt_id  = mm1:mm1+nf-1;
-        
-        outdata = [flt_id' ...
-                   blk(1).bound(nb1,nb2).blon ...
-                   blk(1).bound(nb1,nb2).blat ...
-                   blk(1).bound(nb1,nb2).bdep ...
-                   clon clat cdep ...
-                   sdr1 sdr0];
-        
-        fprintf(fid,'# %6s %7s %7s %7s %7s %7s %7s %7s %7s %7s %7s %7s %7s %10s %10s \n',...
-                        'tri_no','lon1','lon2','lon3','lat1','lat2','lat3','dep1','dep2','dep3',...
-                        'c_lon','c_lat','c_dep','sdr[mm/yr]','sdr_int');
-        fprintf(fid,'%8d %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %10.4f %10.4f \n',outdata');
-        fclose(fid);
-        mm1 = mm1 +   nf;
-        mm3 = mm3 + 3*nf;
-      end
-    end
-  end
-end
-
-end
-
-%% Export asperities
-function ExportAsperities(folder,blk)
-dir_out = [folder,'/backslip'];
-exid = exist(dir_out);
-if exid~=7; mkdir(dir_out); end
-for nb1 = 1:blk(1).nblock
-  for nb2 = nb1+1:blk(1).nblock
-    nf = size(blk(1).bound(nb1,nb2).blon,1);
-    if nf ~= 0
-      if blk(1).bound(nb1,nb2).flag2 == 1
-        fid = fopen([dir_out,'/patchb_',num2str(nb1),'_',num2str(nb2),'.txt'],'w');
-        for np = 1:size(blk(1).bound(nb1,nb2).patch,2)
-          fprintf(fid,'> \n');
-          patch = [blk(1).bound(nb1,nb2).patch(np).lon; ...
-                   blk(1).bound(nb1,nb2).patch(np).lat];
-          fprintf(fid,'%10.4f %10.4f \n',patch);
-        end
-        fclose(fid);
-      end
-    end
-  end
-end
-
-end
-
-%% Export vectors of calculation, observation, residual vector
-function ExportVectors(folder,obs,cal)
-% 
-% Calculate vector based on sampled parameter and green function
-calvec.rig = cal.rig;
-calvec.ela = cal.ela;
-calvec.ine = cal.ine;
-calvec.sum = cal.smp;
-% Calculate residual vectors
-obsv = [     obs(1).evec ;      obs(1).nvec ;      obs(1).hvec ];
-calv = [cal.smp(1:3:end)'; cal.smp(2:3:end)'; cal.smp(3:3:end)'];
-resvec.sum=obsv-calv;
-% 
-% Save to txt files
-odir = [folder,'/vector'];
-exid = exist(odir);
-if exid~=7; mkdir(odir); end
-obsvec = [obs(1).alon;obs(1).alat;obs(1).evec;obs(1).nvec;obs(1).hvec];
-calvec.rig = [obs(1).alon;obs(1).alat;calvec.rig(1:3:end)';calvec.rig(2:3:end)';calvec.rig(3:3:end)'];
-calvec.ela = [obs(1).alon;obs(1).alat;calvec.ela(1:3:end)';calvec.ela(2:3:end)';calvec.ela(3:3:end)'];
-calvec.sum = [obs(1).alon;obs(1).alat;calvec.sum(1:3:end)';calvec.sum(2:3:end)';calvec.sum(3:3:end)'];
-resvec.sum = [obs(1).alon;obs(1).alat;resvec.sum];
-fid = fopen([odir,'/obs_vector.txt'],'w');
-fprintf(fid,'%f %f %f %f %f\n',obsvec);
-fclose(fid);
-fid = fopen([odir,'/cal_vector.txt'],'w');
-fprintf(fid,'%f %f %f %f %f\n',calvec.sum);
-fclose(fid);
-fid = fopen([odir,'/cal_vector_rig_site.txt'],'w');
-fprintf(fid,'%f %f %f %f %f\n',calvec.rig);
-fclose(fid);
-fid = fopen([odir,'/cal_vector_ela_site.txt'],'w');
-fprintf(fid,'%f %f %f %f %f\n',calvec.ela);
-fclose(fid);
-fid = fopen([odir,'/res_vector.txt'],'w');
-fprintf(fid,'%f %f %f %f %f\n',resvec.sum);
-fclose(fid);
-% 
 end
 
 %% Export stress and strain
@@ -199,7 +88,6 @@ end
 
 end
 
-%%
 function Stress = StrainToStress(Strain, lambda, mu)
 % StressToStrain.m
 %
@@ -244,5 +132,147 @@ Stress.yz = 2.*mu.*Strain.yz;
 Stress.I1 = Stress.xx + Stress.yy + Stress.zz;
 Stress.I2 = -(Stress.xx.*Stress.yy + Stress.yy.*Stress.zz + Stress.xx.*Stress.zz) + Stress.xy.*Stress.xy + Stress.xz.*Stress.xz + Stress.yz.*Stress.yz;
 Stress.I3 = Stress.xx.*Stress.yy.*Stress.zz + 2.*Stress.xy.*Stress.xz.*Stress.yz - (Stress.xx.*Stress.yz.*Stress.yz + Stress.yy.*Stress.xz.*Stress.xz + Stress.zz.*Stress.xy.*Stress.xy);
+
+end
+
+%% Export vectors of calculation, observation, residual vector
+function ExportVectors(folder,obs,cal)
+% 
+% Calculate vector based on sampled parameter and green function
+cal.res = reshape([obs(1).evec;obs(1).nvec;obs(1).hvec],3*obs(1).nobs,1) - cal.smp;
+% 
+% Save to txt files
+odir = [folder,'/vector'];
+exid = exist(odir);
+if exid~=7; mkdir(odir); end
+% Save vobs
+fobs = fopen(fullfile(odir,'obs_vector.txt'),'wt');
+fprintf(fobs,'# site lon  lat  hei  ve   vn   vu   se   sn   su\n');
+for nob = 1:obs(1).nobs
+  fprintf(fobs,'%s %f %f %f %6.2f %6.2f %6.2f %6.2f %6.2f %6.2f\n',...
+      obs(1).name{nob},obs(1).alon(nob),obs(1).alat(nob),obs(1).ahig(nob),...
+      obs(1).evec(nob),obs(1).nvec(nob),obs(1).hvec(nob),obs(1).eerr(nob),obs(1).nerr(nob),obs(1).herr(nob));
+end
+fclose(fobs);
+% 
+% Save vcal
+file = fullfile(odir,'cal_vector.txt');
+savevector(file,obs,cal.smp);
+% Save vres
+file = fullfile(odir,'res_vector.txt');
+savevector(file,obs,cal.res);
+% Save vrig
+file = fullfile(odir,'rig_vector.txt');
+savevector(file,obs,cal.rig);
+% Save vmec
+file = fullfile(odir,'mec_vector.txt');
+savevector(file,obs,cal.mec);
+% Save vkin
+file = fullfile(odir,'kin_vector.txt');
+savevector(file,obs,cal.kin);
+end
+
+function savevector(file,obs,v)
+ve = v(1:3:end);
+vn = v(2:3:end);
+vu = v(3:3:end);
+fid = fopen(file,'wt');
+fprintf(fid,'# site lon  lat  hei  ve   vn   vu\n');
+for nob = 1:obs(1).nobs
+  fprintf(fid,'%s %f %f %f %6.2f %6.2f %6.2f\n',...
+      obs(1).name{nob},obs(1).alon(nob),obs(1).alat(nob),obs(1).ahig(nob),...
+      ve(nob),vn(nob),vu(nob));
+end
+fclose(fid);
+end
+
+%% Export asperities
+function ExportAsperities(folder,blk)
+dir_out = [folder,'/backslip'];
+exid = exist(dir_out);
+if exid~=7; mkdir(dir_out); end
+for nb1 = 1:blk(1).nblock
+  for nb2 = nb1+1:blk(1).nblock
+    nf = size(blk(1).bound(nb1,nb2).blon,1);
+    if nf ~= 0
+      if blk(1).bound(nb1,nb2).flag2 == 1
+        fid = fopen([dir_out,'/patchb_',num2str(nb1),'_',num2str(nb2),'.txt'],'w');
+        for np = 1:size(blk(1).bound(nb1,nb2).patch,2)
+          fprintf(fid,'> \n');
+          patch = [blk(1).bound(nb1,nb2).patch(np).lon; ...
+                   blk(1).bound(nb1,nb2).patch(np).lat];
+          fprintf(fid,'%10.4f %10.4f \n',patch);
+        end
+        fclose(fid);
+      end
+    end
+  end
+end
+
+end
+
+%% Save slip deficit to txt files
+function ExportBackSlip(folder,cal,blk)
+savedir = fullfile(folder,'backslip');
+if exist(savedir) ~=7; mkdir(savedir); end
+mm1m = 1;
+mm3m = 1;
+mm1k = 1;
+mm3k = 1;
+mm1  = 1;
+mm3  = 1;
+for nb1 = 1:blk(1).nblock
+  for nb2 = nb1+1:blk(1).nblock
+    nf = size(blk(1).bound(nb1,nb2).blon,1);
+    if nf ~= 0
+      fltnum = mm1:mm1+nf-1;
+      clon = mean(blk(1).bound(nb1,nb2).blon,2);
+      clat = mean(blk(1).bound(nb1,nb2).blat,2);
+      cdep = mean(blk(1).bound(nb1,nb2).bdep,2);
+      if blk(1).bound(nb1,nb2).flag2 == 1
+        file = fullfile(savedir,['trimec_',num2str(nb1),'_',num2str(nb2),'.txt']);
+        fmec = fopen(file,'wt');
+        bslip_st  = cal.bslip( mm3m     :mm3m+  nf-1);
+        bslip_dp  = cal.bslip( mm3m+  nf:mm3m+2*nf-1);
+        bslip_ts  = cal.bslip( mm3m+2*nf:mm3m+3*nf-1);
+        bslipl_st = cal.aslip(mm3m     :mm3m+  nf-1);
+        bslipl_dp = cal.aslip(mm3m+  nf:mm3m+2*nf-1);
+        bslipl_ts = cal.aslip(mm3m+2*nf:mm3m+3*nf-1);
+        outdata = [fltnum',...
+            blk(1).bound(nb1,nb2).blon,...
+            blk(1).bound(nb1,nb2).blat,...
+            blk(1).bound(nb1,nb2).bdep,...
+            clon,clat,cdep,...
+            bslip_st, bslip_dp, bslip_ts,...
+            bslipl_st,bslipl_dp,bslipl_ts];
+        fprintf(fmec,'# tri lon1 lon2 lon3 lat1 lat2 lat3 dep1 dep2 dep3 clon clat cdep bslip_st bslip_dp bslip_ts bslipl_st bslipl_dp bslipl_ts\n');
+        fprintf(fmec,'%6i %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f\n',outdata');
+        fclose(fmec);
+        mm1m = mm1m +   nf;
+        mm3m = mm3m + 3*nf;
+      else
+        %         file = fullfile(savedir,['trikin_',num2str(nb1),'_',num2str(nb2),'.txt']);
+        %         fkin = fopen(file,'wt');
+        %         sdr_st  = bslip.kin(mm3k     :mm3k+  nf-1);
+        %         sdr_dp  = bslip.kin(mm3k+  nf:mm3k+2*nf-1);
+        %         sdr_ts  = bslip.kin(mm3k+2*nf:mm3k+3*nf-1);
+        %         cpmean  = tcha.aveflt(mm1k:mm1k+nf-1);
+        %         outdata = [fltnum',...
+        %             blk(1).bound(nb1,nb2).blon,...
+        %             blk(1).bound(nb1,nb2).blat,...
+        %             blk(1).bound(nb1,nb2).bdep,...
+        %             clon,clat,cdep,...
+        %             cpmean, sdr_st, sdr_dp, sdr_ts];
+        %         fprintf(fkin,'# tri lon1 lon2 lon3 lat1 lat2 lat3 dep1 dep2 dep3 clon clat cdep coupling sdr_st sdr_dp sdr_ts\n');
+        %         fprintf(fkin,'%6i %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %10.4f %10.4f %10.4f %10.4f\n',outdata');
+        %         fclose(fkin);
+        mm1k = mm1k +   nf;
+        mm3k = mm3k + 3*nf;
+      end
+      mm1 = mm1 +   nf;
+      mm3 = mm3 + 3*nf;
+    end
+  end
+end
 
 end
