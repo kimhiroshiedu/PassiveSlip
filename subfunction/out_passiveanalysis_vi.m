@@ -17,7 +17,8 @@ G(1).tb_mec = full(G(1).tb_mec);
 
 [bslip,vec] = CalcOptimumValue(prm,obs,tcha,G,d);
 [blk] = AsperityPoint(blk,obs);
-SaveAsperityPoint(savedir,blk)
+SaveAsperitySegmentArea(savedir,blk,obs,tcha)
+SaveAsperityPoint(savedir,blk);
 SavePoles(savedir,blk,tcha);
 SaveBackslip(savedir,blk,tcha,bslip);
 SaveVectors(savedir,obs,vec);
@@ -270,6 +271,45 @@ fprintf(fid,'%3i %10.4f %10.4f %10.4f %10.4f \n',...
 fclose(fid);
 end
 
+%% calc asperity segment area
+function SaveAsperitySegmentArea(folder,blk,obs,tcha)
+savedir = fullfile(folder,'backslip');
+if exist(savedir) ~=7; mkdir(savedir); end
+alat0 = mean(obs(1).alat,2);
+alon0 = mean(obs(1).alon,2);
+mm1m = 1;
+mm3m = 1;
+mm1k = 1;
+mm3k = 1;
+mm1  = 1;
+mm3  = 1;
+for nb1 = 1:blk(1).nblock
+  for nb2 = nb1+1:blk(1).nblock
+    nf = size(blk(1).bound(nb1,nb2).blon,1);
+    if nf ~= 0
+      [trix,triy] = PLTXY(blk(1).bound(nb1,nb2).blat,blk(1).bound(nb1,nb2).blon,alat0,alon0);
+      triz = blk(1).bound(nb1,nb2).bdep;
+      area = zeros(size(blk(1).bound(nb1,nb2).blat,1),1);
+      for ntri = 1:size(blk(1).bound(nb1,nb2).blat,1)
+        area(ntri) = triangle_area([trix(ntri,:)', triy(ntri,:)', triz(ntri,:)']);
+      end
+      blk(1).bound(nb1,nb2).triarea = area;
+      if blk(1).bound(nb1,nb2).flag2 == 1
+        asp(1).bound(nb1,nb2).smparea = blk(1).bound(nb1,nb2).triarea' * tcha.smpaspid(mm1m:mm1m+nf-1,:);
+        mm1m = mm1m +   nf;
+        mm3m = mm3m + 3*nf;
+      else
+        mm1k = mm1k +   nf;
+        mm3k = mm3k + 3*nf;          
+      end
+      mm1 = mm1 +   nf;
+      mm3 = mm3 + 3*nf;
+    end
+  end
+end
+save(fullfile(savedir,'asp'),'asp');
+end
+
 %% Show asperity edge point indices
 function [blk] = AsperityPoint(blk,obs)
 blk(1).naspline  =  0;
@@ -341,6 +381,46 @@ vec.res = vobs - vec.sum;
 
 end
 
+%%
+function [area]=triangle_area(P,method)
+% This function gives the area of a triangle
+%
+% [area]=triangle_area(Points, Method)
+%
+% Points: The Points should be a numeric array, of size 3xn, 
+%         thus the points can be 2D, 3D... nD
+% Method: Can be 'h' area calculation with Heron's formula 
+%         or can be 'q' Orthogonal-triangular decomposition (default)
+%
+% Example: 
+% P1=[0 0]; P2=[1 0.5]; P3=[0.5 1];
+% area = triangle_area([P1;P2;P3])
+%
+% Version 1.1 updated on 2007-09-21 
+% Added 'Orthogonal-triangular decomposition' after a usefull review of John D'Errico 
+
+% Default output format
+if(exist('method','var')==0), method='q'; end
+
+% Check input
+if((method~='h')&&(method~='q')), error('Unknown area calculation method'); end
+[k,m]=size(P); if(k~=3), error('Points are not a 3xn array'); end
+
+if(method=='h')
+    % Length of edges
+    L=[sqrt(sum((P(1,:)-P(2,:)).^2)) sqrt(sum((P(2,:)-P(3,:)).^2)) sqrt(sum((P(3,:)-P(1,:)).^2))];
+    
+    % Area calculation with Heron's formula
+    s = ((L(1)+L(2)+L(3))/2); 
+    area = sqrt(s*(s-L(1))*(s-L(2))*(s-L(3)));
+else
+    % Area calculation with Orthogonal-triangular decomposition
+    [q,r] = qr((P(2:3,:) - repmat(P(1,:),2,1))');
+    area=abs(prod(diag(r)))/2;
+end
+    
+end
+
 %% Heaviside step function
 function y = Heaviside(x)
 % Calculate Heveaside step function
@@ -358,4 +438,31 @@ function [lat,lon,ang]=xyzp2lla(X,Y,Z)
 lat=atan2(Z,sqrt(X.*X+Y.*Y)).*180/pi;
 lon=atan2(Y,X).*180/pi;
 ang=sqrt(X.*X+Y.*Y+Z.*Z).*(1e6.*(180./pi));
+end
+
+function [X,Y]=PLTXY(ALAT,ALON,ALAT0,ALON0)
+%-------------------
+%  PLTXY TRANSFORMS (ALAT,ALONG) TO (X,Y)
+%  WHEN ICORD.NE.0  PLTXY MAKES NO CHANGE IN 
+%  TRANSFORMATION BETWEEN (X,Y) AND (ALAT,ALONG).
+%-------------------
+A=6.378160e3;
+E2=6.6944541e-3;
+E12=6.7395719e-3;
+D=5.72958e1;
+RD=1.0/D;
+RLAT = RD.*ALAT;
+SLAT = sin(RLAT);
+CLAT = cos(RLAT);
+V2   = 1.0 + E12.*CLAT.^2;
+AL   = ALON-ALON0;
+PH1  = ALAT + (V2.*AL.^2.*SLAT.*CLAT)./(2.0*D);
+RPH1 = PH1.*RD;
+RPH2 = (PH1 + ALAT0).*0.5.*RD;
+R    = A.*(1.0-E2)./sqrt((1.0-E2.*sin(RPH2).^2).^3);
+AN   = A./sqrt(1.0-E2.*sin(RPH1).^2);
+C1   = D./R;
+C2   = D./AN;
+Y    = (PH1-ALAT0)./C1;
+X    = (AL.*CLAT)./C2+(AL.^3.*CLAT.*cos(2.0.*RLAT))./(6.0.*C2.*D.^2);
 end
