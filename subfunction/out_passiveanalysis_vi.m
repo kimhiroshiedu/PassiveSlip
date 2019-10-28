@@ -15,6 +15,7 @@ load(fullfile(savedir,'/tcha.mat'));fprintf('load\n')
 G(1).tb_kin = full(G(1).tb_kin);
 G(1).tb_mec = full(G(1).tb_mec);
 
+[blk] = ReadAsperityRegions(savedir,blk,prm);
 [bslip,vec] = CalcOptimumValue(prm,obs,tcha,G,d);
 [blk] = AsperityPoint(blk,obs);
 SaveAsperitySegmentArea(savedir,blk,obs,tcha)
@@ -289,15 +290,25 @@ for nb1 = 1:blk(1).nblock
     if nf ~= 0
       [trix,triy] = PLTXY(blk(1).bound(nb1,nb2).blat,blk(1).bound(nb1,nb2).blon,alat0,alon0);
       triz = blk(1).bound(nb1,nb2).bdep;
+      [tricx,tricy] = PLTXY(mean(blk(1).bound(nb1,nb2).blat,2),mean(blk(1).bound(nb1,nb2).blon,2),alat0,alon0);
+      tricz = mean(blk(1).bound(nb1,nb2).bdep,2);
       area = zeros(size(blk(1).bound(nb1,nb2).blat,1),1);
       for ntri = 1:size(blk(1).bound(nb1,nb2).blat,1)
         area(ntri) = triangle_area([trix(ntri,:)', triy(ntri,:)', triz(ntri,:)']);
       end
       blk(1).bound(nb1,nb2).triarea = area;
       if blk(1).bound(nb1,nb2).flag2 == 1
-        asp(1).bound(nb1,nb2).smparea = blk(1).bound(nb1,nb2).triarea' * tcha.smpaspid(mm1m:mm1m+nf-1,:);
+        if blk(1).bound(nb1,nb2).segmentid == 1
+          for nseg = 1:size(blk(1).bound(nb1,nb2).segment,2)
+            [edgex,edgey] = PLTXY(blk(1).bound(nb1,nb2).segment(nseg).lat,blk(1).bound(nb1,nb2).segment(nseg).lon,alat0,alon0);
+            segid = inpolygon(tricx,tricy,edgex,edgey);
+            asp(1).bound(nb1,nb2).segment(nseg).smparea = segid'.*blk(1).bound(nb1,nb2).triarea' * tcha.smpaspid(mm1m:mm1m+nf-1,:);
+          end
+        else
+          asp(1).bound(nb1,nb2).smparea = blk(1).bound(nb1,nb2).triarea' * tcha.smpaspid(mm1m:mm1m+nf-1,:);
+        end
         mm1m = mm1m +   nf;
-        mm3m = mm3m + 3*nf;
+        mm3m = mm3m + 3*nf;  
       else
         mm1k = mm1k +   nf;
         mm3k = mm3k + 3*nf;          
@@ -379,6 +390,45 @@ vec.sum = vec.rig + vec.kin + vec.mec + vec.ine;
 vobs = reshape([obs(1).evec; obs(1).nvec; obs(1).hvec],3*obs(1).nobs,1);
 vec.res = vobs - vec.sum;
 
+end
+
+%% Read asperity regions
+function [blk] = ReadAsperityRegions(savedir,blk,prm)
+%    Test version coded by H. Kimura 2019/1/29
+% Revised version coded by H. Kimura 2019/2/5
+
+for nb1 = 1:blk(1).nblock
+  for nb2 = nb1+1:blk(1).nblock
+    if blk(1).bound(nb1,nb2).flag2 == 1
+      blk(1).bound(nb1,nb2).segmentid = 0;
+      patchfile = fullfile(savedir,'backslip',['segments_',num2str(nb1),'_',num2str(nb2),'.txt']);
+      fid       = fopen(patchfile,'r');
+      if fid >= 0
+        blk(1).bound(nb1,nb2).segmentid = 1;
+        np    = 0;
+        n     = 0;
+        while 1
+          tline = fgetl(fid);
+          if ~ischar(tline) ; break; end
+          if tline(1) ~= '>'
+            n   = n+1;
+            tmp = strsplit(strtrim(tline));
+            blk(1).bound(nb1,nb2).segment(np+1).lon(n) = str2double(cellstr(tmp(1)));
+            blk(1).bound(nb1,nb2).segment(np+1).lat(n) = str2double(cellstr(tmp(2)));
+          else
+            np = np+1;
+            n  = 0;
+            continue;
+          end
+        end
+      else
+        %         error(['Not found', patchfile]);
+      end
+    end
+  end
+end
+
+fprintf('=== Read Locked Patches=== \n');
 end
 
 %%
