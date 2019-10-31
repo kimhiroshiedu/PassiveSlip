@@ -1985,8 +1985,8 @@ alat = mean(obs(1).alat(:));
 alon = mean(obs(1).alon(:));
 
 % Heaviside of asperity limit line
-Hu = Heaviside(G(1).zulim - G(1).zc);
-Hd = Heaviside(G(1).zdlim - G(1).zc);
+Hu = repmat(Heaviside(G(1).zulim - G(1).zc),1,prm.nrep);
+Hd = repmat(Heaviside(G(1).zdlim - G(1).zc),1,prm.nrep);
 Hlim = Hd - Hu;
 
 % Initial value
@@ -2012,42 +2012,41 @@ ma.n   = 2.*blk(1).naspline;
 la.n   = 1;
 
 % Initial std
-mp.std = mp.int.*ones(mp.n,1,precision);
-mi.std = mi.int.*ones(mi.n,1,precision);
-ma.std = ma.int.*ones(ma.n,1,precision);
-la.std = la.int.*ones(la.n,1,precision);
+mp.std = mp.int.*ones(mp.n,prm.nrep,precision);
+mi.std = mi.int.*ones(mi.n,prm.nrep,precision);
+ma.std = ma.int.*ones(ma.n,prm.nrep,precision);
+la.std = la.int.*ones(la.n,prm.nrep,precision);
 
 % Substitute coupling ratio
-mc.old = rand(blk(1).ntkin,1);
+mc.old = rand(blk(1).ntkin,prm.nrep);
 % Substitute euler pole vectors
-mp.old         = double(blk(1).pole);
-mp.old(eul.id) = 0                  ;
-mp.old         = mp.old+eul.fixw    ;
+mp.old           = repmat(double(blk(1).pole),1,prm.nrep);
+mp.old(eul.id,:) = 0                                     ;
+mp.old           = mp.old+repmat(eul.fixw,1,prm.nrep)    ;
 % Substitute internal strain tensors
-mi.old = 1e-10.*(-0.5+rand(mi.n,1,precision));
-mi.old = mi.old.*blk(1).idinter              ;
+mi.old = 1e-10.*(-0.5+rand(mi.n,prm.nrep,precision));
+mi.old = mi.old.*repmat(blk(1).idinter,1,prm.nrep)  ;
 % Substitute coordinates of up- and down-dip limit
-ma.old = zeros(ma.n./2,2);
-ma.old(:,1) = blk(1).aline_zd.*(0.6 + rand(ma.n./2,1) ./ 5);
-ma.old(:,2) = blk(1).aline_zd.*(0.1 + rand(ma.n./2,1) ./ 5);
-ma.old = reshape(ma.old,ma.n,1);
+ma.old = zeros(ma.n,prm.nrep);
+ma.old(       1:ma.n/2,:) = blk(1).aline_zu + repmat(blk(1).aline_zd-blk(1).aline_zu,1,prm.nrep).*(0.6 + rand(ma.n./2,prm.nrep) ./ 5);
+ma.old(ma.n/2+1:   end,:) = blk(1).aline_zu + repmat(blk(1).aline_zd-blk(1).aline_zu,1,prm.nrep).*(0.1 + rand(ma.n./2,prm.nrep) ./ 5);
 
-la.old    = zeros(la.n,1,precision);
-res.old   =   inf(   1,1,precision);
-% pri.old =   inf(   1,1,precision);
+la.old    = zeros(la.n,prm.nrep,precision);
+res.old   =   inf(   1,prm.nrep,precision);
+% pri.old   =   inf(   1,prm.nrep,precision);
 
 % Scale adjastment of rwd
-mcscale  = rwd * 1e-3;
+mcscale  = rwd * 5e-4;
 mascale  = rwd * 1e+0;
-mpscale  = rwd * 1e-10 .* ones(mp.n,1,precision) .* ~eul.id;
+mpscale  = rwd * 1e-10 .* repmat(ones(mp.n,1,precision).*~eul.id,1,prm.nrep);
 miscale  = rwd * 1e-10;
 
 % Initial chains
-cha.mp = zeros(mp.n,prm.kep,precision);
-cha.mi = zeros(mi.n,prm.kep,precision);
-cha.ma = zeros(ma.n,prm.kep,precision);
-cha.mc = zeros(mc.n,prm.kep,precision);
-cha.la = zeros(la.n,prm.kep,precision);
+cha.mp = zeros(mp.n,prm.kep,prm.nrep,precision);
+cha.mi = zeros(mi.n,prm.kep,prm.nrep,precision);
+cha.ma = zeros(ma.n,prm.kep,prm.nrep,precision);
+cha.mc = zeros(mc.n,prm.kep,prm.nrep,precision);
+cha.la = zeros(la.n,prm.kep,prm.nrep,precision);
 
 % GPU conversion
 if prm.gpu ~= 99
@@ -2074,34 +2073,38 @@ incrate = 0.9^-1;
 while not(count == prm.thr)
   rt   = rt+1;
   nacc = 0;tic
-
+  randw = 1;
   % Random value for each parameter
-  logu      = log(rand(prm.cha,1,precision));
-  rmc       =  randn(mc.n,prm.cha,precision);
-  rma       =  randn(ma.n,prm.cha,precision);
-  rmp       =  randn(mp.n,prm.cha,precision);
-  rmi       =  randn(mi.n,prm.cha,precision);
-  rla       =  randn(la.n,prm.cha,precision);
+  logu      = log(rand(prm.cha,1,prm.nrep,precision));
+  rmc       = -randw + (2 * randw) .* rand(mc.n,prm.cha,prm.nrep,precision);
+  rma       = -randw + (2 * randw) .* rand(ma.n,prm.cha,prm.nrep,precision);
+  rmp       = -randw + (2 * randw) .* rand(mp.n,prm.cha,prm.nrep,precision);
+  rmi       = -randw + (2 * randw) .* rand(mi.n,prm.cha,prm.nrep,precision);
+  rla       = -randw + (2 * randw) .* rand(la.n,prm.cha,prm.nrep,precision);
 
-  rmp(         eul.id,:) = 0;
-  rmi(~blk(1).idinter,:) = 0;
+  rmp(         eul.id,:,:) = 0;
+  rmi(~blk(1).idinter,:,:) = 0;
   for it = 1:prm.cha
     % Sample section
-    mctmp            = mc.old+0.5.*rwd.*mcscale.*rmc(:,it);
-    id_reject        = mctmp>up_mc | mctmp<lo_mc;
-    mctmp(id_reject) = mc.old(id_reject);
-    mc.smp = mctmp                               ;
-    mp.smp = mp.old + rwd .* mpscale .* rmp(:,it);
-    mi.smp = mi.old + rwd .* miscale .* rmi(:,it);
-    la.smp = la.old + rwd .*  la.std .* rla(:,it);
-    ma.smp = ma.old + rwd .* mascale .* rma(:,it);
-    %     id_reject = [ma.smp(       1:ma.n/2) < 0 | ma.smp(       1:ma.n/2) > blk(1).aline_zd                                           ;...
-    %                  ma.smp(ma.n/2+1:   end) < 0 | ma.smp(ma.n/2+1:   end) > blk(1).aline_zd | ma.smp(1:ma.n/2) < ma.smp(ma.n/2+1:end)];
-    id_reject = [ false(ma.n/2,1)                                                  ;...
-                 ma.smp(ma.n/2+1:end) < blk(1).aline_zu | ma.smp(ma.n/2+1:end) > blk(1).aline_zd];
-    ma.smp(id_reject) = ma.old(id_reject);
-    ma.smp(1:ma.n/2) = max(min(ma.smp(1:ma.n/2),blk(1).aline_zd),ma.smp(ma.n/2+1:end));
-
+    mc.smp = mc.old + rwd .* mcscale .* rmc(:,it,:);
+    mp.smp = mp.old + rwd .* mpscale .* rmp(:,it,:);
+    mi.smp = mi.old + rwd .* miscale .* rmi(:,it,:);
+    la.smp = la.old + rwd .*  la.std .* rla(:,it,:);
+    ma.smp = ma.old + rwd .* mascale .* rma(:,it,:);
+    % Re-sampling coupling ratio
+    pdfmc = prior_mc(mc.smp,lo_mc,up_mc);
+    while sum(~pdfmc) > 0
+      mc.smp(~pdfmc) = mc.old(~pdfmc) + rwd .* mcscale .* -randw + (2 * randw) .* rand(sum(~pdfmc),1,precision);
+      pdfmc = prior_mc(mc.smp,lo_mc,up_mc);
+    end
+    % Re-sampling asperity line
+    pdfma = prior_ma(blk,ma);
+    while sum(~pdfma) > 0
+      pdfma = repmat(pdfma,2,1);
+      ma.smp(~pdfma) = ma.old(~pdfma) + rwd .* mascale .* -randw + (2 * randw) .* rand(sum(~pdfma),1,precision);
+      pdfma = prior_ma(blk,ma);
+    end
+    
     % Calc gpu memory free capacity
     if prm.gpu ~= 99
       byte1 = whos('G');
@@ -2120,8 +2123,10 @@ while not(count == prm.thr)
     %     Gcc        = G(1).s(idc,idc);    % creep -> creep
     %     Gcl        = G(1).s(idc,idl);    % lock  -> creep
     %     bslip(idc) = -Gcc \ (Gcl * bslip(idl));
-    bslip(idc) = -G(1).s(idc,idc) \ (G(1).s(idc,idl) * bslip(idl));
-
+    for nrep=1:prm.nrep
+      bslip(idc(:,nrep),:) = -G(1).s(idc(:,nrep),idc(:,nrep)) \ (G(1).s(idc(:,nrep),idl(:,nrep)) * bslip(idl(:,nrep)));
+    end
+    
     % Due to Rigid motion
     cal.rig = G(1).p * mp.smp;
     % Due to Kinematic coupling
@@ -2133,15 +2138,15 @@ while not(count == prm.thr)
     cal.ine = G(1).i * mi.smp;
     % Zero padding
     if prm.gpu ~= 99
-      if isempty(cal.rig); cal.rig = zeros(size(d(1).ind),precision,'gpuArray'); end
-      if isempty(cal.kin); cal.kin = zeros(size(d(1).ind),precision,'gpuArray'); end
-      if isempty(cal.mec); cal.mec = zeros(size(d(1).ind),precision,'gpuArray'); end
-      if isempty(cal.ine); cal.ine = zeros(size(d(1).ind),precision,'gpuArray'); end
+      if isempty(cal.rig); cal.rig = zeros(size(d(1).ind,1),prm.nrep,precision,'gpuArray'); end
+      if isempty(cal.kin); cal.kin = zeros(size(d(1).ind,1),prm.nrep,precision,'gpuArray'); end
+      if isempty(cal.mec); cal.mec = zeros(size(d(1).ind,1),prm.nrep,precision,'gpuArray'); end
+      if isempty(cal.ine); cal.ine = zeros(size(d(1).ind,1),prm.nrep,precision,'gpuArray'); end
     else
-      if isempty(cal.rig); cal.rig = zeros(size(d(1).ind)); end
-      if isempty(cal.kin); cal.kin = zeros(size(d(1).ind)); end
-      if isempty(cal.mec); cal.mec = zeros(size(d(1).ind)); end
-      if isempty(cal.ine); cal.ine = zeros(size(d(1).ind)); end
+      if isempty(cal.rig); cal.rig = zeros(size(d(1).ind,1),prm.nrep); end
+      if isempty(cal.kin); cal.kin = zeros(size(d(1).ind,1),prm.nrep); end
+      if isempty(cal.mec); cal.mec = zeros(size(d(1).ind,1),prm.nrep); end
+      if isempty(cal.ine); cal.ine = zeros(size(d(1).ind,1),prm.nrep); end
     end        
     % Total velocities
     cal.smp = cal.rig + cal.kin + cal.mec + cal.ine;
