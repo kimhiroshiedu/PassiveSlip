@@ -53,6 +53,15 @@ function [vel] = CalcRelativeMotion(blk,nb1,nb2,fid)
 blon0 = mean(blk(1).bound(nb1,nb2).lon);
 blat0 = mean(blk(1).bound(nb1,nb2).lat);
 [bxy(:,1),bxy(:,2)] = PLTXY(blk(nb1).lat,blk(nb1).lon,blat0,blon0);
+[boxy(:,1),boxy(:,2)] = PLTXY(blk(1).bound(nb1,nb2).lat,blk(1).bound(nb1,nb2).lon,blat0,blon0);
+bocxy = (boxy(1:end-1,:) + boxy(2:end,:)) ./ 2;
+boclat = (blk(1).bound(nb1,nb2).lat(1:end-1)+blk(1).bound(nb1,nb2).lat(2:end))./2;
+boclon = (blk(1).bound(nb1,nb2).lon(1:end-1)+blk(1).bound(nb1,nb2).lon(2:end))./2;
+bocxyz = conv2ell(boclat,boclon);
+uv = [0 0 1];
+boline = boxy(2:end,:)-boxy(1:end-1,:);
+% bonormal = [
+%
 [bound.xy(:,1),bound.xy(:,2)] = PLTXY(blk(1).bound(nb1,nb2).lat,blk(1).bound(nb1,nb2).lon,blat0,blon0);
 bound.cxy(:,1) = (bound.xy(1:end-1,1)+bound.xy(2:end,1))./2;
 bound.cxy(:,2) = (bound.xy(1:end-1,2)+bound.xy(2:end,2))./2;
@@ -569,6 +578,15 @@ y = 1 .* (x >= 0);
 end
 
 %%
+function [OOxyz]=conv2ell(Olat,Olon)
+Olat=Olat(:);
+Olon=Olon(:);
+deg2rad=pi/180;
+[Oxyz(:,1),Oxyz(:,2),Oxyz(:,3)]=ell2xyz(Olat,Olon,0);
+Oxyz = Oxyz*1e3;
+OOxyz=[Oxyz sin(Olat*deg2rad) sin(Olon*deg2rad) cos(Olat*deg2rad) cos(Olon*deg2rad)];
+end
+
 function [lat,lon,ang]=xyzp2lla(X,Y,Z)
 % XYZP2LLA  Converts Shpear coordinates from cartesian. Vectorized.
 % GRS80
