@@ -41,7 +41,7 @@ for nb1=1:blk(1).nblock
   for nb2=nb1+1:blk(1).nblock
     blk(nb2).pol(:)=[tcha.avepol(3.*nb2-2,:);tcha.avepol(3.*nb2-1,:);tcha.avepol(3.*nb2,:)];
     if ~isempty(blk(1).bound(nb1,nb2).lat)
-      fprintf(fid,'> %s - %s \n',prm.BLKNAME{nb1},prm.BLKNAME{nb2});
+      fprintf(fid,'> %s - %s \n',num2str(nb1),num2str(nb2));
       CalcRelativeMotion(blk,nb1,nb2,fid)
     end
   end
