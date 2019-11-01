@@ -131,7 +131,7 @@ for ii = 1:nit
     sumfltpair   = sumfltpair   + smpflt*smpflt';
     suminepair   = suminepair   + smpine*smpine';
     sumasppair   = sumasppair   + smpasp*smpasp';
-    sumaspidpair = sumaspidpair + smpaspid*smpaspid';
+    sumaspidpair = sumaspidpair + double(smpaspid)*double(smpaspid');
   else
     %
     for np = 1:npol
