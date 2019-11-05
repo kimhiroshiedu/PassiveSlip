@@ -24,32 +24,36 @@ SavePoles(savedir,blk,tcha);
 SaveBackslip(savedir,blk,tcha,bslip);
 SaveVectors(savedir,obs,vec);
 SaveInternalStrain(savedir,tcha,blk,prm,obs,G);
-SaveRelativeMotion(savedir,blk,tcha,prm);
+SaveRelativeMotion(savedir,blk,tcha);
 
 fprintf('Files exported. \n');
 end
 
 %% Save relative motion
-function SaveRelativeMotion(folder,blk,tcha,prm)
+function SaveRelativeMotion(folder,blk,tcha)
 folder=[folder,'/vector'];
 if exist(folder)~=7; mkdir(folder); end
 fid=fopen([folder,'/relative_motion.txt'],'w');
-fprintf(fid,'# %5s %7s %7s %7s %7s %7s %10s %10s %10s \n',...
-    'Lon1','Lon2','Lat1','Lat2','C_Lon','C_Lat','abs_Vel','str_Vel','dip_Vel');
+fprintf(fid,'# %5s %7s %7s %7s %10s %10s %10s \n',...
+    'Lon1','Lon2','Lat1','Lat2','abs_Vel','str_Vel','dip_Vel');
 for nb1=1:blk(1).nblock
   blk(nb1).pol=[tcha.avepol(3.*nb1-2,:);tcha.avepol(3.*nb1-1,:);tcha.avepol(3.*nb1,:)];
   for nb2=nb1+1:blk(1).nblock
     blk(nb2).pol(:)=[tcha.avepol(3.*nb2-2,:);tcha.avepol(3.*nb2-1,:);tcha.avepol(3.*nb2,:)];
     if ~isempty(blk(1).bound(nb1,nb2).lat)
       fprintf(fid,'> %s - %s \n',num2str(nb1),num2str(nb2));
-      CalcRelativeMotion(blk,nb1,nb2,fid)
+      vel = CalcRelativeMotion(blk,nb1,nb2);
+      fprintf(fid,'%7.3f %7.3f %7.3f %7.3f %10.4f %10.4f %10.4f \n',...
+          [blk(1).bound(nb1,nb2).lon(1:end-1), blk(1).bound(nb1,nb2).lon(2:end),...
+           blk(1).bound(nb1,nb2).lat(1:end-1), blk(1).bound(nb1,nb2).lat(2:end),...
+           vel.abs, vel.str, vel.dip]');
     end
   end
 end
 % 
 end
 
-function [vel] = CalcRelativeMotion(blk,nb1,nb2,fid)
+function [vel] = CalcRelativeMotion(blk,nb1,nb2)
 blon0 = mean(blk(1).bound(nb1,nb2).lon);
 blat0 = mean(blk(1).bound(nb1,nb2).lat);
 [bxy(:,1),bxy(:,2)] = PLTXY(blk(nb1).lat,blk(nb1).lon,blat0,blon0);
@@ -60,51 +64,34 @@ boclon = (blk(1).bound(nb1,nb2).lon(1:end-1)+blk(1).bound(nb1,nb2).lon(2:end))./
 bocxyz = conv2ell(boclat,boclon);
 uv = [0 0 1];
 boline = boxy(2:end,:)-boxy(1:end-1,:);
-% bonormal = [
-%
-[bound.xy(:,1),bound.xy(:,2)] = PLTXY(blk(1).bound(nb1,nb2).lat,blk(1).bound(nb1,nb2).lon,blat0,blon0);
-bound.cxy(:,1) = (bound.xy(1:end-1,1)+bound.xy(2:end,1))./2;
-bound.cxy(:,2) = (bound.xy(1:end-1,2)+bound.xy(2:end,2))./2;
-bound.clat = (blk(1).bound(nb1,nb2).lat(1:end-1)+blk(1).bound(nb1,nb2).lat(2:end))./2;
-bound.clon = (blk(1).bound(nb1,nb2).lon(1:end-1)+blk(1).bound(nb1,nb2).lon(2:end))./2;
-bound.cxyz = conv2ell(bound.clat,bound.clon);
-
-uv = [0 0 1];
-bound.vecxy = bound.xy(2:end,:)-bound.xy(1:end-1,:);
-bound.norxy = [uv(2).*               0-uv(3).*bound.vecxy(:,2)...
-             uv(3).*bound.vecxy(:,1)-uv(1).*0               ...
-             uv(1).*bound.vecxy(:,2)-uv(2).*bound.vecxy(:,1)];
-
-bound.vel = pole2velo((blk(nb2).pol(:)-blk(nb1).pol(:))',bound.cxyz);
-bound.velx = bound.vel(1:2:end);
-bound.vely = bound.vel(2:2:end);
-bound.velstr = (bound.velx.*bound.vecxy(:,1)+bound.vely.*bound.vecxy(:,2)).*bound.vecxy...
-           ./(bound.vecxy(:,1).^2+bound.vecxy(:,2).^2);
-bound.veldip = (bound.velx.*bound.norxy(:,1)+bound.vely.*bound.norxy(:,2)).*bound.norxy(:,1:2)...
-           ./(bound.norxy(:,1).^2+bound.norxy(:,2).^2);
-sclstr = zeros(size(bound.velx));
-scldip = zeros(size(bound.velx));
-sclvel = sqrt(bound.velx.^2+bound.vely.^2);
-for nbo = 1:length(blk(1).bound(nb1,nb2).lat)-1
-  st = [bound.velstr(nbo,:) 0]; sclstr(nbo) = sqrt(st(1).^2+st(2).^2);
-  dp = [bound.veldip(nbo,:) 0]; scldip(nbo) = sqrt(dp(1).^2+dp(2).^2);
+bonormal = [uv(2).*          0 - uv(3).*boline(:,2),...
+            uv(3).*boline(:,1) - uv(1).*0          ,...
+            uv(1).*boline(:,2) - uv(2).*boline(:,1)];
+v12 = pole2velo((blk(nb2).pol(:)-blk(nb1).pol(:))',bocxyz);
+v12x = v12(1:2:end);
+v12y = v12(2:2:end);
+v12str = (v12x.*boline(:,1)+v12y.*boline(:,2)).*boline...
+           ./(boline(:,1).^2+boline(:,2).^2);
+v12dip = (v12x.*bonormal(:,1)+v12y.*bonormal(:,2)).*bonormal(:,1:2)...
+           ./(bonormal(:,1).^2+bonormal(:,2).^2);
+v12st = zeros(size(v12x));
+v12dp = zeros(size(v12x));
+v12abs = sqrt(v12x.^2+v12y.^2);
+for nbo = 1:size(blk(1).bound(nb1,nb2).lat,1)-1
+  st = [v12str(nbo,:) 0]; v12st(nbo) = sqrt(st(1).^2+st(2).^2);
+  dp = [v12dip(nbo,:) 0]; v12dp(nbo) = sqrt(dp(1).^2+dp(2).^2);
   nv = cross(uv,st)./norm(cross(uv,st),2);
   dp = dp./norm(dp,2);
-  lstr = bound.cxy(nbo,:)+nv(1:2);
-  ldip = bound.cxy(nbo,:)+dp(1:2);
+  lstr = bocxy(nbo,:)+nv(1:2);
+  ldip = bocxy(nbo,:)+dp(1:2);
   inidst = inpolygon(lstr(1),lstr(2),bxy(:,1),bxy(:,2));
   iniddp = inpolygon(ldip(1),ldip(2),bxy(:,1),bxy(:,2));
-  if inidst == 1; sclstr(nbo) = -1*sclstr(nbo); end % Left lateral
-  if iniddp ~= 1; scldip(nbo) = -1*scldip(nbo); end % Open
-  %   fprintf(fid,'%7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %10.4f %10.4f %10.4f \n',...
-  %       blk(1).bound(nb1,nb2).lon(nbo),blk(1).bound(nb1,nb2).lon(nbo+1),...
-  %       blk(1).bound(nb1,nb2).lat(nbo),blk(1).bound(nb1,nb2).lat(nbo+1),...
-  %       bound.clon(nbo),bound.clat(nbo),...
-  %       sclvel(nbo),sclstr(nbo),scldip(nbo));
+  if inidst == 1; v12st(nbo) = -1*v12st(nbo); end % Left lateral
+  if iniddp ~= 1; v12dp(nbo) = -1*v12dp(nbo); end % Open
 end
-vel.abs = sclvel;
-vel.str = sclstr;
-vel.dip = scldip;
+vel.abs = v12abs;
+vel.str = v12st;
+vel.dip = v12dp;
 end
 
 function Vneu = pole2velo(Pxyz,Oxyz)
