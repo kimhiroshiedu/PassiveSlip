@@ -49,6 +49,7 @@ end
 % colormap('white')
 
 % Coast line
+figure(10)
 latlim   = [ 10  50];
 lonlim   = [120 150];
 filename = gunzip('gshhs_l.b.gz', tempdir);
