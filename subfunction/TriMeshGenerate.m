@@ -9,8 +9,12 @@ end
 %% Iwasaki model
 % PHS Sagami
 function GeneratePHSsagamimesh_iwa
-plate_iwasaki_phssagami
-phs = load('~/MasterResearch/plate_data/plate_iwasaki/PHS_Plate/phs_regional/phs_2015_5a_r_2017.xyz');
+plate_iwasaki_phssagami;
+if ispc
+    phs = load('/MasterResearch/plate_data/plate_iwasaki/PHS_Plate/phs_regional/phs_2015_5a_r_2017.xyz');
+else
+    phs = load('~/MasterResearch/plate_data/plate_iwasaki/PHS_Plate/phs_regional/phs_2015_5a_r_2017.xyz');
+end
 F = scatteredInterpolant(phs(:,1),phs(:,2),phs(:,3));
 msh.POS(:,3) = F(msh.POS(:,1),msh.POS(:,2));
 
@@ -21,8 +25,12 @@ end
 
 % PHS Izu to Ryukyu
 function GeneratePHSmesh_iwa
-plate_iwasaki_phs
-phs = load('~/MasterResearch/plate_data/plate_iwasaki/PHS_Plate/phs_regional/phs_2015_5a_r_2017.xyz');
+plate_iwasaki_phs;
+if ispc
+    phs = load('/MasterResearch/plate_data/plate_iwasaki/PHS_Plate/phs_regional/phs_2015_5a_r_2017.xyz');
+else
+    phs = load('~/MasterResearch/plate_data/plate_iwasaki/PHS_Plate/phs_regional/phs_2015_5a_r_2017.xyz');
+end
 F = scatteredInterpolant(phs(:,1),phs(:,2),phs(:,3));
 msh.POS(:,3) = F(msh.POS(:,1),msh.POS(:,2));
 
@@ -33,8 +41,12 @@ end
 
 % PAC
 function GeneratePACmesh_iwa
-plate_iwasaki_pac
-pac = load('~/MasterResearch/plate_data/plate_iwasaki/PAC_Plate/pac_regional/pac_2017_4a.xyz');
+plate_iwasaki_pac;
+if ispc
+    pac = load('/MasterResearch/plate_data/plate_iwasaki/PAC_Plate/pac_regional/pac_2017_4a.xyz');
+else
+    pac = load('~/MasterResearch/plate_data/plate_iwasaki/PAC_Plate/pac_regional/pac_2017_4a.xyz');
+end
 F = scatteredInterpolant(pac(:,1),pac(:,2),pac(:,3));
 msh.POS(:,3) = F(msh.POS(:,1),msh.POS(:,2));
 
