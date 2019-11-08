@@ -26,6 +26,7 @@ PAC*
 !MinorFile/*
 !org/*
 !Meshes/*
+!Meshes/*/*
 # Maintain files
 !.gitignore
 !README.md
