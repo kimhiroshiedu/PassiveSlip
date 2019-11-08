@@ -25,6 +25,7 @@ PAC*
 !subfunction/*
 !MinorFile/*
 !org/*
+!MODEL_JP/Meshes/*
 # Maintain files
 !.gitignore
 !README.md
