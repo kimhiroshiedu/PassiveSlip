@@ -1,9 +1,11 @@
 function TriMeshGenerate
 % This script generate tri_*.txt file of GMT format
 % Coded by Hiroshi Kimura 2019/11/08
+figure(10); clf(10)
 GeneratePACmesh_iwa;
 GeneratePHSmesh_iwa;
 GeneratePHSsagamimesh_iwa;
+hold off
 end
 
 %% Iwasaki model
@@ -21,6 +23,10 @@ msh.POS(:,3) = F(msh.POS(:,1),msh.POS(:,2));
 file = 'Meshes/model_iwasaki/tri_phssagami.txt';
 savetri(file,msh);
 
+figure(10)
+trisurf(msh.TRIANGLES(:,1:3),msh.POS(:,1),msh.POS(:,2),msh.POS(:,3))
+hold on
+
 end
 
 % PHS Izu to Ryukyu
@@ -36,6 +42,10 @@ msh.POS(:,3) = F(msh.POS(:,1),msh.POS(:,2));
 
 file = 'Meshes/model_iwasaki/tri_phs.txt';
 savetri(file,msh);
+
+figure(10)
+trisurf(msh.TRIANGLES(:,1:3),msh.POS(:,1),msh.POS(:,2),msh.POS(:,3))
+hold on
 
 end
 
@@ -53,6 +63,10 @@ msh.POS(:,3) = F(msh.POS(:,1),msh.POS(:,2));
 file = 'Meshes/model_iwasaki/tri_pac.txt';
 savetri(file,msh);
 
+figure(10)
+trisurf(msh.TRIANGLES(:,1:3),msh.POS(:,1),msh.POS(:,2),msh.POS(:,3))
+hold on
+
 end
 
 %% Save part
@@ -63,7 +77,9 @@ for ntri = 1:size(msh.TRIANGLES,1)
     fprintf(fid,'%f %f %f\n',msh.POS(msh.TRIANGLES(ntri,2),1),msh.POS(msh.TRIANGLES(ntri,2),2),msh.POS(msh.TRIANGLES(ntri,2),3));
     fprintf(fid,'%f %f %f\n',msh.POS(msh.TRIANGLES(ntri,3),1),msh.POS(msh.TRIANGLES(ntri,3),2),msh.POS(msh.TRIANGLES(ntri,3),3));
     fprintf(fid,'%f %f %f\n',msh.POS(msh.TRIANGLES(ntri,1),1),msh.POS(msh.TRIANGLES(ntri,1),2),msh.POS(msh.TRIANGLES(ntri,1),3));
-    fprintf(fid,'>\n');
+    if ntri ~= size(msh.TRIANGLES,1)
+        fprintf(fid,'>\n');
+    end
 end
 fclose(fid);
 
