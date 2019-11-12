@@ -1999,6 +1999,12 @@ else
 end
 rwd         = prm.rwd      ;
 
+% Inverse temperatures
+ratio  = 2;
+finalr = 100;
+dT     = finalr ./ (prm.nrep-1);
+T_inv  = 1 ./ (ratio .^ (dT.*[0:prm.nrep-1]));
+
 % Initial value
 mc.int = 1e+1;
 mp.int = 1e-10;
@@ -2074,15 +2080,17 @@ decrate = 0.9^ 1;
 incrate = 0.9^-1;
 while not(count == prm.thr)
   rt   = rt+1;
-  nacc = 0;tic
+  nacc = zeros(1,prm.nrep);tic
   randw = 1;
   % Random value for each parameter
-  logu      = log(rand(prm.cha,1,prm.nrep,precision));
+  logu      = log(rand(prm.cha,prm.nrep,precision));
+  loge      = log(rand(prm.cha,1,precision));
   rmc       = -randw + (2 * randw) .* rand(mc.n,prm.cha,prm.nrep,precision);
   rma       = -randw + (2 * randw) .* rand(ma.n,prm.cha,prm.nrep,precision);
   rmp       = -randw + (2 * randw) .* rand(mp.n,prm.cha,prm.nrep,precision);
   rmi       = -randw + (2 * randw) .* rand(mi.n,prm.cha,prm.nrep,precision);
   rla       = -randw + (2 * randw) .* rand(la.n,prm.cha,prm.nrep,precision);
+  rex       = randi(prm.nrep-1,1,prm.cha);
 
   rmp(         eul.id,:,:) = 0;
   rmi(~blk(1).idinter,:,:) = 0;
@@ -2114,9 +2122,9 @@ while not(count == prm.thr)
       b = waitGPU(byte1.bytes+byte2.bytes);
     end
 
-    idl1 = (Heaviside(G(1).zd*ma.smp-G(1).zc) - Heaviside(G(1).zu*ma.smp-G(1).zc)) .* Hlim;
-    idl = logical(d(1).maid *  idl1);
-    idc = logical(d(1).maid * ~idl1);
+    idl1.smp = (Heaviside(G(1).zd*ma.smp-G(1).zc) - Heaviside(G(1).zu*ma.smp-G(1).zc)) .* Hlim;
+    idl = logical(d(1).maid *  idl1.smp);
+    idc = logical(d(1).maid * ~idl1.smp);
     
     % Calculate back-slip on locked patches.
     bslip              = (G(1).tb_mec * mp.smp) .* d(1).cfinv_mec .* idl;
@@ -2159,67 +2167,74 @@ while not(count == prm.thr)
     % Calc residual section
     res.smp = sum(((d(1).obs-cal.smp)./d(1).err).^2,1);
     % Mc is better Zero
-    %     PRI.SMP = sum(abs(Mc.SMP),1);
     %% MAKE Probably Density Function
-    % $$ PDF_{post}=\frac{\frac{1}{\sqrt{2\pi\exp(L)}\times\frac{1}{\sqrt{2\pi}\times\exp{\frac{-Re^{2}}{2}}\exp{\frac{-M^{2}}{2\times\exp{L}}}{\frac{1}{\sqrt{2\pi\exp(L_{old})}\times\frac{1}{\sqrt{2\pi}\times\exp{\frac{-Re^{2}_{old}}{2}}\exp{\frac{-M^{2}_{old}}{2\times\exp{L_{old}}}} $$%%
-    %  log(x(x>0));
-    %   q1 = logproppdf(x0,y);
-    %   q2 = logproppdf(y,x0);
-    % This is a generic formula.
-    %   rho = (q1+logpdf(y))-(q2+logpdf(x0));
-    pdf = -0.5.*...
-        ((res.smp+la.smp+exp(-la.smp))...
-        -(res.old+la.old+exp(-la.old)));
-    %   pdf = -0.5.*(res.smp-res.old);
-    acc = pdf > logu(it);
-    if acc
-      mc.old  =  mc.smp;
-      ma.old  =  ma.smp;
-      mp.old  =  mp.smp;
-      mi.old  =  mi.smp;
-      la.old  =  la.smp;
-      res.old = res.smp;
-      %pri.old = pri.smp;
+    pdf = -0.5 .* (res.smp-res.old) .* T_inv;
+    
+    % Accept 
+    acc = pdf > logu(it,:);
+    mc.old(:,acc)   = mc.smp(:,acc)  ;
+    ma.old(:,acc)   = ma.smp(:,acc)  ;
+    mp.old(:,acc)   = mp.smp(:,acc)  ;
+    mi.old(:,acc)   = mi.smp(:,acc)  ;
+    res.old(:,acc)  = res.smp(:,acc) ;
+    idl1.old(:,acc) = idl1.smp(:,acc);
+    %     pri.old(:,acc)  = pri.smp(:,acc) ;
+
+    % Exchange Replicas
+    r = -0.5 .* (res.smp(rex(it)+1)-res.smp(rex(it))) * (T_inv(rex(it))-T_inv(rex(it)+1));
+    if r > loge(it)
+      mc.old(:,[rex(it),rex(it)+1])   = fliplr(mc.old(:,[rex(it),rex(it)+1]));
+      ma.old(:,[rex(it),rex(it)+1])   = fliplr(ma.old(:,[rex(it),rex(it)+1]));
+      mp.old(:,[rex(it),rex(it)+1])   = fliplr(mp.old(:,[rex(it),rex(it)+1]));
+      mi.old(:,[rex(it),rex(it)+1])   = fliplr(mi.old(:,[rex(it),rex(it)+1]));
+      la.old(:,[rex(it),rex(it)+1])   = fliplr(la.old(:,[rex(it),rex(it)+1]));
+      idl1.old(:,[rex(it),rex(it)+1]) = idl1.old(mc.old(:,[rex(it),rex(it)+1]));
     end
 
     % Keep section
     if it > prm.cha - prm.kep
       if prm.gpu ~= 99
-        cha.mc(:,it-(prm.cha-prm.kep)) = gather(mc.smp);
-        cha.ma(:,it-(prm.cha-prm.kep)) = gather(ma.smp);
-        cha.maid(:,it-(prm.cha-prm.kep)) = gather(idl1);
-        cha.mp(:,it-(prm.cha-prm.kep)) = gather(mp.smp);
-        cha.mi(:,it-(prm.cha-prm.kep)) = gather(mi.smp);
-        cha.la(:,it-(prm.cha-prm.kep)) = gather(la.smp);
+        cha.mc(:,it-(prm.cha-prm.kep),:)   =   gather(mc.old);
+        cha.ma(:,it-(prm.cha-prm.kep),:)   =   gather(ma.old);
+        cha.maid(:,it-(prm.cha-prm.kep),:) = gather(idl1.old);
+        cha.mp(:,it-(prm.cha-prm.kep),:)   =   gather(mp.old);
+        cha.mi(:,it-(prm.cha-prm.kep),:)   =   gather(mi.old);
+        cha.la(:,it-(prm.cha-prm.kep),:)   =   gather(la.old);
       else
-        cha.mc(:,it-(prm.cha-prm.kep)) =        mc.smp;
-        cha.ma(:,it-(prm.cha-prm.kep)) =        ma.smp;
-        cha.maid(:,it-(prm.cha-prm.kep)) =        idl1;
-        cha.mp(:,it-(prm.cha-prm.kep)) =        mp.smp;
-        cha.mi(:,it-(prm.cha-prm.kep)) =        mi.smp;
-        cha.la(:,it-(prm.cha-prm.kep)) =        la.smp;
+        cha.mc(:,it-(prm.cha-prm.kep),:)   =        mc.old;
+        cha.ma(:,it-(prm.cha-prm.kep),:)   =        ma.old;
+        cha.maid(:,it-(prm.cha-prm.kep),:) =      idl1.old;
+        cha.mp(:,it-(prm.cha-prm.kep),:)   =        mp.old;
+        cha.mi(:,it-(prm.cha-prm.kep),:)   =        mi.old;
+        cha.la(:,it-(prm.cha-prm.kep),:)   =        la.old;
       end
-      if acc; nacc=nacc+1; end
+      nacc(acc) = nacc(acc) + 1;
     end
+    
   end
   
-% Compress data into int16 format
+  % Compress data into int16 format
   CompressData(cha,prm,rt,nacc);
-%
+  %
   cha.ajr = nacc./prm.cha;
   
-% Calc stds from samples
+  % Calc stds from samples
   mc.std = std(cha.mc,1,2);
   ma.std = std(cha.ma,1,2);
   mp.std = std(cha.mp,1,2); 
   mi.std = std(cha.mi,1,2); 
   la.std = std(cha.la,1,2);
   
-% Log and display
-  fprintf(       't=%3d res=%6.3f accept=%5.1f rwd=%5.2f time=%5.1fsec\n',...
-           rt,1-res.old./rr,100*cha.ajr,rwd,toc)
-  fprintf(logfid,'t=%3d res=%6.3f accept=%5.1f rwd=%5.2f time=%5.1fsec\n',...
-           rt,1-res.old./rr,100*cha.ajr,rwd,toc);
+  % Log and display
+  fprintf(       't=%3d rwd=%5.2f time=%5.1sec\n',rt,rwd,toc)
+  fprintf(logfid,'t=%3d rwd=%5.2f time=%5.1sec\n',rt,rwd,toc);
+  for nrep = 1:prm.nrep
+      fprintf(       'N=%2i res=%6.3f accept=%5.1f\n',...
+           nrep,1-res.old(nrep)./rr,100*cha.ajr(nrep))
+      fprintf(logfid,'N=%2i res=%6.3f accept=%5.1f\n',...
+           nrep,1-res.old(nrep)./rr,100*cha.ajr(nrep));
+  end
+  
   for bk=1:blk(1).nblock
     [latp,lonp,ang]=xyzp2lla(cha.mp(3.*bk-2,:),cha.mp(3.*bk-1,:),cha.mp(3.*bk,:));
     fprintf(       'pole of block %2i = lat:%7.2f deg. lon:%8.2f deg. ang:%9.2e deg./m.y. \n',...
@@ -2227,21 +2242,21 @@ while not(count == prm.thr)
     fprintf(logfid,'pole of block %2i = lat:%7.2f deg. lon:%8.2f deg. ang:%9.2e deg./m.y. \n',...
       bk,mean(latp),mean(lonp),mean(ang));
   end
-  fprintf(       'lamda = %7.2f \n',mean(cha.la));
-  fprintf(logfid,'lamda = %7.2f \n',mean(cha.la));
+  fprintf(       'lamda of N1 = %7.2f \n',mean(cha.la(:,:,1)));
+  fprintf(logfid,'lamda of N1 = %7.2f \n',mean(cha.la(:,:,1)));
 
-% Adjust random walk distance
+  % Adjust random walk distance
   if burn == 0
-    if cha.ajr > 0.24
+    if cha.ajr(1) > 0.24
       rwd = rwd * incrate;
-    elseif cha.ajr < 0.22
+    elseif cha.ajr(1) < 0.22
       rwd = rwd * decrate;
     end
     count = count + 1;
   else
-    if cha.ajr > 0.24
+    if cha.ajr(1) > 0.24
       rwd = rwd * incrate;
-    elseif cha.ajr < 0.22
+    elseif cha.ajr(1) < 0.22
       rwd = rwd * decrate;
     else
       count = count + 1;
@@ -2251,10 +2266,10 @@ while not(count == prm.thr)
   
   cha.smp = cal.smp;
   % Debug-----------
-  mpmean = mean(cha.mp,2);
-  mcmean = mean(cha.mc,2);
-  mamean = mean(cha.ma,2);
-  mimean = mean(cha.mi,2);
+  mpmean(:,:,1) = mean(cha.mp,2);
+  mcmean(:,:,1) = mean(cha.mc,2);
+  mamean(:,:,1) = mean(cha.ma,2);
+  mimean(:,:,1) = mean(cha.mi,2);
 
   idl1 = (Heaviside(G(1).zd*mamean-G(1).zc) - Heaviside(G(1).zu*mamean-G(1).zc)) .* Hlim;
   idl = logical(d(1).maid *  idl1);
@@ -2263,8 +2278,10 @@ while not(count == prm.thr)
   % Calculate back-slip on locked and creeping patches.
   bslip      = (G(1).tb_mec * mpmean) .* d(1).cfinv_mec .* idl;
   bslipl     = bslip;
-  bslip(idc) = -G(1).s(idc,idc) \ (G(1).s(idc,idl) * bslip(idl));
-
+  for nrep=1:prm.nrep
+    bslip(idc(:,nrep),:) = -G(1).s(idc(:,nrep),idc(:,nrep)) \ (G(1).s(idc(:,nrep),idl(:,nrep)) * bslip(idl(:,nrep)));
+  end
+  
   % Calc vectors for mean parameters
   vec.rig = G(1).p * mpmean;
   vec.kin = G(1).c_kin * ((G(1).tb_kin * mpmean) .* d(1).cfinv_kin .* (d(1).mcid * mcmean));
@@ -2284,7 +2301,7 @@ while not(count == prm.thr)
   end
   % Total velocities
   vec.sum = vec.rig + vec.kin + vec.mec + vec.ine;
-% vec.rel = g.c*((g.tb*poltmp).*cf);
+  % vec.rel = g.c*((g.tb*poltmp).*cf);
   % Debug-----------
   if prm.gpu ~= 99
     ccha.mc  = gather(cha.mc );
@@ -2302,8 +2319,8 @@ end
 
 % Display
 cha.res = res.smp;
-fprintf(       'RMS=: %8.3f\n',cha.res)
-fprintf(logfid,'RMS=: %8.3f\n',cha.res);
+fprintf(       'RMS=: %8.3f\n',cha.res(1))
+fprintf(logfid,'RMS=: %8.3f\n',cha.res(1));
 fprintf(       '=== Finished MCMC part ===\n')
 fprintf(logfid,'=== finished MCMC part ===\n');
 fclose(logfid);
