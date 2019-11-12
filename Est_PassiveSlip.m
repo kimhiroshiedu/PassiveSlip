@@ -1606,13 +1606,12 @@ pdfmc = mc<=maxmc & mc>=minmc;
 end
 
 %% Prior function for asperity line
-function [pdfma] = prior_ma(blk,ma)
-% pdfma = (Heaviside(ma.smp(ma.n/2+1:   end)-blk(1).aline_zu) - Heaviside(ma.smp(ma.n/2+1:   end)-blk(1).aline_zd))...
-%       .*(Heaviside(ma.smp(       1:ma.n/2)-blk(1).aline_zu) - Heaviside(ma.smp(       1:ma.n/2)-blk(1).aline_zd))...
-%       .*(Heaviside(ma.smp(1:ma.n/2) - ma.smp(ma.n/2+1:end)));
-pdfma = (Heaviside(ma.smp(ma.n/2+1:   end)-blk(1).aline_zd) - Heaviside(ma.smp(ma.n/2+1:   end)-blk(1).aline_zu))...
-      .*(Heaviside(ma.smp(       1:ma.n/2)-blk(1).aline_zd) - Heaviside(ma.smp(       1:ma.n/2)-blk(1).aline_zu))...
-      .*(Heaviside(ma.smp(ma.n/2+1:end) - ma.smp(1:ma.n/2)));
+function [pdfma] = prior_ma(zu,zd,ZU,ZD)
+% zu, zd: depth (down is +) of asperity lines
+% ZU, ZD: limiti depth (down is +) of plate interfaces
+pdfma = (Heaviside(zu-ZU) - Heaviside(zu-ZD)).* ...
+        (Heaviside(zd-ZU) - Heaviside(zd-ZD)).* ...
+        Heaviside(zd-zu);
 end
 
 %% Estimate mechanical coupled area by MCMC (Metropolis-Hasting)
@@ -1763,11 +1762,11 @@ while not(count == prm.thr)
       pdfmc = prior_mc(mc.smp,lo_mc,up_mc);
     end
     % Re-sampling asperity line
-    pdfma = prior_ma(blk,ma);
+    pdfma = prior_ma(ma.smp(ma.n/2+1:end),ma.smp(1:ma.n/2),blk(1).aline_zu,blk(1).aline_zd);
     while sum(~pdfma) > 0
       pdfma = repmat(pdfma,2,1);
       ma.smp(~pdfma) = ma.old(~pdfma) + rwd .* mascale .* -randw + (2 * randw) .* rand(sum(~pdfma),1,precision);
-      pdfma = prior_ma(blk,ma);
+      pdfma = prior_ma(ma.smp(ma.n/2+1:end),ma.smp(1:ma.n/2),blk(1).aline_zu,blk(1).aline_zd);
     end
     
     % Calc gpu memory free capacity
@@ -2101,11 +2100,11 @@ while not(count == prm.thr)
       pdfmc = prior_mc(mc.smp,lo_mc,up_mc);
     end
     % Re-sampling asperity line
-    pdfma = prior_ma(blk,ma);
+    pdfma = prior_ma(ma.smp(ma.n/2+1:end),ma.smp(1:ma.n/2),blk(1).aline_zu,blk(1).aline_zd);
     while sum(~pdfma) > 0
       pdfma = repmat(pdfma,2,1);
       ma.smp(~pdfma) = ma.old(~pdfma) + rwd .* mascale .* -randw + (2 * randw) .* rand(sum(~pdfma),1,precision);
-      pdfma = prior_ma(blk,ma);
+      pdfma = prior_ma(ma.smp(ma.n/2+1:end),ma.smp(1:ma.n/2),blk(1).aline_zu,blk(1).aline_zd);
     end
     
     % Calc gpu memory free capacity
