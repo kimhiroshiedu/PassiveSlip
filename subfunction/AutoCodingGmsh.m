@@ -1,23 +1,23 @@
-function AutoCodingGmsh
+function AutoCodingGmsh(model)
 % This script generates Gmsh script for making trimesh
 % Coded by Hiroshi Kimura 2019/11/07
 
-% CodingPAC
-% CodingPHS_Sagami
-CodingPHS
+CodingPAC(model)
+CodingPHS_Sagami(model)
+CodingPHS(model)
 end
 
 %% Generating for PHS fron Sagami to N-Ryukyu
-function CodingPHS
-load('MODEL_JP/BLOCK_Int_sw_japan/edges_2nejp_9.txt')
-load('MODEL_JP/BLOCK_Int_sw_japan/edges_2ok_9.txt')
-load('MODEL_JP/BLOCK_Int_sw_japan/edges_8_9.txt')
-load('MODEL_JP/BLOCK_Int_sw_japan/edges_8_11.txt')
-load('MODEL_JP/BLOCK_Int_sw_japan/edges_4_11.txt')
+function CodingPHS(model)
+load(['MODEL_JP/BLOCK_Int_sw_japan/plate_',model,'/edges_2nejp_9.txt'])
+load(['MODEL_JP/BLOCK_Int_sw_japan/plate_',model,'/edges_2ok_9.txt'])
+load(['MODEL_JP/BLOCK_Int_sw_japan/plate_',model,'/edges_8_9.txt'])
+load(['MODEL_JP/BLOCK_Int_sw_japan/plate_',model,'/edges_8_11.txt'])
+load(['MODEL_JP/BLOCK_Int_sw_japan/plate_',model,'/edges_4_11.txt'])
 
 % keyboard
 
-fid = fopen('MODEL_JP/BLOCK_Int_sw_japan/interplate_phs.geo','wt');
+fid = fopen(['MODEL_JP/BLOCK_Int_sw_japan/plate_',model,'/interplate_phs.geo'],'wt');
 fprintf(fid,'// interplate_pac.geo\n\n');
 fprintf(fid,'radius = 5.0;\ncellsize = 0.15;\npio2 = Pi/2;\n\n');
 
@@ -230,10 +230,10 @@ fclose(fid);
 end
 
 %% Generating for PHS Sagami trough
-function CodingPHS_Sagami
-load('MODEL_JP/BLOCK_Int_ne_japan/edges_6_7.txt')
+function CodingPHS_Sagami(model)
+load(['MODEL_JP/BLOCK_Int_ne_japan/plate_',model,'/edges_6_7.txt'])
 
-fid = fopen('MODEL_JP/BLOCK_Int_ne_japan/interplate_phssagami.geo','wt');
+fid = fopen(['MODEL_JP/BLOCK_Int_ne_japan/plate_',model,'/interplate_phssagami.geo'],'wt');
 fprintf(fid,'// interplate_phssagami.geo\n\n');
 fprintf(fid,'radius = 5.0;\ncellsize = 0.15;\npio2 = Pi/2;\n\n');
 
@@ -281,13 +281,13 @@ fclose(fid);
 end
 
 %% Generating for PAC subduction zone
-function CodingPAC
-load('MODEL_JP/BLOCK_Int_ne_japan/edges_5_8.txt')
-load('MODEL_JP/BLOCK_Int_ne_japan/edges_6_8.txt')
-load('MODEL_JP/BLOCK_Int_ne_japan/edges_7_8.txt')
+function CodingPAC(model)
+load(['MODEL_JP/BLOCK_Int_ne_japan/plate_',model,'/edges_5_8.txt'])
+load(['MODEL_JP/BLOCK_Int_ne_japan/plate_',model,'/edges_6_8.txt'])
+load(['MODEL_JP/BLOCK_Int_ne_japan/plate_',model,'/edges_7_8.txt'])
 % keyboard
 
-fid = fopen('MODEL_JP/BLOCK_Int_ne_japan/interplate_pac.geo','wt');
+fid = fopen(['MODEL_JP/BLOCK_Int_ne_japan/plate_',model,'/interplate_pac.geo'],'wt');
 fprintf(fid,'// interplate_pac.geo\n\n');
 fprintf(fid,'radius = 5.0;\ncellsize = 0.15;\npio2 = Pi/2;\n\n');
 
