@@ -17,7 +17,7 @@ load(['MODEL_JP/BLOCK_Int_sw_japan/plate_',model,'/edges_4_11.txt'])
 
 % keyboard
 
-fid = fopen(['MODEL_JP/BLOCK_Int_sw_japan/plate_',model,'/interplate_phs.geo'],'wt');
+fid = fopen(['MODEL_JP/BLOCK_Int_sw_japan/plate_',model,'/plate_',model,'_phs.geo'],'wt');
 fprintf(fid,'// interplate_pac.geo\n\n');
 fprintf(fid,'radius = 5.0;\ncellsize = 0.15;\npio2 = Pi/2;\n\n');
 
@@ -233,7 +233,7 @@ end
 function CodingPHS_Sagami(model)
 load(['MODEL_JP/BLOCK_Int_ne_japan/plate_',model,'/edges_6_7.txt'])
 
-fid = fopen(['MODEL_JP/BLOCK_Int_ne_japan/plate_',model,'/interplate_phssagami.geo'],'wt');
+fid = fopen(['MODEL_JP/BLOCK_Int_ne_japan/plate_',model,'/plate_',model,'_phssagami.geo'],'wt');
 fprintf(fid,'// interplate_phssagami.geo\n\n');
 fprintf(fid,'radius = 5.0;\ncellsize = 0.15;\npio2 = Pi/2;\n\n');
 
@@ -287,7 +287,7 @@ load(['MODEL_JP/BLOCK_Int_ne_japan/plate_',model,'/edges_6_8.txt'])
 load(['MODEL_JP/BLOCK_Int_ne_japan/plate_',model,'/edges_7_8.txt'])
 % keyboard
 
-fid = fopen(['MODEL_JP/BLOCK_Int_ne_japan/plate_',model,'/interplate_pac.geo'],'wt');
+fid = fopen(['MODEL_JP/BLOCK_Int_ne_japan/plate_',model,'/plate_',model,'_pac.geo'],'wt');
 fprintf(fid,'// interplate_pac.geo\n\n');
 fprintf(fid,'radius = 5.0;\ncellsize = 0.15;\npio2 = Pi/2;\n\n');
 
