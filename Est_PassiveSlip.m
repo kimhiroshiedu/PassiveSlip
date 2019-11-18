@@ -46,8 +46,8 @@ ShowBlockBound(blk)
 
 if mode == 1
 % MCMC simulation for coupling estimattion
-  [cal]   = Proceed_MCMC_MH(blk,asp,tri,prm,obs,eul,d,G);     % Metropolis-Hasting
-  %   [cal]   = Proceed_MCMC_RE(blk,asp,tri,prm,obs,eul,d,G);     % Replica exchange
+%   [cal]   = Proceed_MCMC_MH(blk,asp,tri,prm,obs,eul,d,G);     % Metropolis-Hasting
+    [cal]   = Proceed_MCMC_RE(blk,asp,tri,prm,obs,eul,d,G);     % Replica exchange
 elseif mode == 0
 % Read asperity areas.
   [blk]   = ReadLockedPatch(blk,prm);
@@ -2038,6 +2038,8 @@ mi.old = mi.old.*repmat(blk(1).idinter,1,prm.nrep)  ;
 ma.old = zeros(ma.n,prm.nrep);
 ma.old(       1:ma.n/2,:) = blk(1).aline_zu + repmat(blk(1).aline_zd-blk(1).aline_zu,1,prm.nrep).*(0.6 + rand(ma.n./2,prm.nrep) ./ 5);
 ma.old(ma.n/2+1:   end,:) = blk(1).aline_zu + repmat(blk(1).aline_zd-blk(1).aline_zu,1,prm.nrep).*(0.1 + rand(ma.n./2,prm.nrep) ./ 5);
+% Substitute logical value if trimeshes are within asperities or not 
+idl1.old = zeros(blk(1).ntmec,prm.nrep);
 
 la.old    = zeros(la.n,prm.nrep,precision);
 res.old   =   inf(   1,prm.nrep,precision);
@@ -2085,34 +2087,34 @@ while not(count == prm.thr)
   % Random value for each parameter
   logu      = log(rand(prm.cha,prm.nrep,precision));
   loge      = log(rand(prm.cha,1,precision));
-  rmc       = -randw + (2 * randw) .* rand(mc.n,prm.cha,prm.nrep,precision);
-  rma       = -randw + (2 * randw) .* rand(ma.n,prm.cha,prm.nrep,precision);
-  rmp       = -randw + (2 * randw) .* rand(mp.n,prm.cha,prm.nrep,precision);
-  rmi       = -randw + (2 * randw) .* rand(mi.n,prm.cha,prm.nrep,precision);
-  rla       = -randw + (2 * randw) .* rand(la.n,prm.cha,prm.nrep,precision);
+  rmc       = -randw + (2 * randw) .* rand(mc.n,prm.nrep,prm.cha,precision);
+  rma       = -randw + (2 * randw) .* rand(ma.n,prm.nrep,prm.cha,precision);
+  rmp       = -randw + (2 * randw) .* rand(mp.n,prm.nrep,prm.cha,precision);
+  rmi       = -randw + (2 * randw) .* rand(mi.n,prm.nrep,prm.cha,precision);
+  rla       = -randw + (2 * randw) .* rand(la.n,prm.nrep,prm.cha,precision);
   rex       = randi(prm.nrep-1,1,prm.cha);
 
   rmp(         eul.id,:,:) = 0;
   rmi(~blk(1).idinter,:,:) = 0;
   for it = 1:prm.cha
     % Sample section
-    mc.smp = mc.old + rwd .* mcscale .* rmc(:,it,:);
-    mp.smp = mp.old + rwd .* mpscale .* rmp(:,it,:);
-    mi.smp = mi.old + rwd .* miscale .* rmi(:,it,:);
-    la.smp = la.old + rwd .*  la.std .* rla(:,it,:);
-    ma.smp = ma.old + rwd .* mascale .* rma(:,it,:);
+    mc.smp = mc.old + rwd .* mcscale .* rmc(:,:,it);
+    mp.smp = mp.old + rwd .* mpscale .* rmp(:,:,it);
+    mi.smp = mi.old + rwd .* miscale .* rmi(:,:,it);
+    la.smp = la.old + rwd .*  la.std .* rla(:,:,it);
+    ma.smp = ma.old + rwd .* mascale .* rma(:,:,it);
     % Re-sampling coupling ratio
     pdfmc = prior_mc(mc.smp,lo_mc,up_mc);
-    while sum(~pdfmc) > 0
-      mc.smp(~pdfmc) = mc.old(~pdfmc) + rwd .* mcscale .* -randw + (2 * randw) .* rand(sum(~pdfmc),1,precision);
+    while sum(sum(~pdfmc)) > 0
+      mc.smp(~pdfmc) = mc.old(~pdfmc) + rwd .* mcscale .* -randw + (2 * randw) .* rand(sum(sum(~pdfmc)),1,precision);
       pdfmc = prior_mc(mc.smp,lo_mc,up_mc);
     end
     % Re-sampling asperity line
-    pdfma = prior_ma(ma.smp(ma.n/2+1:end),ma.smp(1:ma.n/2),blk(1).aline_zu,blk(1).aline_zd);
-    while sum(~pdfma) > 0
+    pdfma = prior_ma(ma.smp(ma.n/2+1:end,:),ma.smp(1:ma.n/2,:),blk(1).aline_zu,blk(1).aline_zd);
+    while sum(sum(~pdfma)) > 0
       pdfma = repmat(pdfma,2,1);
-      ma.smp(~pdfma) = ma.old(~pdfma) + rwd .* mascale .* -randw + (2 * randw) .* rand(sum(~pdfma),1,precision);
-      pdfma = prior_ma(ma.smp(ma.n/2+1:end),ma.smp(1:ma.n/2),blk(1).aline_zu,blk(1).aline_zd);
+      ma.smp(~pdfma) = ma.old(~pdfma) + rwd .* mascale .* -randw + (2 * randw) .* rand(sum(sum(~pdfma)),1,precision);
+      pdfma = prior_ma(ma.smp(ma.n/2+1:end,:),ma.smp(1:ma.n/2,:),blk(1).aline_zu,blk(1).aline_zd);
     end
     
     % Calc gpu memory free capacity
@@ -2134,7 +2136,7 @@ while not(count == prm.thr)
     %     Gcl        = G(1).s(idc,idl);    % lock  -> creep
     %     bslip(idc) = -Gcc \ (Gcl * bslip(idl));
     for nrep=1:prm.nrep
-      bslip(idc(:,nrep),:) = -G(1).s(idc(:,nrep),idc(:,nrep)) \ (G(1).s(idc(:,nrep),idl(:,nrep)) * bslip(idl(:,nrep)));
+      bslip(idc(:,nrep),nrep) = -G(1).s(idc(:,nrep),idc(:,nrep)) \ (G(1).s(idc(:,nrep),idl(:,nrep)) * bslip(idl(:,nrep),nrep));
     end
     
     % Due to Rigid motion
