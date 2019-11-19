@@ -3016,13 +3016,6 @@ lon=atan2(Y,X).*180/pi;
 ang=sqrt(X.*X+Y.*Y+Z.*Z).*(1e6.*(180./pi));
 end
 
-%% Dirac delta function
-function y = Dirac(x)
-% Calculate Heaviside step function
-%   y = Dirac(x) x and y, vector
-y = 1 .* (x == 0);
-end
-
 %% Heaviside step function
 function y = Heaviside(x)
 % Calculate Heveaside step function
