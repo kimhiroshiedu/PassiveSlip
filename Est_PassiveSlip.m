@@ -1,5 +1,15 @@
-%% Est_PassiveSlip.m
 function Est_PassiveSlip(varargin)
+% Estimates Euler vectors, internal strains, and asperity lines.
+% Or calculate Passive back-slip rates for given asperities.
+% 
+% Est_PassiveSlip(estimation,method)
+% Est_PassiveSlip(method)
+% where estimation: 'mcmc'(default) or 'fwd'
+%       method: 'mh'(default), 're'
+% e.g.) Est_PassiveSlip('fwd')
+%       Est_PassiveSlip('mcmc','re')
+%       Est_PassiveSlip('re')
+
 % Coded by Ryohei Sasajima final 2013/12/23
 % Combined by Hiroshi Kimura     2018/11/12
 % Revised by Hiroshi Kimura      2019/02/16
@@ -10,15 +20,7 @@ prm.optfile    = 'PARAMETER/opt_bound_par.txt';
 prm.interpfile = 'PARAMETER/interp_randwalkline.txt';
 %--
 % Simulation mode select
-if ~isempty(varargin)
-  if varargin{1} == 'I'
-    mode = 1;
-  elseif varargin{1} == 'F'
-    mode = 0;
-  end
-else
-  mode = 1; 
-end
+[prm]     = DetetmineCalcMethod(prm,varargin);
 % Read Parameters.
 [prm]     = ReadParameters(prm);
 % Read observation data. 
@@ -44,21 +46,51 @@ ShowBlockBound(blk)
 % Arrange Green's functions.
 [d,G]     = GreenFunctionMatrix(blk,obs,tri);
 
-if mode == 1
-% MCMC simulation for coupling estimattion
-%   [cal]   = Proceed_MCMC_MH(blk,asp,tri,prm,obs,eul,d,G);     % Metropolis-Hasting
-    [cal]   = Proceed_MCMC_RE(blk,asp,tri,prm,obs,eul,d,G);     % Replica exchange
-elseif mode == 0
-% Read asperity areas.
+if strcmpi(prm.method,'Forward')
+  % Read asperity areas.
   [blk]   = ReadLockedPatch(blk,prm);
-% Define locking patches.
+  % Define locking patches.
   [d]     = InitialLockingPatch(blk,tri,d);
-% Calculate pasive slip and response to surface.
+  % Calculate pasive slip and response to surface.
   [cal]   = CalcPassiveSlip(blk,asp,tri,prm,obs,eul,d,G);
+elseif strcmpi(prm.method,'MCMC.MH')
+  % Metropolis-Hasting
+  [cal]   = Proceed_MCMC_MH(blk,asp,tri,prm,obs,eul,d,G);
+elseif strcmpi(prm.method,'MCMC.RE')
+  % Replica exchange Monte Carlo
+  [cal]   = Proceed_MCMC_RE(blk,asp,tri,prm,obs,eul,d,G);
 end
 
 % Save data.
-SaveData(prm,blk,obs,tri,d,G,cal,mode)
+SaveData(prm,blk,obs,tri,d,G,cal)
+
+end
+
+%% Determine simulation method
+function [prm] = DetetmineCalcMethod(prm,varin)
+if ~isempty(varin)
+  if strcmpi(varin{1},'fwd')
+    prm.method = 'Forward';
+  elseif strcmpi(varin{1},'mcmc')
+    if size(varin,2) == 1
+      prm.method = 'MCMC.MH';
+    elseif size(varin,2) == 2
+      if sum(strcmpi(varin{2},{'mh','re'})) >= 1
+        prm.method = ['MCMC.',char(upper(varin{2}))];
+      else
+        error('Invalid option.')
+      end
+    else
+        error('Too much variables.')
+    end
+  elseif sum(strcmpi(varin{1},{'mh','re'})) >= 1
+    prm.method = ['MCMC.',char(upper(varin{1}))];
+  else
+    error('Invalid valiable.')
+  end
+else
+  prm.method = 'MCMC.MH';
+end
 
 end
 
@@ -521,7 +553,7 @@ drawnow
 end
 
 %% Save data
-function SaveData(prm,blk,obs,tri,d,G,cal,mode)
+function SaveData(prm,blk,obs,tri,d,G,cal)
 
 logfile=fullfile(prm.dirresult,'log.txt');
 log_fid=fopen(logfile,'a');
@@ -552,7 +584,7 @@ save(fullfile(a_dir,'obs.mat'),'obs','-v7.3')
 save(fullfile(a_dir,'cal.mat'),'cal','-v7.3')
 save(fullfile(a_dir,'grn.mat'),'d','G','-v7.3')
 % 
-if mode == 1
+if strcmpi(prm.method,'Forward')
   movefile([prm.dirresult,'/cha_test*.mat'],a_dir)
   savefig(100,fullfile(f_fir,'coupling'))
   savefig(110,fullfile(f_fir,'bslip'))
