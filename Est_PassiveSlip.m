@@ -1595,7 +1595,10 @@ G(1).c_kin  = tmp.c(:,~d(1).idmec);
 G(1).c_mec  = tmp.c(:, d(1).idmec);
 G(1).p      = tmp.p(d(1).ind,:);
 G(1).i      = tmp.i(d(1).ind,:);
-G(1).s      = tmp.s(d(1).idmec,d(1).idmec);
+% G(1).s      = tmp.s(d(1).idmec,d(1).idmec);
+tmpGs = tmp.s(d(1).idmec,d(1).idmec);
+tmpGs(abs(tmpGs) < max(abs(tmpGs)).*(1e-2/blk(1).ntmec)) = 0;
+G(1).s      = tmpGs;
 G(1).zu     = tmp.idstrip * tmp.idMit * tmp.zu;
 G(1).zd     = tmp.idstrip * tmp.idMit * tmp.zd;
 G(1).zulim  = tmp.idstrip * tmp.idMit * tmp.zu * tmp.zlimit;
@@ -1710,6 +1713,8 @@ ma.old = zeros(ma.n./2,2);
 ma.old(:,1) = blk(1).aline_zu + (blk(1).aline_zd-blk(1).aline_zu).*(0.6 + rand(ma.n./2,1) ./ 5);
 ma.old(:,2) = blk(1).aline_zu + (blk(1).aline_zd-blk(1).aline_zu).*(0.1 + rand(ma.n./2,1) ./ 5);
 ma.old = reshape(ma.old,ma.n,1);
+% Substitute logical value if trimeshes are within asperities or not 
+idl1.old = zeros(blk(1).ntmec,1);
 
 la.old    = zeros(la.n,1,precision);
 res.old   =   inf(   1,1,precision);
@@ -1790,14 +1795,14 @@ while not(count == prm.thr)
     % Re-sampling coupling ratio
     pdfmc = prior_mc(mc.smp,lo_mc,up_mc);
     while sum(~pdfmc) > 0
-      mc.smp(~pdfmc) = mc.old(~pdfmc) + rwd .* mcscale .* -randw + (2 * randw) .* rand(sum(~pdfmc),1,precision);
+      mc.smp(~pdfmc) = mc.old(~pdfmc) + rwd .* mcscale .* (-randw + (2 * randw) .* rand(sum(~pdfmc),1,precision));
       pdfmc = prior_mc(mc.smp,lo_mc,up_mc);
     end
     % Re-sampling asperity line
     pdfma = prior_ma(ma.smp(ma.n/2+1:end),ma.smp(1:ma.n/2),blk(1).aline_zu,blk(1).aline_zd);
     while sum(~pdfma) > 0
       pdfma = repmat(pdfma,2,1);
-      ma.smp(~pdfma) = ma.old(~pdfma) + rwd .* mascale .* -randw + (2 * randw) .* rand(sum(~pdfma),1,precision);
+      ma.smp(~pdfma) = ma.old(~pdfma) + rwd .* mascale .* (-randw + (2 * randw) .* rand(sum(~pdfma),1,precision));
       pdfma = prior_ma(ma.smp(ma.n/2+1:end),ma.smp(1:ma.n/2),blk(1).aline_zu,blk(1).aline_zd);
     end
     
@@ -1808,9 +1813,9 @@ while not(count == prm.thr)
       b = waitGPU(byte1.bytes+byte2.bytes);
     end
 
-    idl1 = (Heaviside(G(1).zd*ma.smp-G(1).zc) - Heaviside(G(1).zu*ma.smp-G(1).zc)) .* Hlim;
-    idl = logical(d(1).maid *  idl1);
-    idc = logical(d(1).maid * ~idl1);
+    idl1.smp = (Heaviside(G(1).zd*ma.smp-G(1).zc) - Heaviside(G(1).zu*ma.smp-G(1).zc)) .* Hlim;
+    idl = logical(d(1).maid *  idl1.smp);
+    idc = logical(d(1).maid * ~idl1.smp);
     
     % Calculate back-slip on locked patches.
     bslip              = (G(1).tb_mec * mp.smp) .* d(1).cfinv_mec .* idl;
@@ -1877,19 +1882,19 @@ while not(count == prm.thr)
     % Keep section
     if it > prm.cha - prm.kep
       if prm.gpu ~= 99
-        cha.mc(:,it-(prm.cha-prm.kep)) = gather(mc.smp);
-        cha.ma(:,it-(prm.cha-prm.kep)) = gather(ma.smp);
-        cha.maid(:,it-(prm.cha-prm.kep)) = gather(idl1);
-        cha.mp(:,it-(prm.cha-prm.kep)) = gather(mp.smp);
-        cha.mi(:,it-(prm.cha-prm.kep)) = gather(mi.smp);
-        cha.la(:,it-(prm.cha-prm.kep)) = gather(la.smp);
+        cha.mc(:,it-(prm.cha-prm.kep))   = gather(  mc.old);
+        cha.ma(:,it-(prm.cha-prm.kep))   = gather(  ma.old);
+        cha.maid(:,it-(prm.cha-prm.kep)) = gather(idl1.old);
+        cha.mp(:,it-(prm.cha-prm.kep))   = gather(  mp.old);
+        cha.mi(:,it-(prm.cha-prm.kep))   = gather(  mi.old);
+        cha.la(:,it-(prm.cha-prm.kep))   = gather(  la.old);
       else
-        cha.mc(:,it-(prm.cha-prm.kep)) =        mc.smp;
-        cha.ma(:,it-(prm.cha-prm.kep)) =        ma.smp;
-        cha.maid(:,it-(prm.cha-prm.kep)) =        idl1;
-        cha.mp(:,it-(prm.cha-prm.kep)) =        mp.smp;
-        cha.mi(:,it-(prm.cha-prm.kep)) =        mi.smp;
-        cha.la(:,it-(prm.cha-prm.kep)) =        la.smp;
+        cha.mc(:,it-(prm.cha-prm.kep))   =        mc.old;
+        cha.ma(:,it-(prm.cha-prm.kep))   =        ma.old;
+        cha.maid(:,it-(prm.cha-prm.kep)) =      idl1.old;
+        cha.mp(:,it-(prm.cha-prm.kep))   =        mp.old;
+        cha.mi(:,it-(prm.cha-prm.kep))   =        mi.old;
+        cha.la(:,it-(prm.cha-prm.kep))   =        la.old;
       end
       if acc; nacc=nacc+1; end
     end
@@ -1948,9 +1953,9 @@ while not(count == prm.thr)
   mamean = mean(cha.ma,2);
   mimean = mean(cha.mi,2);
 
-  idl1 = (Heaviside(G(1).zd*mamean-G(1).zc) - Heaviside(G(1).zu*mamean-G(1).zc)) .* Hlim;
-  idl = logical(d(1).maid *  idl1);
-  idc = logical(d(1).maid * ~idl1);
+  idl1mean = (Heaviside(G(1).zd*mamean-G(1).zc) - Heaviside(G(1).zu*mamean-G(1).zc)) .* Hlim;
+  idl = logical(d(1).maid *  idl1mean);
+  idc = logical(d(1).maid * ~idl1mean);
   
   % Calculate back-slip on locked and creeping patches.
   bslip      = (G(1).tb_mec * mpmean) .* d(1).cfinv_mec .* idl;
@@ -2305,9 +2310,9 @@ while not(count == prm.thr)
   mamean(:,:,1) = mean(cha.ma,2);
   mimean(:,:,1) = mean(cha.mi,2);
 
-  idl1 = (Heaviside(G(1).zd*mamean-G(1).zc) - Heaviside(G(1).zu*mamean-G(1).zc)) .* Hlim;
-  idl = logical(d(1).maid *  idl1);
-  idc = logical(d(1).maid * ~idl1);
+  idl1mean = (Heaviside(G(1).zd*mamean-G(1).zc) - Heaviside(G(1).zu*mamean-G(1).zc)) .* Hlim;
+  idl = logical(d(1).maid *  idl1mean);
+  idc = logical(d(1).maid * ~idl1mean);
   
   % Calculate back-slip on locked and creeping patches.
   bslip      = (G(1).tb_mec * mpmean) .* d(1).cfinv_mec .* idl;
@@ -2764,6 +2769,7 @@ subplot(1,2,1)
 c = flipud(gray); colormap(c); colorbar
 subplot(1,2,2)
 c = flipud( hot); colormap(c); colorbar
+caxis([0, max(bslipl)*1.1]);
 
 %---------Show standard deviation for subfaults----------
 figure(120); clf(120)
