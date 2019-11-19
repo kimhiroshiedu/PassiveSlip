@@ -2038,9 +2038,9 @@ rwd         = prm.rwd      ;
 
 % Inverse temperatures
 ratio  = 2;
-finalr = 100;
-dT     = finalr ./ (prm.nrep-1);
-T_inv  = 1 ./ (ratio .^ (dT.*[0:prm.nrep-1]));
+Tmax   = 100;
+dT     = (1/(prm.nrep-1)) * (log(Tmax)/log(ratio));
+T_inv  = 1 ./ (ratio .^ ([0:prm.nrep-1].*dT));
 
 % Initial value
 mc.int = 1e+1;
@@ -2227,7 +2227,7 @@ while not(count == prm.thr)
       mp.old(:,[rex(it),rex(it)+1])   = fliplr(mp.old(:,[rex(it),rex(it)+1]));
       mi.old(:,[rex(it),rex(it)+1])   = fliplr(mi.old(:,[rex(it),rex(it)+1]));
       la.old(:,[rex(it),rex(it)+1])   = fliplr(la.old(:,[rex(it),rex(it)+1]));
-      idl1.old(:,[rex(it),rex(it)+1]) = idl1.old(mc.old(:,[rex(it),rex(it)+1]));
+      idl1.old(:,[rex(it),rex(it)+1]) = fliplr(idl1.old(:,[rex(it),rex(it)+1]));
     end
 
     % Keep section
