@@ -2769,7 +2769,7 @@ subplot(1,2,1)
 c = flipud(gray); colormap(c); colorbar
 subplot(1,2,2)
 c = flipud( hot); colormap(c); colorbar
-caxis([0, max(bslipl)*1.1]);
+caxis([0, max(gather(bslipl))*1.1]);
 
 %---------Show standard deviation for subfaults----------
 figure(120); clf(120)
