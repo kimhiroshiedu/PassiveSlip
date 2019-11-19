@@ -19,10 +19,10 @@ prm.input      = 'PARAMETER/parameter_inversion_nejp.txt';
 prm.optfile    = 'PARAMETER/opt_bound_par.txt';
 prm.interpfile = 'PARAMETER/interp_randwalkline.txt';
 %--
-% Simulation mode select
-[prm]     = DetetmineCalcMethod(prm,varargin);
 % Read Parameters.
 [prm]     = ReadParameters(prm);
+% Simulation mode select
+[prm]     = DetetmineCalcMethod(prm,varargin);
 % Read observation data. 
 [obs]     = ReadObs(prm);
 % Read blocks.
@@ -90,6 +90,10 @@ if ~isempty(varin)
   end
 else
   prm.method = 'MCMC.MH';
+end
+
+if sum(strcmpi(prm.method,{'Forward','MCMC.MH'})) >= 1
+  prm.nrep = 1;
 end
 
 end
@@ -2438,11 +2442,13 @@ if prm.gpu == 99
   meanmaid = mean(ccha.maid,2);
   meanmp   = mean(ccha.mp,  2);
   meanmi   = mean(ccha.mi,  2);
-  covmc    =   cov(ccha.mc')  ;
-  covma    =   cov(ccha.ma')  ;
-  covmaid  =   cov(ccha.maid');
-  covmp    =   cov(ccha.mp')  ;
-  covmi    =   cov(ccha.mi')  ;
+  for nrep = 1:prm.nrep
+    covmc(:,:,nrep)   = cov(ccha.mc(:,:,nrep)')  ;
+    covma(:,:,nrep)   = cov(ccha.ma(:,:,nrep)')  ;
+    covmaid(:,:,nrep) = cov(ccha.maid(:,:,nrep)');
+    covmp(:,:,nrep)   = cov(ccha.mp(:,:,nrep)')  ;
+    covmi(:,:,nrep)   = cov(ccha.mi(:,:,nrep)')  ;  
+  end
 else
   gcha.mc   = gpuArray(ccha.mc)  ;
   gcha.ma   = gpuArray(ccha.ma)  ;
@@ -2454,11 +2460,13 @@ else
   meanmaid  =  mean(gcha.maid,2);
   meanmp    =  mean(gcha.mp,  2);
   meanmi    =  mean(gcha.mi,  2);
-  covmc     =    cov(gcha.mc')  ;
-  covma     =    cov(gcha.ma')  ;
-  covmaid   =    cov(gcha.maid');
-  covmp     =    cov(gcha.mp')  ;
-  covmi     =    cov(gcha.mi')  ;
+  for nrep = 1:prm.nrep
+    covmc(:,:,nrep)   = cov(gcha.mc(:,:,nrep)')  ;
+    covma(:,:,nrep)   = cov(gcha.ma(:,:,nrep)')  ;
+    covmaid(:,:,nrep) = cov(gcha.maid(:,:,nrep)');
+    covmp(:,:,nrep)   = cov(gcha.mp(:,:,nrep)')  ;
+    covmi(:,:,nrep)   = cov(gcha.mi(:,:,nrep)')  ;
+  end
   meanmc    =   gather(meanmc)  ;
   meanma    =   gather(meanma)  ;
   meanmaid  =   gather(meanmaid);
@@ -2504,9 +2512,9 @@ miint   = int16(mibase);
 
 % mc
 for ii = 1:size(mcint,1)
-  cha.mccompress.nflt(ii).mcscale = mcscale(ii);
-  cha.mccompress.nflt(ii).mcmax   =   mcmax(ii);
-  cha.mccompress.nflt(ii).mcmin   =   mcmin(ii);
+  cha.mccompress.nflt(ii).mcscale = mcscale(ii,:,:);
+  cha.mccompress.nflt(ii).mcmax   =   mcmax(ii,:,:);
+  cha.mccompress.nflt(ii).mcmin   =   mcmin(ii,:,:);
 end
 cha.mccompress.covmc   =         covmc;
 cha.mccompress.meanmc  =        meanmc;
@@ -2515,9 +2523,9 @@ cha.mccompress.smpmc   = int16(mcbase);
 
 % ma
 for ii = 1:size(maint,1)
-  cha.macompress.nasp(ii).mascale = mascale(ii);
-  cha.macompress.nasp(ii).mamax   =   mamax(ii);
-  cha.macompress.nasp(ii).mamin   =   mamin(ii);
+  cha.macompress.nasp(ii).mascale = mascale(ii,:,:);
+  cha.macompress.nasp(ii).mamax   =   mamax(ii,:,:);
+  cha.macompress.nasp(ii).mamin   =   mamin(ii,:,:);
 end
 cha.macompress.covma   =         covma;
 cha.macompress.meanma  =        meanma;
@@ -2531,9 +2539,9 @@ cha.maidcompress.smpmaid  = logical(ccha.maid);
 
 % mp
 for ii = 1:size(mpint,1)
-  cha.mpcompress.npol(ii).mpscale = mpscale(ii);
-  cha.mpcompress.npol(ii).mpmax   =   mpmax(ii);
-  cha.mpcompress.npol(ii).mpmin   =   mpmin(ii);
+  cha.mpcompress.npol(ii).mpscale = mpscale(ii,:,:);
+  cha.mpcompress.npol(ii).mpmax   =   mpmax(ii,:,:);
+  cha.mpcompress.npol(ii).mpmin   =   mpmin(ii,:,:);
 end
 cha.mpcompress.covmp   =         covmp;
 cha.mpcompress.meanmp  =        meanmp;
@@ -2542,9 +2550,9 @@ cha.mpcompress.smpmp   = int16(mpbase);
 
 % mi
 for ii = 1:size(miint,1)
-  cha.micompress.nine(ii).miscale = miscale(ii);
-  cha.micompress.nine(ii).mimax   =   mimax(ii);
-  cha.micompress.nine(ii).mimin   =   mimin(ii);
+  cha.micompress.nine(ii).miscale = miscale(ii,:,:);
+  cha.micompress.nine(ii).mimax   =   mimax(ii,:,:);
+  cha.micompress.nine(ii).mimin   =   mimin(ii,:,:);
 end
 cha.micompress.covmi   =         covmi;
 cha.micompress.meanmi  =        meanmi;
