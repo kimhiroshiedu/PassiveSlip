@@ -1695,6 +1695,7 @@ mp.n   = 3.*blk(1).nblock;
 mi.n   = 3.*blk(1).nblock;
 mc.n   = blk(1).ntkin;
 ma.n   = 2.*blk(1).naspline;
+ia.n   = blk(1).ntmec;
 la.n   = 1;
 
 % Initial std
@@ -1718,7 +1719,7 @@ ma.old(:,1) = blk(1).aline_zu + (blk(1).aline_zd-blk(1).aline_zu).*(0.6 + rand(m
 ma.old(:,2) = blk(1).aline_zu + (blk(1).aline_zd-blk(1).aline_zu).*(0.1 + rand(ma.n./2,1) ./ 5);
 ma.old = reshape(ma.old,ma.n,1);
 % Substitute logical value if trimeshes are within asperities or not 
-idl1.old = zeros(blk(1).ntmec,1);
+ia.old = zeros(blk(1).ntmec,1);
 
 la.old    = zeros(la.n,1,precision);
 res.old   =   inf(   1,1,precision);
@@ -1735,6 +1736,7 @@ cha.mp = zeros(mp.n,prm.kep,precision);
 cha.mi = zeros(mi.n,prm.kep,precision);
 cha.ma = zeros(ma.n,prm.kep,precision);
 cha.mc = zeros(mc.n,prm.kep,precision);
+cha.ia = zeros(ia.n,prm.kep,precision);
 cha.la = zeros(la.n,prm.kep,precision);
 
 % GPU conversion
@@ -1817,9 +1819,9 @@ while not(count == prm.thr)
       b = waitGPU(byte1.bytes+byte2.bytes);
     end
 
-    idl1.smp = (Heaviside(G(1).zd*ma.smp-G(1).zc) - Heaviside(G(1).zu*ma.smp-G(1).zc)) .* Hlim;
-    idl = logical(d(1).maid *  idl1.smp);
-    idc = logical(d(1).maid * ~idl1.smp);
+    ia.smp = (Heaviside(G(1).zd*ma.smp-G(1).zc) - Heaviside(G(1).zu*ma.smp-G(1).zc)) .* Hlim;
+    idl = logical(d(1).maid *  ia.smp);
+    idc = logical(d(1).maid * ~ia.smp);
     
     % Calculate back-slip on locked patches.
     bslip              = (G(1).tb_mec * mp.smp) .* d(1).cfinv_mec .* idl;
@@ -1878,6 +1880,7 @@ while not(count == prm.thr)
       ma.old  =  ma.smp;
       mp.old  =  mp.smp;
       mi.old  =  mi.smp;
+      ia.old  =  ia.smp;
       la.old  =  la.smp;
       res.old = res.smp;
       %pri.old = pri.smp;
@@ -1886,19 +1889,19 @@ while not(count == prm.thr)
     % Keep section
     if it > prm.cha - prm.kep
       if prm.gpu ~= 99
-        cha.mc(:,it-(prm.cha-prm.kep))   = gather(  mc.old);
-        cha.ma(:,it-(prm.cha-prm.kep))   = gather(  ma.old);
-        cha.maid(:,it-(prm.cha-prm.kep)) = gather(idl1.old);
-        cha.mp(:,it-(prm.cha-prm.kep))   = gather(  mp.old);
-        cha.mi(:,it-(prm.cha-prm.kep))   = gather(  mi.old);
-        cha.la(:,it-(prm.cha-prm.kep))   = gather(  la.old);
+        cha.mc(:,it-(prm.cha-prm.kep)) = gather(mc.old);
+        cha.ma(:,it-(prm.cha-prm.kep)) = gather(ma.old);
+        cha.ia(:,it-(prm.cha-prm.kep)) = gather(ia.old);
+        cha.mp(:,it-(prm.cha-prm.kep)) = gather(mp.old);
+        cha.mi(:,it-(prm.cha-prm.kep)) = gather(mi.old);
+        cha.la(:,it-(prm.cha-prm.kep)) = gather(la.old);
       else
-        cha.mc(:,it-(prm.cha-prm.kep))   =        mc.old;
-        cha.ma(:,it-(prm.cha-prm.kep))   =        ma.old;
-        cha.maid(:,it-(prm.cha-prm.kep)) =      idl1.old;
-        cha.mp(:,it-(prm.cha-prm.kep))   =        mp.old;
-        cha.mi(:,it-(prm.cha-prm.kep))   =        mi.old;
-        cha.la(:,it-(prm.cha-prm.kep))   =        la.old;
+        cha.mc(:,it-(prm.cha-prm.kep)) =        mc.old ;
+        cha.ma(:,it-(prm.cha-prm.kep)) =        ma.old ;
+        cha.ia(:,it-(prm.cha-prm.kep)) =        ia.old ;
+        cha.mp(:,it-(prm.cha-prm.kep)) =        mp.old ;
+        cha.mi(:,it-(prm.cha-prm.kep)) =        mi.old ;
+        cha.la(:,it-(prm.cha-prm.kep)) =        la.old ;
       end
       if acc; nacc=nacc+1; end
     end
@@ -1957,9 +1960,9 @@ while not(count == prm.thr)
   mamean = mean(cha.ma,2);
   mimean = mean(cha.mi,2);
 
-  idl1mean = (Heaviside(G(1).zd*mamean-G(1).zc) - Heaviside(G(1).zu*mamean-G(1).zc)) .* Hlim;
-  idl = logical(d(1).maid *  idl1mean);
-  idc = logical(d(1).maid * ~idl1mean);
+  iamean = (Heaviside(G(1).zd*mamean-G(1).zc) - Heaviside(G(1).zu*mamean-G(1).zc)) .* Hlim;
+  idl = logical(d(1).maid *  iamean);
+  idc = logical(d(1).maid * ~iamean);
   
   % Calculate back-slip on locked and creeping patches.
   bslip      = (G(1).tb_mec * mpmean) .* d(1).cfinv_mec .* idl;
@@ -2058,6 +2061,7 @@ mp.n   = 3.*blk(1).nblock;
 mi.n   = 3.*blk(1).nblock;
 mc.n   = blk(1).ntkin;
 ma.n   = 2.*blk(1).naspline;
+ia.n   = blk(1).ntmec;
 la.n   = 1;
 
 % Initial std
@@ -2080,7 +2084,7 @@ ma.old = zeros(ma.n,prm.nrep);
 ma.old(       1:ma.n/2,:) = blk(1).aline_zu + repmat(blk(1).aline_zd-blk(1).aline_zu,1,prm.nrep).*(0.6 + rand(ma.n./2,prm.nrep) ./ 5);
 ma.old(ma.n/2+1:   end,:) = blk(1).aline_zu + repmat(blk(1).aline_zd-blk(1).aline_zu,1,prm.nrep).*(0.1 + rand(ma.n./2,prm.nrep) ./ 5);
 % Substitute logical value if trimeshes are within asperities or not 
-idl1.old = zeros(blk(1).ntmec,prm.nrep);
+ia.old = zeros(blk(1).ntmec,prm.nrep);
 
 la.old    = zeros(la.n,prm.nrep,precision);
 res.old   =   inf(   1,prm.nrep,precision);
@@ -2097,6 +2101,7 @@ cha.mp = zeros(mp.n,prm.kep,prm.nrep,precision);
 cha.mi = zeros(mi.n,prm.kep,prm.nrep,precision);
 cha.ma = zeros(ma.n,prm.kep,prm.nrep,precision);
 cha.mc = zeros(mc.n,prm.kep,prm.nrep,precision);
+cha.ia = zeros(ia.n,prm.kep,prm.nrep,precision);
 cha.la = zeros(la.n,prm.kep,prm.nrep,precision);
 
 % GPU conversion
@@ -2147,14 +2152,14 @@ while not(count == prm.thr)
     % Re-sampling coupling ratio
     pdfmc = prior_mc(mc.smp,lo_mc,up_mc);
     while sum(sum(~pdfmc)) > 0
-      mc.smp(~pdfmc) = mc.old(~pdfmc) + rwd .* mcscale .* -randw + (2 * randw) .* rand(sum(sum(~pdfmc)),1,precision);
+      mc.smp(~pdfmc) = mc.old(~pdfmc) + rwd .* mcscale .* (-randw + (2 * randw) .* rand(sum(sum(~pdfmc)),1,precision));
       pdfmc = prior_mc(mc.smp,lo_mc,up_mc);
     end
     % Re-sampling asperity line
     pdfma = prior_ma(ma.smp(ma.n/2+1:end,:),ma.smp(1:ma.n/2,:),blk(1).aline_zu,blk(1).aline_zd);
     while sum(sum(~pdfma)) > 0
       pdfma = repmat(pdfma,2,1);
-      ma.smp(~pdfma) = ma.old(~pdfma) + rwd .* mascale .* -randw + (2 * randw) .* rand(sum(sum(~pdfma)),1,precision);
+      ma.smp(~pdfma) = ma.old(~pdfma) + rwd .* mascale .* (-randw + (2 * randw) .* rand(sum(sum(~pdfma)),1,precision));
       pdfma = prior_ma(ma.smp(ma.n/2+1:end,:),ma.smp(1:ma.n/2,:),blk(1).aline_zu,blk(1).aline_zd);
     end
     
@@ -2165,9 +2170,9 @@ while not(count == prm.thr)
       b = waitGPU(byte1.bytes+byte2.bytes);
     end
 
-    idl1.smp = (Heaviside(G(1).zd*ma.smp-G(1).zc) - Heaviside(G(1).zu*ma.smp-G(1).zc)) .* Hlim;
-    idl = logical(d(1).maid *  idl1.smp);
-    idc = logical(d(1).maid * ~idl1.smp);
+    ia.smp = (Heaviside(G(1).zd*ma.smp-G(1).zc) - Heaviside(G(1).zu*ma.smp-G(1).zc)) .* Hlim;
+    idl    = logical(d(1).maid *  ia.smp);
+    idc    = logical(d(1).maid * ~ia.smp);
     
     % Calculate back-slip on locked patches.
     bslip              = (G(1).tb_mec * mp.smp) .* d(1).cfinv_mec .* idl;
@@ -2215,41 +2220,41 @@ while not(count == prm.thr)
     
     % Accept 
     acc = pdf > logu(it,:);
-    mc.old(:,acc)   = mc.smp(:,acc)  ;
-    ma.old(:,acc)   = ma.smp(:,acc)  ;
-    mp.old(:,acc)   = mp.smp(:,acc)  ;
-    mi.old(:,acc)   = mi.smp(:,acc)  ;
-    res.old(:,acc)  = res.smp(:,acc) ;
-    idl1.old(:,acc) = idl1.smp(:,acc);
+    mc.old( :,acc) = mc.smp( :,acc);
+    ma.old( :,acc) = ma.smp( :,acc);
+    mp.old( :,acc) = mp.smp( :,acc);
+    mi.old( :,acc) = mi.smp( :,acc);
+    ia.old( :,acc) = ia.smp( :,acc);
+    res.old(:,acc) = res.smp(:,acc);
     %     pri.old(:,acc)  = pri.smp(:,acc) ;
 
     % Exchange Replicas
     r = -0.5 .* (res.smp(rex(it)+1)-res.smp(rex(it))) * (T_inv(rex(it))-T_inv(rex(it)+1));
     if r > loge(it)
-      mc.old(:,[rex(it),rex(it)+1])   = fliplr(mc.old(:,[rex(it),rex(it)+1]));
-      ma.old(:,[rex(it),rex(it)+1])   = fliplr(ma.old(:,[rex(it),rex(it)+1]));
-      mp.old(:,[rex(it),rex(it)+1])   = fliplr(mp.old(:,[rex(it),rex(it)+1]));
-      mi.old(:,[rex(it),rex(it)+1])   = fliplr(mi.old(:,[rex(it),rex(it)+1]));
-      la.old(:,[rex(it),rex(it)+1])   = fliplr(la.old(:,[rex(it),rex(it)+1]));
-      idl1.old(:,[rex(it),rex(it)+1]) = fliplr(idl1.old(:,[rex(it),rex(it)+1]));
+      mc.old(:,[rex(it),rex(it)+1]) = fliplr(mc.old(:,[rex(it),rex(it)+1]));
+      ma.old(:,[rex(it),rex(it)+1]) = fliplr(ma.old(:,[rex(it),rex(it)+1]));
+      mp.old(:,[rex(it),rex(it)+1]) = fliplr(mp.old(:,[rex(it),rex(it)+1]));
+      mi.old(:,[rex(it),rex(it)+1]) = fliplr(mi.old(:,[rex(it),rex(it)+1]));
+      ia.old(:,[rex(it),rex(it)+1]) = fliplr(ia.old(:,[rex(it),rex(it)+1]));
+      la.old(:,[rex(it),rex(it)+1]) = fliplr(la.old(:,[rex(it),rex(it)+1]));
     end
 
     % Keep section
     if it > prm.cha - prm.kep
       if prm.gpu ~= 99
-        cha.mc(:,it-(prm.cha-prm.kep),:)   =   gather(mc.old);
-        cha.ma(:,it-(prm.cha-prm.kep),:)   =   gather(ma.old);
-        cha.maid(:,it-(prm.cha-prm.kep),:) = gather(idl1.old);
-        cha.mp(:,it-(prm.cha-prm.kep),:)   =   gather(mp.old);
-        cha.mi(:,it-(prm.cha-prm.kep),:)   =   gather(mi.old);
-        cha.la(:,it-(prm.cha-prm.kep),:)   =   gather(la.old);
+        cha.mc(:,it-(prm.cha-prm.kep),:) = gather(mc.old);
+        cha.ma(:,it-(prm.cha-prm.kep),:) = gather(ma.old);
+        cha.ia(:,it-(prm.cha-prm.kep),:) = gather(ia.old);
+        cha.mp(:,it-(prm.cha-prm.kep),:) = gather(mp.old);
+        cha.mi(:,it-(prm.cha-prm.kep),:) = gather(mi.old);
+        cha.la(:,it-(prm.cha-prm.kep),:) = gather(la.old);
       else
-        cha.mc(:,it-(prm.cha-prm.kep),:)   =        mc.old;
-        cha.ma(:,it-(prm.cha-prm.kep),:)   =        ma.old;
-        cha.maid(:,it-(prm.cha-prm.kep),:) =      idl1.old;
-        cha.mp(:,it-(prm.cha-prm.kep),:)   =        mp.old;
-        cha.mi(:,it-(prm.cha-prm.kep),:)   =        mi.old;
-        cha.la(:,it-(prm.cha-prm.kep),:)   =        la.old;
+        cha.mc(:,it-(prm.cha-prm.kep),:) =        mc.old ;
+        cha.ma(:,it-(prm.cha-prm.kep),:) =        ma.old ;
+        cha.ia(:,it-(prm.cha-prm.kep),:) =        ia.old ;
+        cha.mp(:,it-(prm.cha-prm.kep),:) =        mp.old ;
+        cha.mi(:,it-(prm.cha-prm.kep),:) =        mi.old ;
+        cha.la(:,it-(prm.cha-prm.kep),:) =        la.old ;
       end
       nacc(acc) = nacc(acc) + 1;
     end
@@ -2307,16 +2312,16 @@ while not(count == prm.thr)
     end
   end
   
-  cha.smp = cal.smp;
+  cha.smp = gather(cal.smp);
   % Debug-----------
-  mpmean(:,:,1) = mean(cha.mp,2);
-  mcmean(:,:,1) = mean(cha.mc,2);
-  mamean(:,:,1) = mean(cha.ma,2);
-  mimean(:,:,1) = mean(cha.mi,2);
+  mpmean = permute(mean(cha.mp,2),[1 3 2]);
+  mcmean = permute(mean(cha.mc,2),[1 3 2]);
+  mamean = permute(mean(cha.ma,2),[1 3 2]);
+  mimean = permute(mean(cha.mi,2),[1 3 2]);
 
-  idl1mean = (Heaviside(G(1).zd*mamean-G(1).zc) - Heaviside(G(1).zu*mamean-G(1).zc)) .* Hlim;
-  idl = logical(d(1).maid *  idl1mean);
-  idc = logical(d(1).maid * ~idl1mean);
+  iamean = (Heaviside(G(1).zd*mamean-G(1).zc) - Heaviside(G(1).zu*mamean-G(1).zc)) .* Hlim;
+  idl = logical(d(1).maid *  iamean);
+  idc = logical(d(1).maid * ~iamean);
   
   % Calculate back-slip on locked and creeping patches.
   bslip      = (G(1).tb_mec * mpmean) .* d(1).cfinv_mec .* idl;
@@ -2344,7 +2349,6 @@ while not(count == prm.thr)
   end
   % Total velocities
   vec.sum = vec.rig + vec.kin + vec.mec + vec.ine;
-  % vec.rel = g.c*((g.tb*poltmp).*cf);
   % Debug-----------
   if prm.gpu ~= 99
     ccha.mc  = gather(cha.mc );
@@ -2430,65 +2434,65 @@ function CompressData(ccha,prm,itr,nacc)
 % sfactor = 2^8 ;  % int8
 sfactor = 2^16;  % int16
 % 
-ccha.mc   =  single(ccha.mc)  ;
-ccha.ma   =  single(ccha.ma)  ;
-ccha.maid = logical(ccha.maid);
-ccha.mp   =  single(ccha.mp)  ;
-ccha.mi   =  single(ccha.mi)  ;
+ccha.mc =  single(ccha.mc);
+ccha.ma =  single(ccha.ma);
+ccha.ia = logical(ccha.ia);
+ccha.mp =  single(ccha.mp);
+ccha.mi =  single(ccha.mi);
 % if prm.gpu==99&&gpudevicecount==0
 if prm.gpu == 99
-  meanmc   = mean(ccha.mc,  2);
-  meanma   = mean(ccha.ma,  2);
-  meanmaid = mean(ccha.maid,2);
-  meanmp   = mean(ccha.mp,  2);
-  meanmi   = mean(ccha.mi,  2);
+  meanmc = mean(ccha.mc,2);
+  meanma = mean(ccha.ma,2);
+  meania = mean(ccha.ia,2);
+  meanmp = mean(ccha.mp,2);
+  meanmi = mean(ccha.mi,2);
   for nrep = 1:prm.nrep
-    covmc(:,:,nrep)   = cov(ccha.mc(:,:,nrep)')  ;
-    covma(:,:,nrep)   = cov(ccha.ma(:,:,nrep)')  ;
-    covmaid(:,:,nrep) = cov(ccha.maid(:,:,nrep)');
-    covmp(:,:,nrep)   = cov(ccha.mp(:,:,nrep)')  ;
-    covmi(:,:,nrep)   = cov(ccha.mi(:,:,nrep)')  ;  
+    covmc(:,:,nrep) = cov(ccha.mc(:,:,nrep)');
+    covma(:,:,nrep) = cov(ccha.ma(:,:,nrep)');
+    covia(:,:,nrep) = cov(ccha.ia(:,:,nrep)');
+    covmp(:,:,nrep) = cov(ccha.mp(:,:,nrep)');
+    covmi(:,:,nrep) = cov(ccha.mi(:,:,nrep)');  
   end
 else
-  gcha.mc   = gpuArray(ccha.mc)  ;
-  gcha.ma   = gpuArray(ccha.ma)  ;
-  gcha.maid = gpuArray(ccha.maid);
-  gcha.mp   = gpuArray(ccha.mp)  ;
-  gcha.mi   = gpuArray(ccha.mi)  ;
-  meanmc    =  mean(gcha.mc,  2);
-  meanma    =  mean(gcha.ma,  2);
-  meanmaid  =  mean(gcha.maid,2);
-  meanmp    =  mean(gcha.mp,  2);
-  meanmi    =  mean(gcha.mi,  2);
+  gcha.mc = gpuArray(ccha.mc);
+  gcha.ma = gpuArray(ccha.ma);
+  gcha.ia = gpuArray(ccha.ia);
+  gcha.mp = gpuArray(ccha.mp);
+  gcha.mi = gpuArray(ccha.mi);
+  meanmc  =  mean(gcha.mc,2);
+  meanma  =  mean(gcha.ma,2);
+  meania  =  mean(gcha.ia,2);
+  meanmp  =  mean(gcha.mp,2);
+  meanmi  =  mean(gcha.mi,2);
   for nrep = 1:prm.nrep
-    covmc(:,:,nrep)   = cov(gcha.mc(:,:,nrep)')  ;
-    covma(:,:,nrep)   = cov(gcha.ma(:,:,nrep)')  ;
-    covmaid(:,:,nrep) = cov(gcha.maid(:,:,nrep)');
-    covmp(:,:,nrep)   = cov(gcha.mp(:,:,nrep)')  ;
-    covmi(:,:,nrep)   = cov(gcha.mi(:,:,nrep)')  ;
+    covmc(:,:,nrep) = cov(gcha.mc(:,:,nrep)');
+    covma(:,:,nrep) = cov(gcha.ma(:,:,nrep)');
+    covia(:,:,nrep) = cov(gcha.ia(:,:,nrep)');
+    covmp(:,:,nrep) = cov(gcha.mp(:,:,nrep)');
+    covmi(:,:,nrep) = cov(gcha.mi(:,:,nrep)');
   end
-  meanmc    =   gather(meanmc)  ;
-  meanma    =   gather(meanma)  ;
-  meanmaid  =   gather(meanmaid);
-  meanmp    =   gather(meanmp)  ;
-  meanmi    =   gather(meanmi)  ;
-  covmc     =    gather(covmc)  ;
-  covma     =    gather(covma)  ;
-  covmaid   =    gather(covmaid);
-  covmp     =    gather(covmp)  ;
-  covmi     =    gather(covmi)  ;
+  meanmc = gather(meanmc);
+  meanma = gather(meanma);
+  meania = gather(meania);
+  meanmp = gather(meanmp);
+  meanmi = gather(meanmi);
+  covmc  =  gather(covmc);
+  covma  =  gather(covma);
+  covia  =  gather(covia);
+  covmp  =  gather(covmp);
+  covmi  =  gather(covmi);
 end
 % 
-mcmax   = max(ccha.mc,  [],2);
-mcmin   = min(ccha.mc,  [],2);
-mamax   = max(ccha.ma,  [],2);
-mamin   = min(ccha.ma,  [],2);
-maidmax = max(ccha.maid,[],2);
-maidmin = min(ccha.maid,[],2);
-mpmax   = max(ccha.mp,  [],2);
-mpmin   = min(ccha.mp,  [],2);
-mimax   = max(ccha.mi,  [],2);
-mimin   = min(ccha.mi,  [],2);
+mcmax = max(ccha.mc,[],2);
+mcmin = min(ccha.mc,[],2);
+mamax = max(ccha.ma,[],2);
+mamin = min(ccha.ma,[],2);
+iamax = max(ccha.ia,[],2);
+iamin = min(ccha.ia,[],2);
+mpmax = max(ccha.mp,[],2);
+mpmin = min(ccha.mp,[],2);
+mimax = max(ccha.mi,[],2);
+mimin = min(ccha.mi,[],2);
 % 
 mcscale = 1./(mcmax-mcmin);
 mcbase  = bsxfun(@minus,bsxfun(@times,bsxfun(@minus,ccha.mc,mcmin),mcscale.*(sfactor-1)),sfactor/2);
@@ -2532,10 +2536,10 @@ cha.macompress.meanma  =        meanma;
 % cha.macompress.smpma =  int8(mabase);
 cha.macompress.smpma   = int16(mabase);
 
-% maid
-cha.maidcompress.covmaid  =            covmaid;
-cha.maidcompress.meanmaid =           meanmaid;
-cha.maidcompress.smpmaid  = logical(ccha.maid);
+% ia
+cha.iacompress.covia  =            covia;
+cha.iacompress.meania =           meania;
+cha.iacompress.smpia  = logical(ccha.ia);
 
 % mp
 for ii = 1:size(mpint,1)
