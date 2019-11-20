@@ -2044,10 +2044,9 @@ end
 rwd         = prm.rwd      ;
 
 % Inverse temperatures
-ratio  = 2;
-Tmax   = 100;
-dT     = (1/(prm.nrep-1)) * (log(Tmax)/log(ratio));
-T_inv  = 1 ./ (ratio .^ ([0:prm.nrep-1].*dT));
+Tmax  = 100;
+dT    = Tmax^(1/(prm.nrep-1));
+T_inv = 1 ./ (dT.^[0:prm.nrep-1]);
 
 % Initial value
 mc.int = 1e+1;
@@ -2353,6 +2352,7 @@ while not(count == prm.thr)
   if prm.gpu ~= 99
     ccha.mc  = gather(cha.mc );
     ccha.ma  = gather(cha.ma );
+    ccha.ia  = gather(cha.ia );
     ccha.mp  = gather(cha.mp );
     ccha.mi  = gather(cha.mi );
     ccha.la  = gather(cha.la );
