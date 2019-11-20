@@ -41,7 +41,7 @@ for ii = 1:nit
     nflt   = size(cha.mccompress.nflt,2);
     nine   = size(cha.micompress.nine,2);
     nasp   = size(cha.macompress.nasp,2);
-    naspid = size(cha.maidcompress.smpmaid,1);
+    naspid = size(cha.iacompress.smpia,1);
     sumpol   = zeros(npol,1);
     sumflt   = zeros(nflt,1);
     sumine   = zeros(nine,1);
@@ -115,7 +115,7 @@ for ii = 1:nit
       mahist(na,:) = mahist(na,:)+histcounts(smpasp(na,:),mabin);
     end
     %
-    smpaspid = cha.maidcompress.smpmaid;
+    smpaspid = cha.iacompress.smpia;
     
     ndatapol   = ndatapol   + nch;
     ndataflt   = ndataflt   + nch;
@@ -170,7 +170,7 @@ for ii = 1:nit
       end
     end
     %
-    smpaspid = cha.maidcompress.smpmaid;
+    smpaspid = cha.iacompress.smpia;
   end
   if accflag
     acctotal = acctotal + cha.ajr;
