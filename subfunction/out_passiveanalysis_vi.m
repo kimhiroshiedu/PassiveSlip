@@ -274,7 +274,7 @@ for nb1 = 1:blk(1).nblock
         bslipl_st = bslip.mecl(mm3m     :mm3m+  nf-1);
         bslipl_dp = bslip.mecl(mm3m+  nf:mm3m+2*nf-1);
         bslipl_ts = bslip.mecl(mm3m+2*nf:mm3m+3*nf-1);
-        pc = tcha.aveaspid(mm1m:mm1m+nf-1);
+        pc = tcha.aveaid(mm1m:mm1m+nf-1);
         outdata = [fltnum',...
             blk(1).bound(nb1,nb2).blon,...
             blk(1).bound(nb1,nb2).blat,...
@@ -387,10 +387,10 @@ for nb1 = 1:blk(1).nblock
           for nseg = 1:size(blk(1).bound(nb1,nb2).segment,2)
             [edgex,edgey] = PLTXY(blk(1).bound(nb1,nb2).segment(nseg).lat,blk(1).bound(nb1,nb2).segment(nseg).lon,alat0,alon0);
             segid = inpolygon(tricx,tricy,edgex,edgey);
-            asp(1).bound(nb1,nb2).segment(nseg).smparea = segid'.*blk(1).bound(nb1,nb2).triarea' * tcha.smpaspid(mm1m:mm1m+nf-1,:);
+            asp(1).bound(nb1,nb2).segment(nseg).smparea = segid'.*blk(1).bound(nb1,nb2).triarea' * tcha.smpaid(mm1m:mm1m+nf-1,:);
           end
         else
-          asp(1).bound(nb1,nb2).smparea = blk(1).bound(nb1,nb2).triarea' * tcha.smpaspid(mm1m:mm1m+nf-1,:);
+          asp(1).bound(nb1,nb2).smparea = blk(1).bound(nb1,nb2).triarea' * tcha.smpaid(mm1m:mm1m+nf-1,:);
         end
         mm1m = mm1m +   nf;
         mm3m = mm3m + 3*nf;  
