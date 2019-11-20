@@ -33,7 +33,7 @@ end
 
 function rename_maid2ia_tcha(folder)
 file = fullfile(folder,'tcha.mat');
-load(file);
+load(file); fprintf('load tcha.mat... \n');
 tcha.aveaid  = tcha.aveaspid ;
 tcha.stdaid  = tcha.stdaspid ;
 tcha.covaid  = tcha.covaspid ;
@@ -41,18 +41,19 @@ tcha.coraid  = tcha.coraspid ;
 tcha.smpaid  = tcha.smpaspid ;
 tcha.ndataid = tcha.ndataspid;
 tcha = rmfield(tcha,{'aveaspid','stdaspid','covaspid','coraspid','smpaspid','ndataspid'});
-save(file,'tcha','-v7.3');
+save(file,'tcha','-v7.3'); fprintf('saved.\n');
 end
 
 function rename_maid2ia_cha(datin)
 nit = size(datin,2);
 for ii = 1:nit
-  load(datin(ii).fname); fprintf('load %s ...',datin(ii).fname);
+  filepath = split(datin(ii).fname,'/');
+  load(datin(ii).fname); fprintf('load %s ... ',char(filepath{end}));
   cha.iacompress.covia = cha.maidcompress.covmaid;
   cha.iacompress.meania = cha.maidcompress.meanmaid;
   cha.iacompress.smpia = cha.maidcompress.smpmaid;
   cha = rmfield(cha,'maidcompress');
-  save(datin(ii).fname); fprintf('save %s\n',datin(ii).fname);
+  save(datin(ii).fname); fprintf('saved.\n');
 end
 end
 
