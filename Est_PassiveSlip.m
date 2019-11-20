@@ -2236,6 +2236,7 @@ while not(count == prm.thr)
       mi.old(:,[rex(it),rex(it)+1]) = fliplr(mi.old(:,[rex(it),rex(it)+1]));
       ia.old(:,[rex(it),rex(it)+1]) = fliplr(ia.old(:,[rex(it),rex(it)+1]));
       la.old(:,[rex(it),rex(it)+1]) = fliplr(la.old(:,[rex(it),rex(it)+1]));
+      res.old(:,[rex(it),rex(it)+1]) = fliplr(res.old(:,[rex(it),rex(it)+1]));
     end
 
     % Keep section
