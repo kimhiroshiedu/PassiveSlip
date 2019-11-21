@@ -7,8 +7,9 @@ You can estimates Mechanical Coupling Distribution using MCMC, or do forward sim
     * (Option) Shape or trimesh files of Block boundaries.
     * Observation data file  
     File format is  
-    **code**
-        Site_ID  Lon.  Lat.  Hig.  vE  vN  vU  sigmaE  sigmaN  sigmaU  weight
+
+             Site_ID  Lon.  Lat.  Hig.  vE  vN  vU  sigmaE  sigmaN  sigmaU  weight
+
     * Parameter files
         * PARAMETER/Parameter.txt  
         Parameters to run the script.
