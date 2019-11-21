@@ -2,7 +2,7 @@
 You can estimates Mechanical Coupling Distribution using MCMC, or do forward simulation by Est_PassiveSlip.m.  
 Usage of main script, Est_PassiveSlip
 
-     EST_PassiveSlip('option',)
+     EST_PassiveSlip('option')
 
 'option' is calculation method: 'fwd', forward simulation; 'mcmc', MCMC estimation  
 If you enter no option (i.e. just type EST_PassiveSlip), MCMC estimation will start.
