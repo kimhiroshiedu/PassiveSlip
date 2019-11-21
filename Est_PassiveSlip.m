@@ -62,7 +62,7 @@ elseif strcmpi(prm.method,'MCMC.RE')
   [cal]   = Proceed_MCMC_RE(blk,asp,tri,prm,obs,eul,d,G);
 end
 
-% Save data.
+% Save data
 SaveData(prm,blk,obs,tri,d,G,cal)
 
 end
