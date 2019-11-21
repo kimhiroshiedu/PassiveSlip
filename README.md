@@ -8,7 +8,7 @@ Usage of main script, Est_PassiveSlip
 'option2' is MCMC algorithm: 'mh', Metropolis-Hasting method; 're', Replica exchange method  
 If you enter no option (i.e. just type EST_PassiveSlip), MCMC estimation using MH method will run.
 * Required files to run
-    * Block line files in BLOCK directory.  
+    * Block line files.  
       File name requires block number, such as 01_hoge.txt, 02_fuga.txt  
       File format is Lon. and Lat. in 1st and 2nd columns, respectively. Note that the block line must be closed line (i.e. first and last rows must be equal).
     * (Option) Shape or trimesh files of Block boundaries.
