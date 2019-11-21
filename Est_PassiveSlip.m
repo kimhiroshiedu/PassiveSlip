@@ -1,4 +1,5 @@
 function Est_PassiveSlip(varargin)
+close all
 % Estimates Euler vectors, internal strains, and asperity lines.
 % Or calculate Passive back-slip rates for given asperities.
 % 
@@ -539,8 +540,10 @@ for nb = 1:blk(1).nblock
   maxlon = max([blk(nb).lon;maxlon]); 
 end
 
+f300 = figure(300); clf(300)
+f300.Position = [60,100,1400,800];
 % Blocks (world wide)
-figure(310); clf(310)
+figure(300); subplot(1,2,1)
 h = worldmap([minlat,maxlat],[minlon,maxlon]);
 getm(h, 'MapProjection');
 geoshow('landareas.shp', 'FaceColor', [0.15 0.5 0.15])
@@ -552,8 +555,8 @@ for nb = 1:blk(1).nblock
 end
 drawnow
 
+figure(300); subplot(1,2,2)
 % Blocks (regional)
-figure(320); clf(320)
 h = worldmap([minlatc,maxlatc],[minlonc,maxlonc]);
 getm(h, 'MapProjection');
 geoshow('landareas.shp', 'FaceColor', [0.15 0.5 0.15])
@@ -572,7 +575,7 @@ end
 drawnow
 
 % Block and trimesh
-figure(330); clf(330)
+figure(310); clf(310)
 for nb1 = 1:blk(1).nblock
   for nb2 = nb1+1:blk(1).nblock
     nf = size(blk(1).bound(nb1,nb2).blon,1);
@@ -617,14 +620,13 @@ save(fullfile(a_dir,'obs.mat'),'obs','-v7.3')
 save(fullfile(a_dir,'cal.mat'),'cal','-v7.3')
 save(fullfile(a_dir,'grn.mat'),'d','G','-v7.3')
 % 
-if strcmpi(prm.method,'Forward')
+savefig(300,fullfile(f_fir,'region_map'))
+savefig(310,fullfile(f_fir,'mesh_map'))
+if ~strcmpi(prm.method,'Forward')
   movefile([prm.dirresult,'/cha_test*.mat'],a_dir)
-  savefig(100,fullfile(f_fir,'coupling'))
-  savefig(110,fullfile(f_fir,'bslip'))
-  savefig(120,fullfile(f_fir,'std'))
+  savefig(100,fullfile(f_fir,'coupling_bslip'))
   savefig(130,fullfile(f_fir,'pole'))
   savefig(140,fullfile(f_fir,'vector'))
-  savefig(150,fullfile(f_fir,'vec_rig_ela'))
   savefig(160,fullfile(f_fir,'strain'))
 else
   savefig(100,fullfile(f_fir,'bslip_vector'))
@@ -2763,9 +2765,10 @@ end
 vfactor = 1e-2; % vector
 cfactor = 5e+8; % strain
 
+fig100 = figure(100); clf(100)
+fig100.Position = [60,60,1200,900];
 %---------Show kinematic coupling ------------------------
-figure(100); clf(100)
-% Bug to wait zero
+figure(100); subplot(2,2,1) % Bug to wait zero
 mm1 = 1;
 for nb1 = 1:blk(1).nblock
   for nb2 = nb1+1:blk(1).nblock
@@ -2781,40 +2784,13 @@ for nb1 = 1:blk(1).nblock
     end
   end
 end
-ax      =           gca;
-ax.CLim = [lo_mc up_mc];
-colormap(cmap)
+ax1 = gca;
+ax1.CLim = [lo_mc up_mc];
+colormap(ax1,cmap)
 colorbar
 
-%---------Show mechanical backslip rate ------------------
-figure(110); clf(110)
-mm3 = 1;
-for nb1 = 1:blk(1).nblock
-  for nb2 = nb1+1:blk(1).nblock
-    if blk(1).bound(nb1,nb2).flag2 == 1
-      nf = size(blk(1).bound(nb1,nb2).blon,1);
-      % Backslip rate (locked)
-      subplot(1,2,1); patch(blk(1).bound(nb1,nb2).blon',...
-                            blk(1).bound(nb1,nb2).blat',...
-                            single(sqrt(bslipl(mm3:mm3+nf-1).^2+bslipl(mm3+nf:mm3+2*nf-1).^2)~=0)); hold on
-      % Backslip rate (all)
-      subplot(1,2,2); patch(blk(1).bound(nb1,nb2).blon',...
-                            blk(1).bound(nb1,nb2).blat',...
-                            sqrt(bslip( mm3:mm3+nf-1).^2+bslip( mm3+nf:mm3+2*nf-1).^2)   ); hold on
-      mm3 = mm3 + 3*nf;
-    else
-      continue
-    end
-  end
-end
-subplot(1,2,1)
-c = flipud(gray); colormap(c); colorbar
-subplot(1,2,2)
-c = flipud( hot); colormap(c); colorbar
-caxis([0, max(gather(bslipl))*1.1]);
-
 %---------Show standard deviation for subfaults----------
-figure(120); clf(120)
+figure(100); subplot(2,2,2) % Bug to wait zero
 % bug to wait zero
 mm1 = 1;
 for nb1 = 1:blk(1).nblock
@@ -2831,8 +2807,40 @@ for nb1 = 1:blk(1).nblock
     end
   end
 end
-colormap(parula)
+ax2 = gca;
+colormap(ax2,'parula')
 colorbar
+
+%---------Show mechanical backslip rate ------------------
+mm3 = 1;
+for nb1 = 1:blk(1).nblock
+  for nb2 = nb1+1:blk(1).nblock
+    if blk(1).bound(nb1,nb2).flag2 == 1
+      nf = size(blk(1).bound(nb1,nb2).blon,1);
+      % Backslip rate (locked)
+      figure(100); subplot(2,2,3); patch(blk(1).bound(nb1,nb2).blon',...
+                            blk(1).bound(nb1,nb2).blat',...
+                            blk(1).bound(nb1,nb2).bdep',...
+                            single(sqrt(bslipl(mm3:mm3+nf-1).^2+bslipl(mm3+nf:mm3+2*nf-1).^2)~=0)); hold on
+      % Backslip rate (all)
+      figure(100); subplot(2,2,4); patch(blk(1).bound(nb1,nb2).blon',...
+                            blk(1).bound(nb1,nb2).blat',...
+                            blk(1).bound(nb1,nb2).bdep',...
+                            sqrt(bslip( mm3:mm3+nf-1).^2+bslip( mm3+nf:mm3+2*nf-1).^2)   ); hold on
+      mm3 = mm3 + 3*nf;
+    else
+      continue
+    end
+  end
+end
+subplot(2,2,3);
+ax3 = gca;
+c = flipud(gray); colormap(ax3,c)
+subplot(2,2,4);
+ax4 = gca;
+c = flipud(hot);  colormap(ax4,c);
+colorbar
+caxis([0, max(gather(bslipl))*1.1]);
 
 %---------Show 2-d histogram of sampled euler pole-------------
 figure(130); clf(130)
@@ -2851,17 +2859,16 @@ for nb = 1:blk(1).nblock
   text(double(mean(lonp)),double(mean(latp)),int2str(nb))
   hold on
 end
-quiver(obs(1).alon,obs(1).alat,      obs(1).evec,      obs(1).nvec,'green')
-quiver(obs(1).alon,obs(1).alat,cha.smp(1:3:end)',cha.smp(2:3:end)', 'blue')
 colorbar
 hold on
 
+f140 = figure(140); clf(140)
+f140.Position = [60,60,1200,900];
 %---------Show obs and cal vector at sites -------------
 % Color of arrows
 % green : Observed velocities
 % blue  : Calculated velocities
-figure(140); clf(140)
-subplot(1,2,1)
+figure(140); subplot(2,2,1)
 quiver(obs(1).alon,obs(1).alat,vfactor.*obs(1).evec,      vfactor.*obs(1).nvec,      'AutoScale','off','Color','green')
 hold on
 quiver(obs(1).alon,obs(1).alat,vfactor.*vec.sum(1:3:end)',vfactor.*vec.sum(2:3:end)','AutoScale','off','Color', 'blue')
@@ -2869,7 +2876,7 @@ hold on
 axis([obs(1).lonmin-1,obs(1).lonmax+1,obs(1).latmin-1,obs(1).latmax+1]);
 title(['Horizontal obs and cal motion (iteration number: ',num2str(rt),')']);
 
-subplot(1,2,2)
+figure(140); subplot(2,2,2)
 quiver(obs(1).alon,obs(1).alat,zeros(size(obs(1).hvec)),vfactor.*obs(1).hvec,      'AutoScale','off','Color','green')
 hold on
 quiver(obs(1).alon,obs(1).alat,zeros(size(obs(1).hvec)),vfactor.*vec.sum(3:3:end)','AutoScale','off','Color', 'blue')
@@ -2880,27 +2887,23 @@ title(['Vertical obs and cal motion (iteration number: ',num2str(rt),')']);
 %-------------------- Show rigid, kinematic, mechanical vectors------------
 % Color of arrows
 % black   : Rigid rotation
-% red     : Elastic deformation due to slip deficit
-figure(150); clf(150)
-subplot(1,2,1)
+% red     : Elastic deformation due to mechanical coupling
+% blue    : Elastic deformation due to kinematic coupling
+figure(140); subplot(2,2,3)
 quiver(obs(1).alon,obs(1).alat, vfactor.*vec.rig(1:3:end)',vfactor.*vec.rig(2:3:end)','AutoScale','off','Color','k')
 hold on
 quiver(obs(1).alon,obs(1).alat, vfactor.*vec.kin(1:3:end)',vfactor.*vec.kin(2:3:end)','AutoScale','off','Color','b')
 hold on
 quiver(obs(1).alon,obs(1).alat, vfactor.*vec.mec(1:3:end)',vfactor.*vec.mec(2:3:end)','AutoScale','off','Color','r')
-% hold on
-% quiver(obs(1).alon,obs(1).alat,vec.rel(1:3:end)',vec.rel(2:3:end)','m')
 axis([obs(1).lonmin-1,obs(1).lonmax+1,obs(1).latmin-1,obs(1).latmax+1]);
 title(['Horizontal rigid and elastic motion (iteration number: ',num2str(rt),')']);
 
-subplot(1,2,2)
+figure(140); subplot(2,2,4)
 quiver(obs(1).alon,obs(1).alat, zeros(size(vec.rig(3:3:end)))',vfactor.*vec.rig(3:3:end)','AutoScale','off','Color','k')
 hold on
 quiver(obs(1).alon,obs(1).alat, zeros(size(vec.kin(3:3:end)))',vfactor.*vec.kin(3:3:end)','AutoScale','off','Color','b')
 hold on
 quiver(obs(1).alon,obs(1).alat, zeros(size(vec.mec(3:3:end)))',vfactor.*vec.mec(3:3:end)','AutoScale','off','Color','r')
-% hold on
-% quiver(obs(1).alon,obs(1).alat,vec.rel(1:3:end)',vec.rel(2:3:end)','m')
 axis([obs(1).lonmin-1,obs(1).lonmax+1,obs(1).latmin-1,obs(1).latmax+1]);
 title(['Vertical rigid and elastic motion (iteration number: ',num2str(rt),')']);
 
