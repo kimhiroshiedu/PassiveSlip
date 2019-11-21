@@ -23,7 +23,6 @@ prm.interpfile = 'PARAMETER/interp_randwalkline.txt';
 [prm]     = ReadParameters(prm);
 % Simulation mode select
 [prm]     = DetetmineCalcMethod(prm,varargin);
-clear varargin
 % Read observation data. 
 [obs]     = ReadObs(prm);
 % Read blocks.
@@ -69,56 +68,28 @@ end
 
 %% Determine simulation method
 function [prm] = DetetmineCalcMethod(prm,varin)
-correct = 0;
-while correct ~= 1
-  if ~isempty(varin)
-    if strcmpi(char(varin{1}),'fwd')
-      prm.method = 'Forward';
-      correct = 1;
-    elseif strcmpi(char(varin{1}),'mcmc')
-      if size(varin,2) == 1
-        prm.method = 'MCMC.MH';
-        correct = 1;
-      elseif size(varin,2) == 2
-        if sum(strcmpi(char(varin{2}),{'mh','re'})) >= 1
-          prm.method = ['MCMC.',char(upper(varin{2}))];
-          correct = 1;
-        else
-          varin{2} = input("Invalid option. Enter 'mh' or 're' > ",'s');
-        end
+if ~isempty(varin)
+  if strcmpi(varin{1},'fwd')
+    prm.method = 'Forward';
+  elseif strcmpi(varin{1},'mcmc')
+    if size(varin,2) == 1
+      prm.method = 'MCMC.MH';
+    elseif size(varin,2) == 2
+      if sum(strcmpi(varin{2},{'mh','re'})) >= 1
+        prm.method = ['MCMC.',char(upper(varin{2}))];
       else
-        fprintf('Too much variables. Enter options again.\n')
-        varin{1} = input('option1 > ','s');
-        if strcmpi(char(varin{1}),'fwd')
-          prm.method = 'Forward';
-          correct = 1;
-        elseif strcmpi(char(varin{1}),'mcmc')
-          varin{2} = input('option2 > ','s');
-        elseif sum(strcmpi(char(varin{1}),{'mh','re'})) >= 1
-          prm.method = ['MCMC.',char(upper(varin{1}))];
-          correct = 1;
-        end
+        error('Invalid option.')
       end
-    elseif sum(strcmpi(char(varin{1}),{'mh','re'})) >= 1
-      prm.method = ['MCMC.',char(upper(varin{1}))];
-      correct = 1;
     else
-      fprintf('Invalid valiable. Enter correct options.\n')
-      varin{1} = input('option1 > ','s');
-      if strcmpi(char(varin{1}),'fwd')
-        prm.method = 'Forward';
-        correct = 1;
-      elseif strcmpi(char(varin{1}),'mcmc')
-        varin{2} = input('option2 > ','s');
-      elseif sum(strcmpi(char(varin{1}),{'mh','re'})) >= 1
-        prm.method = ['MCMC.',char(upper(varin{1}))];
-        correct = 1;
-      end
+        error('Too much variables.')
     end
+  elseif sum(strcmpi(varin{1},{'mh','re'})) >= 1
+    prm.method = ['MCMC.',char(upper(varin{1}))];
   else
-    prm.method = 'MCMC.MH';
-    correct = 1;
+    error('Invalid valiable.')
   end
+else
+  prm.method = 'MCMC.MH';
 end
 
 if sum(strcmpi(prm.method,{'Forward','MCMC.MH'})) >= 1
