@@ -4,7 +4,7 @@ Usage of main script, Est_PassiveSlip
 
      EST_PassiveSlip('option',)
 
-'option1' is calculation method: 'fwd', forward simulation; 'mcmc', MCMC estimation  
+'option' is calculation method: 'fwd', forward simulation; 'mcmc', MCMC estimation  
 If you enter no option (i.e. just type EST_PassiveSlip), MCMC estimation will start.
 * Required files to run
     * Block line files in BLOCK directory.  
