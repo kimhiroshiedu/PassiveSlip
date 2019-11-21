@@ -164,8 +164,7 @@ prm.cha = fscanf(fid,'%d \n',[1,1]); [~] = fgetl(fid);
 prm.kep = fscanf(fid,'%d \n',[1,1]); [~] = fgetl(fid);
 prm.rwd = fscanf(fid,'%f \n',[1,1]); [~] = fgetl(fid);
 prm.nrep= fscanf(fid,'%i \n',[1,1]); [~] = fgetl(fid);
-prm.efrq= fscanf(fid,'%i \n',[1,1]); [~] = fgetl(fid);
-prm.fmag= fscanf(fid,'%f \n',[1,1]);
+prm.efrq= fscanf(fid,'%i \n',[1,1]);
 fclose(fid);
 %====================================================
 tmp = load(prm.optfile);
@@ -197,7 +196,6 @@ fprintf('KEP(KEEP)                 : %i \n',prm.kep)
 fprintf('RWD(Walk_dis)             : %4.2f \n',prm.rwd) 
 fprintf('Number of Replica         : %i \n',prm.nrep) 
 fprintf('Exchange Frequency        : %i \n',prm.efrq) 
-fprintf('Final Magnification       : %4.2f \n',prm.fmag) 
 fprintf('==================\n') 
 %====================================================
 disp('PASS READ_PARAMETERS')
@@ -2160,6 +2158,7 @@ while not(count == prm.thr)
   rt   = rt+1;
   nacc = zeros(1,prm.nrep);tic
   randw = 1;
+  excount = 0;
   % Random value for each parameter
   logu      = log(rand(prm.cha,prm.nrep,precision));
   loge      = log(rand(prm.cha,1,precision));
@@ -2259,15 +2258,18 @@ while not(count == prm.thr)
     %     pri.old(:,acc)  = pri.smp(:,acc) ;
 
     % Exchange Replicas
-    r = -0.5 .* (res.smp(rex(it)+1)-res.smp(rex(it))) * (T_inv(rex(it))-T_inv(rex(it)+1));
-    if r > loge(it)
-      mc.old(:,[rex(it),rex(it)+1]) = fliplr(mc.old(:,[rex(it),rex(it)+1]));
-      ma.old(:,[rex(it),rex(it)+1]) = fliplr(ma.old(:,[rex(it),rex(it)+1]));
-      mp.old(:,[rex(it),rex(it)+1]) = fliplr(mp.old(:,[rex(it),rex(it)+1]));
-      mi.old(:,[rex(it),rex(it)+1]) = fliplr(mi.old(:,[rex(it),rex(it)+1]));
-      ia.old(:,[rex(it),rex(it)+1]) = fliplr(ia.old(:,[rex(it),rex(it)+1]));
-      la.old(:,[rex(it),rex(it)+1]) = fliplr(la.old(:,[rex(it),rex(it)+1]));
-      res.old(:,[rex(it),rex(it)+1]) = fliplr(res.old(:,[rex(it),rex(it)+1]));
+    if mod(it,prm.efrq) == 0
+      r = -0.5 .* (res.smp(rex(it)+1)-res.smp(rex(it))) * (T_inv(rex(it))-T_inv(rex(it)+1));
+      if r > loge(it)
+        mc.old(:,[rex(it),rex(it)+1]) = fliplr(mc.old(:,[rex(it),rex(it)+1]));
+        ma.old(:,[rex(it),rex(it)+1]) = fliplr(ma.old(:,[rex(it),rex(it)+1]));
+        mp.old(:,[rex(it),rex(it)+1]) = fliplr(mp.old(:,[rex(it),rex(it)+1]));
+        mi.old(:,[rex(it),rex(it)+1]) = fliplr(mi.old(:,[rex(it),rex(it)+1]));
+        ia.old(:,[rex(it),rex(it)+1]) = fliplr(ia.old(:,[rex(it),rex(it)+1]));
+        la.old(:,[rex(it),rex(it)+1]) = fliplr(la.old(:,[rex(it),rex(it)+1]));
+        res.old(:,[rex(it),rex(it)+1]) = fliplr(res.old(:,[rex(it),rex(it)+1]));
+        excount = excount + 1;
+      end
     end
 
     % Keep section
@@ -2305,15 +2307,16 @@ while not(count == prm.thr)
   la.std = std(cha.la,1,2);
   
   % Log and display
-  fprintf(       't=%3d rwd=%5.2f time=%5.1sec\n',rt,rwd,toc)
-  fprintf(logfid,'t=%3d rwd=%5.2f time=%5.1sec\n',rt,rwd,toc);
+  fprintf(       '\nt=%3d rwd=%5.2f time=%5.1sec\n',rt,rwd,toc)
+  fprintf(logfid,'\nt=%3d rwd=%5.2f time=%5.1sec\n',rt,rwd,toc);
   for nrep = 1:prm.nrep
-      fprintf(       'N=%2i res=%6.3f accept=%5.1f\n',...
-           nrep,1-res.old(nrep)./rr,100*cha.ajr(nrep))
-      fprintf(logfid,'N=%2i res=%6.3f accept=%5.1f\n',...
-           nrep,1-res.old(nrep)./rr,100*cha.ajr(nrep));
+      fprintf(       'N=%2i res=%6.3f accept=%5.1f%% lamda=%7.2f\n',...
+           nrep,1-res.old(nrep)./rr,100*cha.ajr(nrep),mean(cha.la(:,:,nrep)))
+      fprintf(logfid,'N=%2i res=%6.3f accept=%5.1f%% lamda=%7.2f\n',...
+           nrep,1-res.old(nrep)./rr,100*cha.ajr(nrep),mean(cha.la(:,:,nrep)));
   end
-  
+  fprintf(       'exchange = %5.2f%%\n',100*excount/prm.cha)
+  fprintf(logfid,'exchange = %5.2f%%\n',100*excount/prm.cha);
   for bk=1:blk(1).nblock
     [latp,lonp,ang]=xyzp2lla(cha.mp(3.*bk-2,:),cha.mp(3.*bk-1,:),cha.mp(3.*bk,:));
     fprintf(       'pole of block %2i = lat:%7.2f deg. lon:%8.2f deg. ang:%9.2e deg./m.y. \n',...
@@ -2321,8 +2324,6 @@ while not(count == prm.thr)
     fprintf(logfid,'pole of block %2i = lat:%7.2f deg. lon:%8.2f deg. ang:%9.2e deg./m.y. \n',...
       bk,mean(latp),mean(lonp),mean(ang));
   end
-  fprintf(       'lamda of N1 = %7.2f \n',mean(cha.la(:,:,1)));
-  fprintf(logfid,'lamda of N1 = %7.2f \n',mean(cha.la(:,:,1)));
 
   % Adjust random walk distance
   if burn == 0
@@ -2358,9 +2359,9 @@ while not(count == prm.thr)
   bslip      = (G(1).tb_mec * mpmean) .* d(1).cfinv_mec .* idl;
   bslipl     = bslip;
   for nrep=1:prm.nrep
-    bslip(idc(:,nrep),:) = -G(1).s(idc(:,nrep),idc(:,nrep)) \ (G(1).s(idc(:,nrep),idl(:,nrep)) * bslip(idl(:,nrep)));
+    bslip(idc(:,nrep),nrep) = -G(1).s(idc(:,nrep),idc(:,nrep)) \ (G(1).s(idc(:,nrep),idl(:,nrep)) * bslip(idl(:,nrep),nrep));
   end
-  
+
   % Calc vectors for mean parameters
   vec.rig = G(1).p * mpmean;
   vec.kin = G(1).c_kin * ((G(1).tb_kin * mpmean) .* d(1).cfinv_kin .* (d(1).mcid * mcmean));
@@ -2777,7 +2778,7 @@ for nb1 = 1:blk(1).nblock
     else
       nf = size(blk(1).bound(nb1,nb2).blon,1);
       if nf~=0
-        patch(blk(1).bound(nb1,nb2).blon',blk(1).bound(nb1,nb2).blat', blk(1).bound(nb1,nb2).bdep',mean(cha.mc(mm1:mm1+nf-1,:),2));
+        patch(blk(1).bound(nb1,nb2).blon',blk(1).bound(nb1,nb2).blat', blk(1).bound(nb1,nb2).bdep',mean(cha.mc(mm1:mm1+nf-1,:,1),2));
         mm1 = mm1 + nf;
         hold on
       end
@@ -2800,7 +2801,7 @@ for nb1 = 1:blk(1).nblock
     else
       nf = size(blk(1).bound(nb1,nb2).blon,1);
       if nf ~= 0
-        patch(blk(1).bound(nb1,nb2).blon',blk(1).bound(nb1,nb2).blat',blk(1).bound(nb1,nb2).bdep',std(cha.mc(mm1:mm1+nf-1,:),0,2));
+        patch(blk(1).bound(nb1,nb2).blon',blk(1).bound(nb1,nb2).blat',blk(1).bound(nb1,nb2).bdep',std(cha.mc(mm1:mm1+nf-1,:,1),0,2));
         mm1 = mm1 + nf;
         hold on
       end
@@ -2821,12 +2822,12 @@ for nb1 = 1:blk(1).nblock
       figure(100); subplot(2,2,3); patch(blk(1).bound(nb1,nb2).blon',...
                             blk(1).bound(nb1,nb2).blat',...
                             blk(1).bound(nb1,nb2).bdep',...
-                            single(sqrt(bslipl(mm3:mm3+nf-1).^2+bslipl(mm3+nf:mm3+2*nf-1).^2)~=0)); hold on
+                            single(sqrt(bslipl(mm3:mm3+nf-1,1).^2+bslipl(mm3+nf:mm3+2*nf-1,1).^2)~=0)); hold on
       % Backslip rate (all)
       figure(100); subplot(2,2,4); patch(blk(1).bound(nb1,nb2).blon',...
                             blk(1).bound(nb1,nb2).blat',...
                             blk(1).bound(nb1,nb2).bdep',...
-                            sqrt(bslip( mm3:mm3+nf-1).^2+bslip( mm3+nf:mm3+2*nf-1).^2)   ); hold on
+                                   sqrt(bslip( mm3:mm3+nf-1,1).^2+bslip( mm3+nf:mm3+2*nf-1,1).^2)   ); hold on
       mm3 = mm3 + 3*nf;
     else
       continue
@@ -2840,7 +2841,7 @@ subplot(2,2,4);
 ax4 = gca;
 c = flipud(hot);  colormap(ax4,c);
 colorbar
-caxis([0, max(gather(bslipl))*1.1]);
+caxis([0, max(gather(bslipl(:,1)))*1.1]);
 
 %---------Show 2-d histogram of sampled euler pole-------------
 figure(130); clf(130)
@@ -2849,7 +2850,7 @@ for nb = 1:blk(1).nblock
   hold on
   text(mean(blk(nb).lon),mean(blk(nb).lat),int2str(nb))
   hold on
-  [latp,lonp,~] = xyzp2lla(cha.mp(3.*nb-2,:),cha.mp(3.*nb-1,:),cha.mp(3.*nb,:));
+  [latp,lonp,~] = xyzp2lla(cha.mp(3.*nb-2,:,1),cha.mp(3.*nb-1,:,1),cha.mp(3.*nb,:,1));
   minlon = min(lonp); maxlon = max(lonp); 
   minlat = min(latp); maxlat = max(latp); 
   if maxlon-minlon < 0.5; binlon=[minlon maxlon]; else binlon=minlon:0.5:maxlon; end  
@@ -2869,17 +2870,17 @@ f140.Position = [60,60,1200,900];
 % green : Observed velocities
 % blue  : Calculated velocities
 figure(140); subplot(2,2,1)
-quiver(obs(1).alon,obs(1).alat,vfactor.*obs(1).evec,      vfactor.*obs(1).nvec,      'AutoScale','off','Color','green')
+quiver(obs(1).alon,obs(1).alat,vfactor.*obs(1).evec,        vfactor.*obs(1).nvec,        'AutoScale','off','Color','green')
 hold on
-quiver(obs(1).alon,obs(1).alat,vfactor.*vec.sum(1:3:end)',vfactor.*vec.sum(2:3:end)','AutoScale','off','Color', 'blue')
+quiver(obs(1).alon,obs(1).alat,vfactor.*vec.sum(1:3:end,1)',vfactor.*vec.sum(2:3:end,1)','AutoScale','off','Color', 'blue')
 hold on
 axis([obs(1).lonmin-1,obs(1).lonmax+1,obs(1).latmin-1,obs(1).latmax+1]);
 title(['Horizontal obs and cal motion (iteration number: ',num2str(rt),')']);
 
 figure(140); subplot(2,2,2)
-quiver(obs(1).alon,obs(1).alat,zeros(size(obs(1).hvec)),vfactor.*obs(1).hvec,      'AutoScale','off','Color','green')
+quiver(obs(1).alon,obs(1).alat,zeros(size(obs(1).hvec)),vfactor.*obs(1).hvec,        'AutoScale','off','Color','green')
 hold on
-quiver(obs(1).alon,obs(1).alat,zeros(size(obs(1).hvec)),vfactor.*vec.sum(3:3:end)','AutoScale','off','Color', 'blue')
+quiver(obs(1).alon,obs(1).alat,zeros(size(obs(1).hvec)),vfactor.*vec.sum(3:3:end,1)','AutoScale','off','Color', 'blue')
 hold on
 axis([obs(1).lonmin-1,obs(1).lonmax+1,obs(1).latmin-1,obs(1).latmax+1]);
 title(['Vertical obs and cal motion (iteration number: ',num2str(rt),')']);
@@ -2890,20 +2891,20 @@ title(['Vertical obs and cal motion (iteration number: ',num2str(rt),')']);
 % red     : Elastic deformation due to mechanical coupling
 % blue    : Elastic deformation due to kinematic coupling
 figure(140); subplot(2,2,3)
-quiver(obs(1).alon,obs(1).alat, vfactor.*vec.rig(1:3:end)',vfactor.*vec.rig(2:3:end)','AutoScale','off','Color','k')
+quiver(obs(1).alon,obs(1).alat, vfactor.*vec.rig(1:3:end,1)',vfactor.*vec.rig(2:3:end,1)','AutoScale','off','Color','k')
 hold on
-quiver(obs(1).alon,obs(1).alat, vfactor.*vec.kin(1:3:end)',vfactor.*vec.kin(2:3:end)','AutoScale','off','Color','b')
+quiver(obs(1).alon,obs(1).alat, vfactor.*vec.kin(1:3:end,1)',vfactor.*vec.kin(2:3:end,1)','AutoScale','off','Color','b')
 hold on
-quiver(obs(1).alon,obs(1).alat, vfactor.*vec.mec(1:3:end)',vfactor.*vec.mec(2:3:end)','AutoScale','off','Color','r')
+quiver(obs(1).alon,obs(1).alat, vfactor.*vec.mec(1:3:end,1)',vfactor.*vec.mec(2:3:end,1)','AutoScale','off','Color','r')
 axis([obs(1).lonmin-1,obs(1).lonmax+1,obs(1).latmin-1,obs(1).latmax+1]);
 title(['Horizontal rigid and elastic motion (iteration number: ',num2str(rt),')']);
 
 figure(140); subplot(2,2,4)
-quiver(obs(1).alon,obs(1).alat, zeros(size(vec.rig(3:3:end)))',vfactor.*vec.rig(3:3:end)','AutoScale','off','Color','k')
+quiver(obs(1).alon,obs(1).alat, zeros(size(vec.rig(3:3:end,1)))',vfactor.*vec.rig(3:3:end,1)','AutoScale','off','Color','k')
 hold on
-quiver(obs(1).alon,obs(1).alat, zeros(size(vec.kin(3:3:end)))',vfactor.*vec.kin(3:3:end)','AutoScale','off','Color','b')
+quiver(obs(1).alon,obs(1).alat, zeros(size(vec.kin(3:3:end,1)))',vfactor.*vec.kin(3:3:end,1)','AutoScale','off','Color','b')
 hold on
-quiver(obs(1).alon,obs(1).alat, zeros(size(vec.mec(3:3:end)))',vfactor.*vec.mec(3:3:end)','AutoScale','off','Color','r')
+quiver(obs(1).alon,obs(1).alat, zeros(size(vec.mec(3:3:end,1)))',vfactor.*vec.mec(3:3:end,1)','AutoScale','off','Color','r')
 axis([obs(1).lonmin-1,obs(1).lonmax+1,obs(1).latmin-1,obs(1).latmax+1]);
 title(['Vertical rigid and elastic motion (iteration number: ',num2str(rt),')']);
 
@@ -2915,8 +2916,8 @@ figure(160); clf(160)
 for nb = 1:blk(1).nblock
   hold on; plot(blk(nb).lon,blk(nb).lat,'red')
   hold on; text(mean(blk(nb).lon),mean(blk(nb).lat),int2str(nb),'color','r')
-  e=[mimean(3*nb-2) mimean(3*nb-1);...
-     mimean(3*nb-1) mimean(3*nb  )];
+  e=[mimean(3*nb-2,1) mimean(3*nb-1,1);...
+     mimean(3*nb-1,1) mimean(3*nb  ,1)];
   [eigv,eigd] = eig(e);
   e1 = eigd(1,1); e2 = eigd(2,2);
   v1 = eigv(:,1); v2 = eigv(:,2);
