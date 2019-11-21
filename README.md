@@ -7,7 +7,7 @@ Usage of main script, Est_PassiveSlip
 'option' is calculation method: 'fwd', forward simulation; 'mcmc', MCMC estimation  
 If you enter no option (i.e. just type EST_PassiveSlip), MCMC estimation will start.
 * Required files to run
-    * Block line files in BLOCK directory.  
+    * Block line files.  
       File name requires block number, such as 01_hoge.txt, 02_fuga.txt  
       File format is Lon. and Lat. in 1st and 2nd columns, respectively. Note that the block line must be closed line (i.e. first and last rows must be equal).
     * (Option) Shape or trimesh files of Block boundaries.
