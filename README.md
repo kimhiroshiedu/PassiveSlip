@@ -2,11 +2,10 @@
 You can estimates Mechanical Coupling Distribution using MCMC, or do forward simulation by Est_PassiveSlip.m.  
 Usage of main script, Est_PassiveSlip
 
-     EST_PassiveSlip('option1','option2')
+     EST_PassiveSlip('option',)
 
 'option1' is calculation method: 'fwd', forward simulation; 'mcmc', MCMC estimation  
-'option2' is MCMC algorithm: 'mh', Metropolis-Hasting method; 're', Replica exchange method  
-If you enter no option (i.e. just type EST_PassiveSlip), MCMC estimation using MH method will run.
+If you enter no option (i.e. just type EST_PassiveSlip), MCMC estimation will start.
 * Required files to run
     * Block line files in BLOCK directory.  
       File name requires block number, such as 01_hoge.txt, 02_fuga.txt  
