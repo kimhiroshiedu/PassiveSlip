@@ -58,7 +58,7 @@ elseif strcmpi(prm.method,'MCMC')
   [cal]   = Proceed_MCMC_MH(blk,asp,tri,prm,obs,eul,d,G);
 end
 
-% Save data
+% Save data.
 SaveData(prm,blk,obs,tri,d,G,cal)
 
 end
