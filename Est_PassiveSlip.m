@@ -2146,6 +2146,7 @@ if prm.gpu ~= 99
   d(1).mcid      = gpuArray(single(     d(1).mcid     ));
   d(1).cfinv_mec = gpuArray(single(     d(1).cfinv_mec));
   d(1).cfinv_kin = gpuArray(single(     d(1).cfinv_kin));
+  res.old        = gpuArray(single(res.old));
 end
 
 % MCMC iteration
