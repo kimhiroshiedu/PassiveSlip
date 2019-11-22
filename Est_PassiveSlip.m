@@ -164,7 +164,8 @@ prm.cha = fscanf(fid,'%d \n',[1,1]); [~] = fgetl(fid);
 prm.kep = fscanf(fid,'%d \n',[1,1]); [~] = fgetl(fid);
 prm.rwd = fscanf(fid,'%f \n',[1,1]); [~] = fgetl(fid);
 prm.nrep= fscanf(fid,'%i \n',[1,1]); [~] = fgetl(fid);
-prm.efrq= fscanf(fid,'%i \n',[1,1]);
+prm.efrq= fscanf(fid,'%i \n',[1,1]); [~] = fgetl(fid);
+prm.tmax= fscanf(fid,'%f \n',[1,1]);
 fclose(fid);
 %====================================================
 tmp = load(prm.optfile);
@@ -180,22 +181,23 @@ prm.interpb2  = tmp(:,2);
 prm.interpint = tmp(:,3);
 %====================================================
 fprintf('==================\nINPUT PARAMETERS\n==================\n') 
-fprintf('HOME_D                    : %s \n',prm.home_d) 
-fprintf('FileOBS                   : %s \n',prm.fileobs) 
+fprintf('HOME_D                    : %s \n',prm.home_d)
+fprintf('FileOBS                   : %s \n',prm.fileobs)
 fprintf('DIRBlock                  : %s \n',prm.dirblock)
-fprintf('DIRBlock_Interface        : %s \n',prm.dirblock_interface) 
-fprintf('File fixed epole          : %s \n',prm.filepole) 
-fprintf('File Rigid boundary       : %s \n',prm.filebound) 
-fprintf('File Internal deformation : %s \n',prm.fileinternal) 
-fprintf('DIRResult                 : %s \n',prm.dirresult) 
-fprintf('GPUdev (CPU:99)           : %i \n',prm.gpu) 
-fprintf('ITR(Max_Nitr)             : %i \n',prm.itr) 
-fprintf('ITR(Threshold_Nitr)       : %i \n',prm.thr) 
-fprintf('CHA(Chain)                : %i \n',prm.cha) 
-fprintf('KEP(KEEP)                 : %i \n',prm.kep) 
-fprintf('RWD(Walk_dis)             : %4.2f \n',prm.rwd) 
-fprintf('Number of Replica         : %i \n',prm.nrep) 
-fprintf('Exchange Frequency        : %i \n',prm.efrq) 
+fprintf('DIRBlock_Interface        : %s \n',prm.dirblock_interface)
+fprintf('File fixed epole          : %s \n',prm.filepole)
+fprintf('File Rigid boundary       : %s \n',prm.filebound)
+fprintf('File Internal deformation : %s \n',prm.fileinternal)
+fprintf('DIRResult                 : %s \n',prm.dirresult)
+fprintf('GPUdev (CPU:99)           : %i \n',prm.gpu)
+fprintf('ITR(Max_Nitr)             : %i \n',prm.itr)
+fprintf('ITR(Threshold_Nitr)       : %i \n',prm.thr)
+fprintf('CHA(Chain)                : %i \n',prm.cha)
+fprintf('KEP(KEEP)                 : %i \n',prm.kep)
+fprintf('RWD(Walk_dis)             : %4.2f \n',prm.rwd)
+fprintf('Number of Replica         : %i \n',prm.nrep)
+fprintf('Exchange Frequency        : %i \n',prm.efrq)
+fprintf('Maximum temperature       : %5.1f \n',prm.tmax) 
 fprintf('==================\n') 
 %====================================================
 disp('PASS READ_PARAMETERS')
@@ -2073,7 +2075,7 @@ end
 rwd         = prm.rwd      ;
 
 % Inverse temperatures
-Tmax  = 100;
+Tmax  = prm.tmax;
 dT    = Tmax^(1/(prm.nrep-1));
 T_inv = 1 ./ (dT.^[0:prm.nrep-1]);
 
