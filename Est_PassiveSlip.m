@@ -1693,6 +1693,7 @@ function [cal] = Proceed_MCMC_MH(blk,asp,tri,prm,obs,eul,d,G)
 % Logging
 logfile = fullfile(prm.dirresult,'log.txt');
 logfid  = fopen(logfile,'a');
+d(1).err = d(1).err./median(d(1).err);
 rr = (d(1).obs./d(1).err)'*(d(1).obs./d(1).err);
 fprintf('Residual=%9.3f \n',rr);
 fprintf(logfid,'Residual=%9.3f \n',rr);
@@ -2053,6 +2054,7 @@ function [cal] = Proceed_MCMC_RE(blk,asp,tri,prm,obs,eul,d,G)
 % Logging
 logfile = fullfile(prm.dirresult,'log.txt');
 logfid  = fopen(logfile,'a');
+d(1).err = d(1).err./median(d(1).err);
 rr = (d(1).obs./d(1).err)'*(d(1).obs./d(1).err);
 fprintf('Residual=%9.3f \n',rr);
 fprintf(logfid,'Residual=%9.3f \n',rr);
