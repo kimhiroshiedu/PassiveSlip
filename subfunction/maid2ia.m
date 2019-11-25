@@ -53,7 +53,7 @@ for ii = 1:nit
   cha.iacompress.meania = cha.maidcompress.meanmaid;
   cha.iacompress.smpia = cha.maidcompress.smpmaid;
   cha = rmfield(cha,'maidcompress');
-  save(datin(ii).fname); fprintf('saved.\n');
+  save(datin(ii).fname,'cha','-v7.3'); fprintf('saved.\n');
 end
 end
 
