@@ -18,6 +18,7 @@ G(1).tb_mec = full(G(1).tb_mec);
 [blk] = ReadAsperityRegions(savedir,blk,prm);
 [bslip,vec] = CalcOptimumValue(prm,obs,tcha,G,d);
 [blk] = AsperityPoint(blk,obs);
+SaveBlockLine(savedir,blk)
 SaveAsperitySegmentArea(savedir,blk,obs,tcha)
 SaveAsperityPoint(savedir,blk);
 SavePoles(savedir,blk,tcha);
@@ -316,7 +317,9 @@ end
 
 %% Save Euler vectors
 function SavePoles(folder,blk,tcha)
-fid = fopen(fullfile(folder,'/est_euler_pole.txt'),'wt');
+savedir = fullfile(folder,'block');
+if exist(savedir) ~= 7; mkdir(savedir); end
+fid = fopen(fullfile(savedir,'/est_euler_pole.txt'),'wt');
 fprintf(fid,'# %6s %8s %7s %8s %9s %9s %9s %9s %9s %9s \n',...
     'Blk_no','Lat(deg)','Lon(deg)','Ang(deg/my)',...
     'sigxx','sigxy','sigxz','sigyy','sigyz','sigzz');
@@ -404,6 +407,20 @@ for nb1 = 1:blk(1).nblock
   end
 end
 save(fullfile(savedir,'asp'),'asp');
+end
+
+%% Save block lines
+function SaveBlockLine(folder,blk)
+savedir = fullfile(folder,'block');
+if exist(savedir) ~= 7; mkdir(savedir); end
+fid = fopen(fullfile(savedir,'BlockLine.txt'),'wt');
+for nb = 1:size(blk,2)
+  blkname = strsplit(blk(nb).name,'.txt');
+  fprintf(fid,'> %s\n',char(blkname{1}));
+  fprintf(fid,'%f %f\n',[blk(nb).lon,blk(nb).lat]');
+end
+fclose(fid);
+
 end
 
 %% Show asperity edge point indices
