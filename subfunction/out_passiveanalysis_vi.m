@@ -564,7 +564,31 @@ function y = Heaviside(x)
 y = 1 .* (x >= 0);
 end
 
-%%
+%% Coordinates conversion
+function [x,y,z]=ell2xyz(lat,lon,h)
+% ELL2XYZ  Converts ellipsoidal coordinates to cartesian. Vectorized.
+% GRS80
+% CODE BY T.ITO 2006/12/13     ver0.1
+% BUG FIX  BY T.ITO 2015/11/13 ver0.2
+% 
+a=6378137.0; % m
+f=1./298.257222101;
+e2=1-(1-f)^2;
+%
+rad=pi/180;
+lat=lat.*rad;
+lon=lon.*rad;
+clat=cos(lat);
+clon=cos(lon);
+slat=sin(lat);
+slon=sin(lon);
+%
+v=a./sqrt(1-e2.*slat.*slat);
+x=(v+h).*clat.*clon;
+y=(v+h).*clat.*slon;
+z=(v.*(1-e2)+h).*slat;
+end
+
 function [OOxyz]=conv2ell(Olat,Olon)
 Olat=Olat(:);
 Olon=Olon(:);
