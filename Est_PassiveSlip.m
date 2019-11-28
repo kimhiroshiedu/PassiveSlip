@@ -1759,7 +1759,7 @@ res.old   =   inf(   1,1,precision);
 
 % Scale adjastment of rwd
 mcscale  = rwd * 5e-4;
-mascale  = rwd * 1e+0;
+mascale  = rwd * 1e+1;
 mpscale  = rwd * 1e-10 .* ones(mp.n,1,precision) .* ~eul.id;
 miscale  = rwd * 1e-10;
 
@@ -2124,7 +2124,7 @@ res.old   =   inf(   1,prm.nrep,precision);
 
 % Scale adjastment of rwd
 mcscale  = rwd * 5e-4;
-mascale  = rwd * 1e+0;
+mascale  = rwd * 1e+1;
 mpscale  = rwd * 1e-10 .* repmat(ones(mp.n,1,precision).*~eul.id,1,prm.nrep);
 miscale  = rwd * 1e-10;
 
