@@ -26,5 +26,4 @@ plot(dep,p_zu,'Color','r','LineWidth',2)
 saveas(1,['udline_pdf_',num2str(id_zd)])
 print(['udline_pdf_',num2str(id_zd)],'-dpdf','-painters')
 
-close all; clear
 end
