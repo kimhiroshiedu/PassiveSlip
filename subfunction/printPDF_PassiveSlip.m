@@ -13,7 +13,7 @@ ax.FontSize = 20;
 ax.XLabel.String = 'Depth (km)';
 ax.YLabel.String = 'PDF';
 
-dep = 0:0.5:80;
+dep = 0:0.05:80;
 
 pd_zd = fitdist(tcha.smpasp(id_zd,burn1:end)','Normal');
 p_zd = pdf(pd_zd,dep);
