@@ -8,8 +8,7 @@ GeneratePHSsagamimesh(model);
 hold off
 end
 
-%% Iwasaki model
-% PHS Sagami
+%% PHS Sagami
 function GeneratePHSsagamimesh(model)
 switch model
     case 'iwasaki'
@@ -41,7 +40,7 @@ hold on
 
 end
 
-% PHS Izu to Ryukyu
+%% PHS Izu to Ryukyu
 function GeneratePHSmesh(model)
 switch model
     case 'iwasaki'
@@ -74,7 +73,7 @@ hold on
 
 end
 
-% PAC
+%% PAC
 function GeneratePACmesh(model)
 switch model
     case 'iwasaki'
