@@ -142,7 +142,6 @@ fid = fopen(prm.input,'r');
 fileobs            = fscanf(fid,'%s \n',[1,1]); [~] = fgetl(fid);
 dirblock           = fscanf(fid,'%s \n',[1,1]); [~] = fgetl(fid);
 dirblock_interface = fscanf(fid,'%s \n',[1,1]); [~] = fgetl(fid);
-dirblock_patch     = fscanf(fid,'%s \n',[1,1]); [~] = fgetl(fid);
 filepole           = fscanf(fid,'%s \n',[1,1]); [~] = fgetl(fid);
 filebound          = fscanf(fid,'%s \n',[1,1]); [~] = fgetl(fid);
 fileinternal       = fscanf(fid,'%s \n',[1,1]); [~] = fgetl(fid);
@@ -151,7 +150,6 @@ prm.home_d = pwd;
 prm.fileobs            = fullfile(prm.home_d,fileobs);
 prm.dirblock           = fullfile(prm.home_d,dirblock);
 prm.dirblock_interface = fullfile(prm.home_d,dirblock_interface);
-prm.dirblock_patch     = fullfile(prm.home_d,dirblock_patch);
 prm.filepole           = fullfile(prm.home_d,filepole);
 prm.filebound          = fullfile(prm.home_d,filebound);
 prm.fileinternal       = fullfile(prm.home_d,fileinternal);
@@ -494,7 +492,7 @@ for nb1 = 1:blk(1).nblock
   for nb2 = nb1+1:blk(1).nblock
     if blk(1).bound(nb1,nb2).flag2 == 1
       blk(1).bound(nb1,nb2).patchid = 0;
-      patchfile = fullfile(prm.dirblock_patch,['patchb_',num2str(nb1),'_',num2str(nb2),'.txt']);
+      patchfile = fullfile(prm.dirblock_interface,['patchb_',num2str(nb1),'_',num2str(nb2),'.txt']);
       fid       = fopen(patchfile,'r');
       if fid >= 0
         blk(1).bound(nb1,nb2).patchid = 1;
@@ -2632,7 +2630,7 @@ for nb1 = 1:blk(1).nblock
     nf = size(blk(1).bound(nb1,nb2).blon,1);
     if nf ~= 0
       if blk(1).bound(nb1,nb2).flag2 == 1
-        rwlfile = fullfile(prm.dirblock_patch,['udlineb_',num2str(nb1),'_',num2str(nb2),'.txt']);
+        rwlfile = fullfile(prm.dirblock_interface,['udlineb_',num2str(nb1),'_',num2str(nb2),'.txt']);
         fid     = fopen(rwlfile,'r');
         if fid >= 0
           asp(np).nb1 = nb1;
