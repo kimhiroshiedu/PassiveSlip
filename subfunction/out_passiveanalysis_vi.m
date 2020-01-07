@@ -16,13 +16,13 @@ G(1).tb_kin = full(G(1).tb_kin);
 G(1).tb_mec = full(G(1).tb_mec);
 
 [blk] = ReadAsperityRegions(savedir,blk,prm);
-[bslip,vec] = CalcOptimumValue(prm,obs,tcha,G,d);
+[bslip,slip,vec] = CalcOptimumValue(prm,obs,tcha,G,d);
 [blk] = AsperityPoint(blk,obs);
 SaveBlockLine(savedir,blk)
 SaveAsperitySegmentArea(savedir,blk,obs,tcha)
 SaveAsperityPoint(savedir,blk);
 SavePoles(savedir,blk,tcha);
-SaveBackslip(savedir,blk,tcha,bslip);
+SaveBackslip(savedir,blk,tcha,bslip,slip);
 SaveVectors(savedir,obs,vec);
 SaveInternalStrain(savedir,tcha,blk,prm,obs,G);
 SaveRelativeMotion(savedir,blk,tcha);
@@ -249,7 +249,7 @@ fclose(fid);
 end
 
 %% Save coupling and backslip
-function SaveBackslip(folder,blk,tcha,bslip)
+function SaveBackslip(folder,blk,tcha,bslip,slip)
 savedir = fullfile(folder,'backslip');
 if exist(savedir) ~=7; mkdir(savedir); end
 mm1m = 1;
@@ -275,6 +275,12 @@ for nb1 = 1:blk(1).nblock
         bslipl_st = bslip.mecl(mm3m     :mm3m+  nf-1);
         bslipl_dp = bslip.mecl(mm3m+  nf:mm3m+2*nf-1);
         bslipl_ts = bslip.mecl(mm3m+2*nf:mm3m+3*nf-1);
+        slip_st   =  slip.mec( mm3m     :mm3m+  nf-1);
+        slip_dp   =  slip.mec( mm3m+  nf:mm3m+2*nf-1);
+        slip_ts   =  slip.mec( mm3m+2*nf:mm3m+3*nf-1);
+        slipl_st  =  slip.mecl(mm3m     :mm3m+  nf-1);
+        slipl_dp  =  slip.mecl(mm3m+  nf:mm3m+2*nf-1);
+        slipl_ts  =  slip.mecl(mm3m+2*nf:mm3m+3*nf-1);
         pc = tcha.aveaid(mm1m:mm1m+nf-1);
         outdata = [fltnum',...
             blk(1).bound(nb1,nb2).blon,...
@@ -283,9 +289,11 @@ for nb1 = 1:blk(1).nblock
             clon,clat,cdep,...
             bslip_st, bslip_dp, bslip_ts,...
             bslipl_st,bslipl_dp,bslipl_ts,...
+            slip_st,slip_dp,slip_ts,...
+            slipl_st,slipl_dp,slipl_ts,...
             pc];
-        fprintf(fmec,'# tri lon1 lon2 lon3 lat1 lat2 lat3 dep1 dep2 dep3 clon clat cdep bslip_st bslip_dp bslip_ts bslipl_st bslipl_dp bslipl_ts p_coupling\n');
-        fprintf(fmec,'%6i %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f\n',outdata');
+        fprintf(fmec,'# tri lon1 lon2 lon3 lat1 lat2 lat3 dep1 dep2 dep3 clon clat cdep bslip_st bslip_dp bslip_ts bslipl_st bslipl_dp bslipl_ts slip_st slip_dp slip_ts slipl_st slipl_dp slipl_ts p_coupling\n');
+        fprintf(fmec,'%6i %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f\n',outdata');
         fclose(fmec);
         mm1m = mm1m +   nf;
         mm3m = mm3m + 3*nf;
@@ -295,15 +303,19 @@ for nb1 = 1:blk(1).nblock
         sdr_st  = bslip.kin(mm3k     :mm3k+  nf-1);
         sdr_dp  = bslip.kin(mm3k+  nf:mm3k+2*nf-1);
         sdr_ts  = bslip.kin(mm3k+2*nf:mm3k+3*nf-1);
+        sr_st   =  slip.kin(mm3k     :mm3k+  nf-1);
+        sr_dp   =  slip.kin(mm3k+  nf:mm3k+2*nf-1);
+        sr_ts   =  slip.kin(mm3k+2*nf:mm3k+3*nf-1);
         cpmean  = tcha.aveflt(mm1k:mm1k+nf-1);
         outdata = [fltnum',...
             blk(1).bound(nb1,nb2).blon,...
             blk(1).bound(nb1,nb2).blat,...
             blk(1).bound(nb1,nb2).bdep,...
             clon,clat,cdep,...
-            cpmean, sdr_st, sdr_dp, sdr_ts];
-        fprintf(fkin,'# tri lon1 lon2 lon3 lat1 lat2 lat3 dep1 dep2 dep3 clon clat cdep coupling sdr_st sdr_dp sdr_ts\n');
-        fprintf(fkin,'%6i %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %10.4f %10.4f %10.4f %10.4f\n',outdata');
+            cpmean, sdr_st, sdr_dp, sdr_ts,...
+            sr_st, sr_dp, sr_ts];
+        fprintf(fkin,'# tri lon1 lon2 lon3 lat1 lat2 lat3 dep1 dep2 dep3 clon clat cdep coupling sdr_st sdr_dp sdr_ts sr_st sr_dp sr_ts\n');
+        fprintf(fkin,'%6i %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f\n',outdata');
         fclose(fkin);
         mm1k = mm1k +   nf;
         mm3k = mm3k + 3*nf;
@@ -448,7 +460,7 @@ fprintf('=== Asperity edge points, below === \n');
 end
 
 %% Calc optimum value from tcha.mat
-function [Bslip,vec] = CalcOptimumValue(prm,obs,tcha,G,d)
+function [Bslip,Slip,vec] = CalcOptimumValue(prm,obs,tcha,G,d)
 mpmean = tcha.avepol;
 mcmean = tcha.aveflt;
 mamean = tcha.aveasp;
@@ -469,6 +481,9 @@ bslip(idc) = -G(1).s(idc,idc) \ (G(1).s(idc,idl) * bslip(idl));
 Bslip.mec  = bslip;
 Bslip.mecl = bslipl;
 Bslip.kin  = ((G(1).tb_kin * mpmean) .* d(1).cfinv_kin .* (d(1).mcid * mcmean));
+Slip.mec   = (G(1).tb_mec * mpmean) .* d(1).cfinv_mec - Bslip.mec ;
+Slip.mecl  = (G(1).tb_mec * mpmean) .* d(1).cfinv_mec - Bslip.mecl; Slip.mecl(idc) = NaN;
+Slip.kin   = (G(1).tb_kin * mpmean) .* d(1).cfinv_kin - Bslip.kin ;
 
 % Calc vectors for mean parameters
 vec.rig = G(1).p * mpmean;
