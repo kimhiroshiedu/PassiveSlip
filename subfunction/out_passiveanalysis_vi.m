@@ -1,6 +1,22 @@
-%% Main part
-function out_passiveanalysis_vi(folder)
+%% Main part (single MCMC results)
+function out_passiveanalysis_vi(varargin)
 % for inversion results
+if isempty(varargin)
+  error('Enter result folder.')
+elseif size(varargin,2) > 2
+  error('Too much input variables')
+elseif size(varargin,2) == 1
+  folder = char(varargin{1});
+  method = 'mh';
+else
+  folder = char(varargin{1});
+  method = char(varargin{2});
+end
+%
+if sum(strcmpi(method,{'mh','re'})) < 1
+  error('Enter method, [mh / re]')
+end
+%
 savedir = fullfile(pwd,folder);
 fprintf('Now loading %s ...',fullfile(savedir,'/prm.mat'))
 load(fullfile(savedir,'/prm.mat'));fprintf('load\n')
@@ -14,7 +30,17 @@ fprintf('Now loading %s ...',fullfile(savedir,'/tcha.mat'))
 load(fullfile(savedir,'/tcha.mat'));fprintf('load\n')
 G(1).tb_kin = full(G(1).tb_kin);
 G(1).tb_mec = full(G(1).tb_mec);
+%
+if strcmpi(method,'mh')
+  output_mh(savedir,blk,prm,obs,tcha,G,d);
+elseif strcmpi(method,'re')
+  output_re(savedir,blk,prm,obs,tcha,G,d);
+end
+fprintf('Files exported. \n');
 
+end
+
+function output_mh(savedir,blk,prm,obs,tcha,G,d)
 [blk] = ReadAsperityRegions(savedir,blk,prm);
 [bslip,slip,vec] = CalcOptimumValue(prm,obs,tcha,G,d);
 [blk] = AsperityPoint(blk,obs);
@@ -26,8 +52,20 @@ SaveBackslip(savedir,blk,tcha,bslip,slip);
 SaveVectors(savedir,obs,vec);
 SaveInternalStrain(savedir,tcha,blk,prm,obs,G);
 SaveRelativeMotion(savedir,blk,tcha);
+end
 
-fprintf('Files exported. \n');
+function output_re(savedir,blk,prm,obs,tcha,G,d)
+[blk] = ReadAsperityRegions(savedir,blk,prm);
+[bslip,slip,vec] = CalcOptimumValue(prm,obs,tcha,G,d);
+[blk] = AsperityPoint(blk,obs);
+SaveBlockLine(savedir,blk)
+SaveAsperitySegmentArea(savedir,blk,obs,tcha)
+SaveAsperityPoint(savedir,blk);
+SavePoles(savedir,blk,tcha);
+SaveBackslip(savedir,blk,tcha,bslip,slip);
+SaveVectors(savedir,obs,vec);
+SaveInternalStrain(savedir,tcha,blk,prm,obs,G);
+SaveRelativeMotion(savedir,blk,tcha);
 end
 
 %% Save relative motion
