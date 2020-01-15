@@ -23,6 +23,9 @@ PAC*
 
 # Maintain folders
 !subfunction/*
+subfunction/*.asv
+subfunction/*.swp
+subfunction/*~
 !MinorFile/*
 !org/*
 !Meshes/*
