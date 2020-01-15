@@ -298,6 +298,7 @@ for nb1 = 1:blk(1).nblock
             slip_st,slip_dp,slip_ts,...
             slipl_st,slipl_dp,slipl_ts,...
             pc];
+        fprintf(fmec,'#   1    2    3    4    5    6    7    8    9   10   11   12   13       14       15       16        17        18        19      20      21      22       23       24       25         26\n');
         fprintf(fmec,'# tri lon1 lon2 lon3 lat1 lat2 lat3 dep1 dep2 dep3 clon clat cdep bslip_st bslip_dp bslip_ts bslipl_st bslipl_dp bslipl_ts slip_st slip_dp slip_ts slipl_st slipl_dp slipl_ts p_coupling\n');
         fprintf(fmec,'%6i %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f\n',outdata');
         fclose(fmec);
@@ -320,6 +321,7 @@ for nb1 = 1:blk(1).nblock
             clon,clat,cdep,...
             cpmean, sdr_st, sdr_dp, sdr_ts,...
             sr_st, sr_dp, sr_ts];
+        fprintf(fkin,'#   1    2    3    4    5    6    7    8    9   10   11   12   13       14     15     16     17    18    19    20\n');
         fprintf(fkin,'# tri lon1 lon2 lon3 lat1 lat2 lat3 dep1 dep2 dep3 clon clat cdep coupling sdr_st sdr_dp sdr_ts sr_st sr_dp sr_ts\n');
         fprintf(fkin,'%6i %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f\n',outdata');
         fclose(fkin);
