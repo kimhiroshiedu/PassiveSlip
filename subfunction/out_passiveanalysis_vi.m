@@ -30,46 +30,64 @@ fprintf('Now loading %s ...',fullfile(savedir,'/tcha.mat'))
 load(fullfile(savedir,'/tcha.mat'));fprintf('load\n')
 G(1).tb_kin = full(G(1).tb_kin);
 G(1).tb_mec = full(G(1).tb_mec);
-%
-if strcmpi(method,'mh')
-  output_mh(savedir,blk,prm,obs,tcha,G,d);
-elseif strcmpi(method,'re')
-  output_re(savedir,blk,prm,obs,tcha,G,d);
+% Common export
+[blk] = ReadAsperityRegions(savedir,blk,prm);
+[blk] = AsperityPoint(blk,obs);
+SaveBlockLine(savedir,blk)
+SaveAsperitySegmentArea(savedir,blk,obs,tcha)
+SaveAsperityPoint(savedir,blk);
+% Export for each method
+for rep = 1:prm.nrep
+  if prm.method == 'MCMC.RE'
+    savedir = fullfile(pwd,folder,['T_',num2str(rep,'%02i')]);
+  end
+  [bslip,slip,vec] = CalcOptimumValue(prm,obs,tcha,G,d,rep);
+  SavePoles(savedir,blk,tcha,rep);
+  SaveBackslip(savedir,blk,tcha,bslip,slip,rep);
+  SaveVectors(savedir,obs,vec);
+  SaveInternalStrain(savedir,tcha,blk,prm,obs,G,rep);
+  SaveRelativeMotion(savedir,blk,tcha,rep);
 end
+
+% if strcmpi(method,'mh')
+%   output_mh(savedir,blk,prm,obs,tcha,G,d);
+% elseif strcmpi(method,'re')
+%   output_re(savedir,blk,prm,obs,tcha,G,d);
+% end
 fprintf('Files exported. \n');
 
 end
 
-function output_mh(savedir,blk,prm,obs,tcha,G,d)
-[blk] = ReadAsperityRegions(savedir,blk,prm);
-[bslip,slip,vec] = CalcOptimumValue(prm,obs,tcha,G,d);
-[blk] = AsperityPoint(blk,obs);
-SaveBlockLine(savedir,blk)
-SaveAsperitySegmentArea(savedir,blk,obs,tcha)
-SaveAsperityPoint(savedir,blk);
-SavePoles(savedir,blk,tcha);
-SaveBackslip(savedir,blk,tcha,bslip,slip);
-SaveVectors(savedir,obs,vec);
-SaveInternalStrain(savedir,tcha,blk,prm,obs,G);
-SaveRelativeMotion(savedir,blk,tcha);
-end
-
-function output_re(savedir,blk,prm,obs,tcha,G,d)
-[blk] = ReadAsperityRegions(savedir,blk,prm);
-[bslip,slip,vec] = CalcOptimumValue(prm,obs,tcha,G,d);
-[blk] = AsperityPoint(blk,obs);
-SaveBlockLine(savedir,blk)
-SaveAsperitySegmentArea(savedir,blk,obs,tcha)
-SaveAsperityPoint(savedir,blk);
-SavePoles(savedir,blk,tcha);
-SaveBackslip(savedir,blk,tcha,bslip,slip);
-SaveVectors(savedir,obs,vec);
-SaveInternalStrain(savedir,tcha,blk,prm,obs,G);
-SaveRelativeMotion(savedir,blk,tcha);
-end
+% function output_mh(savedir,blk,prm,obs,tcha,G,d)
+% [blk] = ReadAsperityRegions(savedir,blk,prm);
+% [bslip,slip,vec] = CalcOptimumValue(prm,obs,tcha,G,d);
+% [blk] = AsperityPoint(blk,obs);
+% SaveBlockLine(savedir,blk)
+% SaveAsperitySegmentArea(savedir,blk,obs,tcha)
+% SaveAsperityPoint(savedir,blk);
+% SavePoles(savedir,blk,tcha);
+% SaveBackslip(savedir,blk,tcha,bslip,slip);
+% SaveVectors(savedir,obs,vec);
+% SaveInternalStrain(savedir,tcha,blk,prm,obs,G);
+% SaveRelativeMotion(savedir,blk,tcha);
+% end
+% 
+% function output_re(savedir,blk,prm,obs,tcha,G,d)
+% [blk] = ReadAsperityRegions(savedir,blk,prm);
+% [bslip,slip,vec] = CalcOptimumValue(prm,obs,tcha,G,d);
+% [blk] = AsperityPoint(blk,obs);
+% SaveBlockLine(savedir,blk)
+% SaveAsperitySegmentArea(savedir,blk,obs,tcha)
+% SaveAsperityPoint(savedir,blk);
+% SavePoles(savedir,blk,tcha);
+% SaveBackslip(savedir,blk,tcha,bslip,slip);
+% SaveVectors(savedir,obs,vec);
+% SaveInternalStrain(savedir,tcha,blk,prm,obs,G);
+% SaveRelativeMotion(savedir,blk,tcha);
+% end
 
 %% Save relative motion
-function SaveRelativeMotion(folder,blk,tcha)
+function SaveRelativeMotion(folder,blk,tcha,rep)
 folder=[folder,'/vector'];
 if exist(folder)~=7; mkdir(folder); end
 fid=fopen([folder,'/relative_motion.txt'],'w');
@@ -153,7 +171,7 @@ end
 end
 
 %% Save internal strains
-function SaveInternalStrain(folder,tcha,blk,prm,obs,G)
+function SaveInternalStrain(folder,tcha,blk,prm,obs,G,rep)
 if isfield(tcha,'aveine')==0; return; end  % old type
 
 NN=1;
@@ -287,7 +305,7 @@ fclose(fid);
 end
 
 %% Save coupling and backslip
-function SaveBackslip(folder,blk,tcha,bslip,slip)
+function SaveBackslip(folder,blk,tcha,bslip,slip,rep)
 savedir = fullfile(folder,'backslip');
 if exist(savedir) ~=7; mkdir(savedir); end
 mm1m = 1;
@@ -366,7 +384,7 @@ end
 end
 
 %% Save Euler vectors
-function SavePoles(folder,blk,tcha)
+function SavePoles(folder,blk,tcha,rep)
 savedir = fullfile(folder,'block');
 if exist(savedir) ~= 7; mkdir(savedir); end
 fid = fopen(fullfile(savedir,'/est_euler_pole.txt'),'wt');
@@ -498,11 +516,11 @@ fprintf('=== Asperity edge points, below === \n');
 end
 
 %% Calc optimum value from tcha.mat
-function [Bslip,Slip,vec] = CalcOptimumValue(prm,obs,tcha,G,d)
-mpmean = tcha.avepol;
-mcmean = tcha.aveflt;
-mamean = tcha.aveasp;
-mimean = tcha.aveine;
+function [Bslip,Slip,vec] = CalcOptimumValue(prm,obs,tcha,G,d,rep)
+mpmean = tcha.avepol(:,:,rep);
+mcmean = tcha.aveflt(:,:,rep);
+mamean = tcha.aveasp(:,:,rep);
+mimean = tcha.aveine(:,:,rep);
 
 Hu = Heaviside(G(1).zulim - G(1).zc);
 Hd = Heaviside(G(1).zdlim - G(1).zc);
