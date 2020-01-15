@@ -38,7 +38,7 @@ SaveAsperitySegmentArea(savedir,blk,obs,tcha)
 SaveAsperityPoint(savedir,blk);
 % Export for each method
 for rep = 1:prm.nrep
-  if prm.method == 'MCMC.RE'
+  if strcmpi(prm.method,'MCMC.RE')
     savedir = fullfile(pwd,folder,['T_',num2str(rep,'%02i')]);
   end
   [bslip,slip,vec] = CalcOptimumValue(prm,obs,tcha,G,d,rep);
@@ -94,9 +94,9 @@ fid=fopen([folder,'/relative_motion.txt'],'w');
 fprintf(fid,'# %5s %7s %7s %7s %10s %10s %10s \n',...
     'Lon1','Lon2','Lat1','Lat2','abs_Vel','str_Vel','dip_Vel');
 for nb1=1:blk(1).nblock
-  blk(nb1).pol=[tcha.avepol(3.*nb1-2,:);tcha.avepol(3.*nb1-1,:);tcha.avepol(3.*nb1,:)];
+  blk(nb1).pol=[tcha.avepol(3.*nb1-2,:,rep);tcha.avepol(3.*nb1-1,:,rep);tcha.avepol(3.*nb1,:,rep)];
   for nb2=nb1+1:blk(1).nblock
-    blk(nb2).pol(:)=[tcha.avepol(3.*nb2-2,:);tcha.avepol(3.*nb2-1,:);tcha.avepol(3.*nb2,:)];
+    blk(nb2).pol(:)=[tcha.avepol(3.*nb2-2,:,rep);tcha.avepol(3.*nb2-1,:,rep);tcha.avepol(3.*nb2,:,rep)];
     if ~isempty(blk(1).bound(nb1,nb2).lat)
       fprintf(fid,'> %s - %s \n',num2str(nb1),num2str(nb2));
       vel = CalcRelativeMotion(blk,nb1,nb2);
@@ -185,24 +185,24 @@ fprintf(fide,'# %5s %7s %7s %7s %7s %7s %7s %7s %10s %10s %10s %10s %10s %10s %1
                   'Block','Lat','Lat','exx','exy','eyy','emax','emin','thetaP','shearMAX',...
                   'sig_exx','sig_exy','sig_eyy','sig_emax','sig_emin','sig_thetaP','sig_shearMAX');
 fprintf(fidv,'# Latitude Longitude VE VN \n');
-vinternal = G(1).i * tcha.aveine;
+vinternal = G(1).i * tcha.aveine(:,:,rep);
 outdata = [obs(1).alat; obs(1).alon; vinternal(1:3:end)'; vinternal(2:3:end)'];
 fprintf(fidv,'%7.3f %7.3f %10.4f %10.4f \n',outdata); fclose(fidv);
 clear vinternal outdata
 for nb = 1:blk(1).nblock
   Gb.i = zeros(size(G.i));
   Gb.i(:,3*nb-2:3*nb) = G.i(:,3*nb-2:3*nb);
-  vinternal = Gb.i * tcha.aveine;  % Displacement due to internal deformation
+  vinternal = Gb.i * tcha.aveine(:,:,rep);  % Displacement due to internal deformation
   outdata = [obs(1).alat; obs(1).alon; vinternal(1:3:end)'; vinternal(2:3:end)'];
   fidv = fopen([savefolder,'/Internal_Deformation_vector_blk',num2str(nb),'.txt'],'w');
   fprintf(fidv,'%7.3f %7.3f %10.4f %10.4f \n',outdata);
   fclose(fidv);
-  exx = tcha.aveine(3*nb-2);
-  exy = tcha.aveine(3*nb-1);
-  eyy = tcha.aveine(3*nb  );
-  sigexx = tcha.stdine(3*nb-2);
-  sigexy = tcha.stdine(3*nb-1);
-  sigeyy = tcha.stdine(3*nb  );
+  exx = tcha.aveine(3*nb-2,:,rep);
+  exy = tcha.aveine(3*nb-1,:,rep);
+  eyy = tcha.aveine(3*nb  ,:,rep);
+  sigexx = tcha.stdine(3*nb-2,:,rep);
+  sigexy = tcha.stdine(3*nb-1,:,rep);
+  sigeyy = tcha.stdine(3*nb  ,:,rep);
   E = [exx exy;...
        exy eyy];
   [eigv,eigd] = eig(E);
@@ -337,7 +337,7 @@ for nb1 = 1:blk(1).nblock
         slipl_st  =  slip.mecl(mm3m     :mm3m+  nf-1);
         slipl_dp  =  slip.mecl(mm3m+  nf:mm3m+2*nf-1);
         slipl_ts  =  slip.mecl(mm3m+2*nf:mm3m+3*nf-1);
-        pc = tcha.aveaid(mm1m:mm1m+nf-1);
+        pc = tcha.aveaid(mm1m:mm1m+nf-1,:,rep);
         outdata = [fltnum',...
             blk(1).bound(nb1,nb2).blon,...
             blk(1).bound(nb1,nb2).blat,...
@@ -362,7 +362,7 @@ for nb1 = 1:blk(1).nblock
         sr_st   =  slip.kin(mm3k     :mm3k+  nf-1);
         sr_dp   =  slip.kin(mm3k+  nf:mm3k+2*nf-1);
         sr_ts   =  slip.kin(mm3k+2*nf:mm3k+3*nf-1);
-        cpmean  = tcha.aveflt(mm1k:mm1k+nf-1);
+        cpmean  = tcha.aveflt(mm1k:mm1k+nf-1,:,rep);
         outdata = [fltnum',...
             blk(1).bound(nb1,nb2).blon,...
             blk(1).bound(nb1,nb2).blat,...
@@ -395,8 +395,8 @@ fprintf('# %6s %8s %7s %8s %9s %9s %9s %9s %9s %9s \n',...
     'Blk_no','Lat(deg)','Lon(deg)','Ang(deg/my)',...
     'sigxx','sigxy','sigxz','sigyy','sigyz','sigzz');
 for bk = 1:blk(1).nblock
-  [latp,lonp,ang] = xyzp2lla(tcha.avepol(3.*bk-2,:),tcha.avepol(3.*bk-1,:),tcha.avepol(3.*bk,:));
-  [a,b,c,d,e,f] = out_cov(tcha.covpol(3*bk-2:3*bk,3*bk-2:3*bk));
+  [latp,lonp,ang] = xyzp2lla(tcha.avepol(3.*bk-2,:,rep),tcha.avepol(3.*bk-1,:,rep),tcha.avepol(3.*bk,:,rep));
+  [a,b,c,d,e,f] = out_cov(tcha.covpol(3*bk-2:3*bk,3*bk-2:3*bk,rep));
   fprintf('%8i %7.2f %8.2f %11.2e %9.2f %9.2f %9.2f %9.2f %9.2f %9.2f \n',...
     bk,mean(latp),mean(lonp),mean(ang),a,b,c,d,e,f);
   fprintf(fid,'%8i %7.2f %8.2f %11.2f %9.2f %9.2f %9.2f %9.2f %9.2f %9.2f \n',...
