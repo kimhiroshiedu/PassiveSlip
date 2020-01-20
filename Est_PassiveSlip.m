@@ -2053,6 +2053,7 @@ function [cal] = Proceed_MCMC_RE(blk,asp,tri,prm,obs,eul,d,G)
 logfile = fullfile(prm.dirresult,'log.txt');
 logfid  = fopen(logfile,'a');
 d(1).err = d(1).err./median(d(1).err);
+d(1).ms  = d(1).obs'*d(1).obs ./ (size(d(1).obs,1)/3);
 rr = (d(1).obs./d(1).err)'*(d(1).obs./d(1).err);
 fprintf('Residual=%9.3f \n',rr);
 fprintf(logfid,'Residual=%9.3f \n',rr);
@@ -2248,7 +2249,7 @@ while not(count == prm.thr)
     res.smp = sum(((d(1).obs-cal.smp)./d(1).err).^2,1);
     % Mc is better Zero
     %% MAKE Probably Density Function
-    pdf = -0.5 .* (res.smp-res.old) .* T_inv;
+    pdf = -0.5 .* (res.smp-res.old) .* d(1).ms .* T_inv;
     
     % Accept 
     acc = pdf > logu(it,:);
@@ -2262,7 +2263,7 @@ while not(count == prm.thr)
 
     % Exchange Replicas
     if mod(it,prm.efrq) == 0
-      r = -0.5 .* (res.smp(rex(it)+1)-res.smp(rex(it))) * (T_inv(rex(it))-T_inv(rex(it)+1));
+      r = -0.5 .* (res.old(rex(it)+1)-res.old(rex(it))) * d(1).ms * (T_inv(rex(it))-T_inv(rex(it)+1));
       if r > loge(it)
         mc.old(:,[rex(it),rex(it)+1]) = fliplr(mc.old(:,[rex(it),rex(it)+1]));
         ma.old(:,[rex(it),rex(it)+1]) = fliplr(ma.old(:,[rex(it),rex(it)+1]));
