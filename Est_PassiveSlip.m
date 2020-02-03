@@ -2193,7 +2193,7 @@ while not(count == prm.thr)
     pdfma = prior_ma(ma.smp(ma.n/2+1:end,:),ma.smp(1:ma.n/2,:),blk(1).aline_zu,blk(1).aline_zd);
     while sum(sum(~pdfma)) > 0
       pdfma = repmat(pdfma,2,1);
-      ma.smp(~pdfma) = ma.old(~pdfma) + rwd .* mascale .* (-randw + (2 * randw) .* rand(sum(sum(~pdfma)),1,precision));
+      ma.smp(~pdfma) = ma.old(~pdfma) + rwd .* mascale(~pdfma) .* (-randw + (2 * randw) .* rand(sum(sum(~pdfma)),1,precision));
       pdfma = prior_ma(ma.smp(ma.n/2+1:end,:),ma.smp(1:ma.n/2,:),blk(1).aline_zu,blk(1).aline_zd);
     end
     
