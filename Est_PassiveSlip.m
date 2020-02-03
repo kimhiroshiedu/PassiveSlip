@@ -2123,7 +2123,7 @@ res.old   =   inf(   1,prm.nrep,precision);
 
 % Scale adjastment of rwd
 mcscale  = rwd * 5e-4;
-mascale  = rwd * 1e+1;
+mascale  = rwd * 3e+0 .* (1e-2 .* repmat(blk(1).aline_dz,2,1));
 mpscale  = rwd * 1e-10 .* repmat(ones(mp.n,1,precision).*~eul.id,1,prm.nrep);
 miscale  = rwd * 1e-10;
 
@@ -2147,6 +2147,7 @@ if prm.gpu ~= 99
   d(1).mcid      = gpuArray(single(     d(1).mcid     ));
   d(1).cfinv_mec = gpuArray(single(     d(1).cfinv_mec));
   d(1).cfinv_kin = gpuArray(single(     d(1).cfinv_kin));
+  d(1).invms     = gpuArray(single(     d(1).invms    ));
   res.old        = gpuArray(single(res.old));
 end
 
@@ -2614,6 +2615,7 @@ alon = mean(obs(1).alon(:));
 blk(1).naspline   =  0;
 blk(1).aline_zu   = [];
 blk(1).aline_zd   = [];
+blk(1).aline_dz   = [];
 blk(1).aline_lonu = [];
 blk(1).aline_lond = [];
 blk(1).aline_latu = [];
@@ -2652,9 +2654,9 @@ for nb1 = 1:blk(1).nblock
           blk(1).bound(nb1,nb2).asp_lonu = tmp(4,:)';
           blk(1).bound(nb1,nb2).asp_latu = tmp(5,:)';
           blk(1).bound(nb1,nb2).asp_depu = tmp(6,:)';
+          blk(1).bound(nb1,nb2).asp_ddep = abs(blk(1).bound(nb1,nb2).asp_depd - blk(1).bound(nb1,nb2).asp_depu);
           [xd,yd] = PLTXY(blk(1).bound(nb1,nb2).asp_latd,blk(1).bound(nb1,nb2).asp_lond,alat,alon);
           [xu,yu] = PLTXY(blk(1).bound(nb1,nb2).asp_latu,blk(1).bound(nb1,nb2).asp_lonu,alat,alon);
-          blk(1).bound(nb1,nb2).asp_lline=sqrt((xd-xu).^2 + (yd-yu).^2);
           blk(1).bound(nb1,nb2).asp_xd =                             xd;
           blk(1).bound(nb1,nb2).asp_yd =                             yd;
           blk(1).bound(nb1,nb2).asp_zd = blk(1).bound(nb1,nb2).asp_depd;
@@ -2672,6 +2674,7 @@ for nb1 = 1:blk(1).nblock
           blk(1).naspline  =  blk(1).naspline + nasp;
           blk(1).aline_zu   = [blk(1).aline_zu  ; blk(1).bound(nb1,nb2).asp_depu];
           blk(1).aline_zd   = [blk(1).aline_zd  ; blk(1).bound(nb1,nb2).asp_depd];
+          blk(1).aline_dz   = [blk(1).aline_dz  ; blk(1).bound(nb1,nb2).asp_ddep];
           blk(1).aline_lonu = [blk(1).aline_lonu; blk(1).bound(nb1,nb2).asp_lonu];
           blk(1).aline_lond = [blk(1).aline_lond; blk(1).bound(nb1,nb2).asp_lond];
           blk(1).aline_latu = [blk(1).aline_latu; blk(1).bound(nb1,nb2).asp_latu];
