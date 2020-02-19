@@ -2165,15 +2165,14 @@ while not(count == prm.thr)
   randw = 1;
   excount = 0;
   % Random value for each parameter
-  logu      = log(rand(prm.cha,prm.nrep,precision));
-  loge      = log(rand(prm.cha,1,precision));
+  logu      = log(rand(prm.cha,prm.nrep  ,precision));
+  loge      = log(rand(prm.cha,prm.nrep-1,precision));
   rmc       = -randw + (2 * randw) .* rand(mc.n,prm.nrep,prm.cha,precision);
   rma       = -randw + (2 * randw) .* rand(ma.n,prm.nrep,prm.cha,precision);
   rmp       = -randw + (2 * randw) .* rand(mp.n,prm.nrep,prm.cha,precision);
   rmi       = -randw + (2 * randw) .* rand(mi.n,prm.nrep,prm.cha,precision);
   rla       = -randw + (2 * randw) .* rand(la.n,prm.nrep,prm.cha,precision);
-  rex       = randi(prm.nrep-1,1,prm.cha);
-
+  
   rmp(         eul.id,:,:) = 0;
   rmi(~blk(1).idinter,:,:) = 0;
   for it = 1:prm.cha
@@ -2264,16 +2263,18 @@ while not(count == prm.thr)
 
     % Exchange Replicas
     if mod(it,prm.efrq) == 0
-      r = -0.5 .* (res.old(rex(it)+1)-res.old(rex(it))) * d(1).invms * (T_inv(rex(it))-T_inv(rex(it)+1));
-      if r > loge(it)
-        mc.old(:,[rex(it),rex(it)+1]) = fliplr(mc.old(:,[rex(it),rex(it)+1]));
-        ma.old(:,[rex(it),rex(it)+1]) = fliplr(ma.old(:,[rex(it),rex(it)+1]));
-        mp.old(:,[rex(it),rex(it)+1]) = fliplr(mp.old(:,[rex(it),rex(it)+1]));
-        mi.old(:,[rex(it),rex(it)+1]) = fliplr(mi.old(:,[rex(it),rex(it)+1]));
-        ia.old(:,[rex(it),rex(it)+1]) = fliplr(ia.old(:,[rex(it),rex(it)+1]));
-        la.old(:,[rex(it),rex(it)+1]) = fliplr(la.old(:,[rex(it),rex(it)+1]));
-        res.old(:,[rex(it),rex(it)+1]) = fliplr(res.old(:,[rex(it),rex(it)+1]));
-        excount = excount + 1;
+      for nrep = 1:prm.nrep-1
+        r = -0.5 .* (res.old(nrep+1)-res.old(nrep)) * d(1).invms * (T_inv(nrep)-T_inv(nrep+1));
+        if r > loge(it,nrep)
+          mc.old(:,[nrep,nrep+1]) = fliplr(mc.old(:,[nrep,nrep+1]));
+          ma.old(:,[nrep,nrep+1]) = fliplr(ma.old(:,[nrep,nrep+1]));
+          mp.old(:,[nrep,nrep+1]) = fliplr(mp.old(:,[nrep,nrep+1]));
+          mi.old(:,[nrep,nrep+1]) = fliplr(mi.old(:,[nrep,nrep+1]));
+          ia.old(:,[nrep,nrep+1]) = fliplr(ia.old(:,[nrep,nrep+1]));
+          la.old(:,[nrep,nrep+1]) = fliplr(la.old(:,[nrep,nrep+1]));
+          res.old(:,[nrep,nrep+1]) = fliplr(res.old(:,[nrep,nrep+1]));
+          excount = excount + 1;
+        end
       end
     end
 
