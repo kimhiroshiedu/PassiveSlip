@@ -322,24 +322,44 @@ alon = mean(obs(1).alon(:));
 % 
 for nb1 = 1:blk(1).nblock
   for nb2 = nb1+1:blk(1).nblock
-    blk(1).bound(nb1,nb2).type = 1;
+    blk(1).bound(nb1,nb2).flag1 = 0;
     pre_tri_f = fullfile(dirblk,['triB_',num2str(nb1),'_',num2str(nb2),'.txt']); 
     fid = fopen(pre_tri_f,'r');
     if fid >= 0
       fprintf('block interface: %2i  %2i \n',nb1,nb2)
       fprintf('read interface tri boudary file : %s \n',pre_tri_f)
+      for ii = 1:size(blk(1).dipbo,1)
+        dippingid = ismember([nb1 nb2],blk(1).dipbo(ii,2:3));
+        ispair    = sum(dippingid);
+        if ispair == 2
+          if max(blk(1).dipbo(ii,2:3)) == blk(1).dipbo(ii,1)
+            blk(1).bound(nb1,nb2).flag1 = 1;
+          else
+            blk(1).bound(nb1,nb2).flag1 = 2;
+          end
+          break
+        end
+      end
       nf   = 0;
       blon = zeros(1,3);
       blat = zeros(1,3);
       bdep = zeros(1,3);
+      type = 0;
       while 1
         nf    = nf+1;
-        loc_f = fscanf(fid,'%f %f %f \n', [3 3]);
         tline = fgetl(fid); if ~ischar(tline); break; end
+        lchar = strsplit(tline); if strcmpi(lchar{1},''); break; end
+        loc_f = fscanf(fid,'%f %f %f \n', [3 3]);
         blon(nf,:) = loc_f(1,:);  % lon
         blat(nf,:) = loc_f(2,:);  % lat
         bdep(nf,:) = loc_f(3,:);  % hight
+        if size(lchar,2) < 2
+          type(nf) = blk(1).bound(nb1,nb2).flag1;
+        else
+          type(nf) = str2num(lchar{2});
+        end
         tline = fgetl(fid); if ~ischar(tline); break; end
+        lchar = strsplit(tline); if strcmpi(lchar{1},''); break; end
       end
       fclose(fid);
       bo_tri_f = fullfile(dirblk,['triBO_',num2str(nb1),'_',num2str(nb2),'.txt']); 
@@ -353,16 +373,30 @@ for nb1 = 1:blk(1).nblock
         blon = blon(id,:);
         blat = blat(id,:);
         bdep = bdep(id,:);
+        type = type(id);
       end
       blk(1).bound(nb1,nb2).blon = blon;  % lon
       blk(1).bound(nb1,nb2).blat = blat;  % lat
       blk(1).bound(nb1,nb2).bdep = bdep;  % hight
+      blk(1).bound(nb1,nb2).type = type;  % mesh type
     else
       sub_f = fullfile(dirblk,['B_',num2str(nb1),'_',num2str(nb2),'.txt']);
       fid   = fopen(sub_f,'r');
       if fid >= 0
         fprintf('block interface: %2i  %2i \n',nb1,nb2)
         fprintf('read interface boudary shape file : %s \n',sub_f)
+        for ii = 1:size(blk(1).dipbo,1)
+          dippingid = ismember([nb1 nb2],blk(1).dipbo(ii,2:3));
+          ispair    = sum(dippingid);
+          if ispair == 2
+            if max(blk(1).dipbo(ii,2:3)) == blk(1).dipbo(ii,1)
+              blk(1).bound(nb1,nb2).flag1 = 1;
+            else
+              blk(1).bound(nb1,nb2).flag1 = 2;
+            end
+            break
+          end
+        end
         dep_blk = textscan(fid,'%f%f%f'); fclose(fid);
         dep_blk = cell2mat(dep_blk);
         f    = scatteredinterpolant(dep_blk(:,1),dep_blk(:,2),dep_blk(:,3));
@@ -396,7 +430,6 @@ for nb1 = 1:blk(1).nblock
           bstri(1:leng-1     ,1:3) = [1     :leng-1;      2:leng    ; leng+2:2*leng]';
           bstri(leng:2*leng-1,1:3) = [leng+1:2*leng; leng+2:2*leng+1;      1:  leng]';
           fprintf('block interface: %2i  %2i auto set %4i \n',nb1,nb2,(leng-1)*2+1)
-          blk(1).bound(nb1,nb2).type = 5;
         else
           blk(1).bound(nb1,nb2).blon = [];
           blk(1).bound(nb1,nb2).blat = [];
@@ -407,15 +440,19 @@ for nb1 = 1:blk(1).nblock
         blk(1).bound(nb1,nb2).blon = [bslon(bstri(:,1)), bslon(bstri(:,2)), bslon(bstri(:,3))];
         blk(1).bound(nb1,nb2).blat = [bslat(bstri(:,1)), bslat(bstri(:,2)), bslat(bstri(:,3))];
         blk(1).bound(nb1,nb2).bdep = [bsdep(bstri(:,1)), bsdep(bstri(:,2)), bsdep(bstri(:,3))];
+        blk(1).bound(nb1,nb2).type = blk(1).bound(nb1,nb2).flag1.*ones(1,size(bstri,1));
 %
         out_tri_f = fullfile(prm.dirblock,['triB_',num2str(nb1),'_',num2str(nb2),'.out']);
         nlen      = length(blk(1).bound(nb1,nb2).blat(:,1));
         fid_out   = fopen(out_tri_f,'w+');
-        fprintf(fid_out,'%10.5f %9.5f %9.3f \n%10.5f %9.5f %9.3f \n%10.5f %9.5f %9.3f \n%10.5f %9.5f %9.3f \n> \n',...
-        reshape([blk(1).bound(nb1,nb2).blon(:,1), blk(1).bound(nb1,nb2).blat(:,1), blk(1).bound(nb1,nb2).bdep(:,1),...
-                 blk(1).bound(nb1,nb2).blon(:,2), blk(1).bound(nb1,nb2).blat(:,2), blk(1).bound(nb1,nb2).bdep(:,2),...
-                 blk(1).bound(nb1,nb2).blon(:,3), blk(1).bound(nb1,nb2).blat(:,3), blk(1).bound(nb1,nb2).bdep(:,3),...
-                 blk(1).bound(nb1,nb2).blon(:,1), blk(1).bound(nb1,nb2).blat(:,1), blk(1).bound(nb1,nb2).bdep(:,1)]',4*nlen,3));
+        for ntri = 1:nlen
+          fprintf(fid_out,'> %i\n',blk(1).bound(nb1,nb2).type(ntri));
+          fprintf(fid_out,'%10.5f %9.5f %9.3f \n%10.5f %9.5f %9.3f \n%10.5f %9.5f %9.3f \n%10.5f %9.5f %9.3f \n',...
+                  [blk(1).bound(nb1,nb2).blon(ntri,1), blk(1).bound(nb1,nb2).blat(ntri,1), blk(1).bound(nb1,nb2).bdep(ntri,1);...
+                   blk(1).bound(nb1,nb2).blon(ntri,2), blk(1).bound(nb1,nb2).blat(ntri,2), blk(1).bound(nb1,nb2).bdep(ntri,2);...
+                   blk(1).bound(nb1,nb2).blon(ntri,3), blk(1).bound(nb1,nb2).blat(ntri,3), blk(1).bound(nb1,nb2).bdep(ntri,3);...
+                   blk(1).bound(nb1,nb2).blon(ntri,1), blk(1).bound(nb1,nb2).blat(ntri,1), blk(1).bound(nb1,nb2).bdep(ntri,1)]');
+        end
         fclose(fid_out);
       end
     end
@@ -1323,7 +1360,7 @@ end
 %% Calculate correction factor of (STR, DIP, TNS) unit vectors
 function [tri] = CorrectFactor(blk,tri,nb1,nb2,dp,n,nf)
 % Coded by H.Kimura 2018/1/31 (test ver.)
-switch blk(1).bound(nb1,nb2).flag1
+switch blk(1).bound(nb1,nb2).type(nf)
   case {1,2}
     cf = 1/sqrt(dp(1)^2+dp(2)^2);      % 1=sqrt(dp(1)^2+dp(2)^2+dp(3)^2): norm of dp
     if cf==Inf, cf=1; end
@@ -1337,7 +1374,7 @@ end
 function [tri] = DiscriminateDirection(blk,tri,nb1,nb2,trix,triy,n,nf)
 % Coded by H.Kimura 2017/4/28 (test ver.)
 % Modified by H.Kimura 2018/2/6
-switch blk(1).bound(nb1,nb2).flag1
+switch blk(1).bound(nb1,nb2).type(nf)
   case 1
     tri(1).bound(nb1,nb2).inv(     n) = 1;
     tri(1).bound(nb1,nb2).inv(  nf+n) = 1;
