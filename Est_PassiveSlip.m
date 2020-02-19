@@ -2163,7 +2163,7 @@ while not(count == prm.thr)
   rt   = rt+1;
   nacc = zeros(1,prm.nrep);tic
   randw = 1;
-  excount = 0;
+  excount = zeros(1,prm.nrep);
   % Random value for each parameter
   logu      = log(rand(prm.cha,prm.nrep  ,precision));
   loge      = log(rand(prm.cha,prm.nrep-1,precision));
@@ -2273,7 +2273,7 @@ while not(count == prm.thr)
           ia.old(:,[nrep,nrep+1]) = fliplr(ia.old(:,[nrep,nrep+1]));
           la.old(:,[nrep,nrep+1]) = fliplr(la.old(:,[nrep,nrep+1]));
           res.old(:,[nrep,nrep+1]) = fliplr(res.old(:,[nrep,nrep+1]));
-          excount = excount + 1;
+          excount(nrep) = excount(nrep) + 1;
         end
       end
     end
@@ -2316,13 +2316,11 @@ while not(count == prm.thr)
   fprintf(       '\nt=%3d rwd=%5.2f time=%5.1sec\n',rt,rwd,toc)
   fprintf(logfid,'\nt=%3d rwd=%5.2f time=%5.1sec\n',rt,rwd,toc);
   for nrep = 1:prm.nrep
-      fprintf(       'N=%2i res=%6.3f accept=%5.1f%% lamda=%7.2f\n',...
-           nrep,1-res.old(nrep)./rr,100*cha.ajr(nrep),mean(cha.la(:,:,nrep)))
-      fprintf(logfid,'N=%2i res=%6.3f accept=%5.1f%% lamda=%7.2f\n',...
-           nrep,1-res.old(nrep)./rr,100*cha.ajr(nrep),mean(cha.la(:,:,nrep)));
+      fprintf(       'N=%2i res=%6.3f accept=%5.1f%% lamda=%7.2f exratio=%5.2f%%\n',...
+           nrep,1-res.old(nrep)./rr,100*cha.ajr(nrep),mean(cha.la(:,:,nrep)),100*excount(nrep)/prm.cha)
+      fprintf(logfid,'N=%2i res=%6.3f accept=%5.1f%% lamda=%7.2f exratio=%5.2f%%\n',...
+           nrep,1-res.old(nrep)./rr,100*cha.ajr(nrep),mean(cha.la(:,:,nrep)),100*excount(nrep)/prm.cha);
   end
-  fprintf(       'exchange = %5.2f%%\n',100*excount/prm.cha)
-  fprintf(logfid,'exchange = %5.2f%%\n',100*excount/prm.cha);
   for bk=1:blk(1).nblock
     [latp,lonp,ang]=xyzp2lla(cha.mp(3.*bk-2,:),cha.mp(3.*bk-1,:),cha.mp(3.*bk,:));
     fprintf(       'pole of block %2i = lat:%7.2f deg. lon:%8.2f deg. ang:%9.2e deg./m.y. \n',...
