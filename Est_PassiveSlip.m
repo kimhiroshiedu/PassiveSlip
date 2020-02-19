@@ -2321,8 +2321,8 @@ while not(count == prm.thr)
       fprintf(logfid,'N=%2i res=%6.3f accept=%5.1f%% lamda=%7.2f\n',...
            nrep,1-res.old(nrep)./rr,100*cha.ajr(nrep),mean(cha.la(:,:,nrep)));
   end
-  fprintf(       'exchange = %5.2f%%\n',100*excount/prm.cha)
-  fprintf(logfid,'exchange = %5.2f%%\n',100*excount/prm.cha);
+  fprintf(       'exchange = %5.2f%%\n',100*excount/(prm.cha*(prm.nrep-1)))
+  fprintf(logfid,'exchange = %5.2f%%\n',100*excount/(prm.cha*(prm.nrep-1)));
   for bk=1:blk(1).nblock
     [latp,lonp,ang]=xyzp2lla(cha.mp(3.*bk-2,:),cha.mp(3.*bk-1,:),cha.mp(3.*bk,:));
     fprintf(       'pole of block %2i = lat:%7.2f deg. lon:%8.2f deg. ang:%9.2e deg./m.y. \n',...
