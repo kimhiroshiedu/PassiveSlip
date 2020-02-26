@@ -3,8 +3,8 @@ function AutoCodingGmsh(model)
 % Coded by Hiroshi Kimura 2019/11/07
 
 % CodingPAC(model)
-% CodingPHS_Sagami(model)
-CodingPHS(model)
+CodingPHS_Sagami(model)
+% CodingPHS(model)
 end
 
 %% Export routine
@@ -51,7 +51,7 @@ cs = cs + 1;
 fprintf(fid,'\n');
 end
 
-%% Generating for PHS fron Sagami to N-Ryukyu
+%% Generating for PHS from Sagami to N-Ryukyu
 function CodingPHS(model)
 edges_IMP_NEJ = load(['Meshes/model_',model,'/edges_IMP_NEJ.txt']);
 edges_IMP_OK  = load(['Meshes/model_',model,'/edges_IMP_OK.txt']);
@@ -62,7 +62,7 @@ edges_PHS_ONC  = load(['Meshes/model_',model,'/edges_PHS_ONC.txt']);
 edges_PHS_ONS  = load(['Meshes/model_',model,'/edges_PHS_ONS.txt']);
 
 fid = fopen(['Meshes/model_',model,'/plate_',model,'_phs.geo'],'wt');
-fprintf(fid,'// interplate_pac.geo\n\n');
+fprintf(fid,'// interplate_phs.geo\n\n');
 fprintf(fid,'radius = 5.0;\ncellsize = 0.15;\npio2 = Pi/2;\n\n');
 
 cp  =    1;
