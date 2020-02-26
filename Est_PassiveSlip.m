@@ -23,7 +23,7 @@ prm.interpfile = 'PARAMETER/interp_randwalkline.txt';
 % Read Parameters.
 [prm]     = ReadParameters(prm);
 % Simulation mode select
-[prm]     = DetetmineCalcMethod(prm,varargin);
+[prm]     = DetermineCalcMethod(prm,varargin);
 clear varargin
 % Read observation data. 
 [obs]     = ReadObs(prm);
@@ -69,7 +69,7 @@ SaveData(prm,blk,obs,tri,d,G,cal)
 end
 
 %% Determine simulation method
-function [prm] = DetetmineCalcMethod(prm,varin)
+function [prm] = DetermineCalcMethod(prm,varin)
 correct = 0;
 while correct ~= 1
   if ~isempty(varin)
