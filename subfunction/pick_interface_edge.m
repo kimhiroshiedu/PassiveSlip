@@ -52,18 +52,19 @@ end
 figure(10)
 latlim   = [ 10  50];
 lonlim   = [120 150];
-filename = gunzip('gshhs_l.b.gz', tempdir);
+% filename = gunzip('gshhs_l.b.gz', tempdir);
+filename = gunzip('gshhs_i.b.gz', tempdir);
 japan    = gshhs(filename{1},latlim,lonlim);
 geoshow([japan.Lat], [japan.Lon])
 ax = gca;
-ax.XLim = [138 152]; % NE Japan
-ax.YLim = [ 32  48]; % NE Japan
-% ax.XLim = [130 142]; % SW Japan
-% ax.YLim = [ 30  37]; % SW Japan
+% ax.XLim = [138 152]; % NE Japan
+% ax.YLim = [ 32  48]; % NE Japan
+ax.XLim = [130 142]; % SW Japan
+ax.YLim = [ 30  37]; % SW Japan
 hold on
 
 % Block line
-prm.dirblock = 'MODEL_JP/BLOCK_ne_japan';
+prm.dirblock = 'MODEL_JP/BLOCK_sw_japan';
 ext = '*.txt';
 file = dir([prm.dirblock,'/',ext]);
 [nblock,~] = size(file);
