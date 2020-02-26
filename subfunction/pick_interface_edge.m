@@ -1,5 +1,5 @@
 % Trimesh
-prm.dirblock = 'MODEL_JP/BLOCK_Int_ne_japan';
+prm.dirblock = 'MODEL_JP/BLOCK_Int_ne_japan/plate_hirose';
 ext = 'triB_*.txt';
 file = dir([prm.dirblock,'/',ext]);
 [nbound,~] = size(file);
@@ -13,12 +13,14 @@ for nb = 1:tri(1).nbound
   tri(nb).bdep = zeros(1,3);
   while 1
     nf    = nf+1;
+    tline = fgetl(fid); if ~ischar(tline); break; end
+    lchar = strsplit(tline); if strcmpi(lchar{1},''); break; end
     loc_f = fscanf(fid,'%f %f %f \n', [3 3]);
+    tri(nb).blon(nf,:) = loc_f(1,:);  % lon
+    tri(nb).blat(nf,:) = loc_f(2,:);  % lat
+    tri(nb).bdep(nf,:) = loc_f(3,:);  % hight
     tline = fgetl(fid); if ~ischar(tline); break; end
-    tri(nb).blon(nf,:) = loc_f(1,:);
-    tri(nb).blat(nf,:) = loc_f(2,:);
-    tri(nb).bdep(nf,:) = loc_f(3,:);
-    tline = fgetl(fid); if ~ischar(tline); break; end
+    lchar = strsplit(tline); if strcmpi(lchar{1},''); break; end
   end
   fclose(fid);
   patch(tri(nb).blon',tri(nb).blat',zeros(size(tri(nb).blon))'); hold on
@@ -57,14 +59,14 @@ filename = gunzip('gshhs_i.b.gz', tempdir);
 japan    = gshhs(filename{1},latlim,lonlim);
 geoshow([japan.Lat], [japan.Lon])
 ax = gca;
-% ax.XLim = [138 152]; % NE Japan
-% ax.YLim = [ 32  48]; % NE Japan
-ax.XLim = [130 142]; % SW Japan
-ax.YLim = [ 30  37]; % SW Japan
+ax.XLim = [138 152]; % NE Japan
+ax.YLim = [ 32  48]; % NE Japan
+% ax.XLim = [130 142]; % SW Japan
+% ax.YLim = [ 30  37]; % SW Japan
 hold on
 
 % Block line
-prm.dirblock = 'MODEL_JP/BLOCK_sw_japan';
+prm.dirblock = 'MODEL_JP/BLOCK_ne_japan';
 ext = '*.txt';
 file = dir([prm.dirblock,'/',ext]);
 [nblock,~] = size(file);
