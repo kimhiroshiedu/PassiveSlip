@@ -2159,7 +2159,7 @@ res.old   =   inf(   1,prm.nrep,precision);
 
 % Scale adjastment of rwd
 mcscale  = rwd * 5e-4;
-mascale  = rwd * 3e+0 .* (1e-2 .* repmat(blk(1).aline_dz,2,prm.nrep));
+mascale  = rwd * 3e-1 .* (1e-2 .* repmat(blk(1).aline_dz,2,prm.nrep));
 mpscale  = rwd * 1e-10 .* repmat(ones(mp.n,1,precision).*~eul.id,1,prm.nrep);
 miscale  = rwd * 1e-10;
 
