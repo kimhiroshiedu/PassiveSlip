@@ -1,4 +1,4 @@
-% Trimesh
+% Trimesh (use all files)
 prm.dirblock = 'MODEL_JP/BLOCK_Int_ne_japan/plate_hirose';
 ext = 'triB_*.txt';
 file = dir([prm.dirblock,'/',ext]);
@@ -27,28 +27,33 @@ for nb = 1:tri(1).nbound
   colormap('white')
 end
 
+% Trimesh (use one file)
 % pre_tri_f = 'MODEL_JP/BLOCK_Int_ne_japan/triB_5_8.txt';
-% fid = fopen(pre_tri_f,'r');
-% nf   = 0;
-% blon = zeros(1,3);
-% blat = zeros(1,3);
-% bdep = zeros(1,3);
-% figure(10); clf(10)
-% while 1
-%   nf    = nf+1;
-%   loc_f = fscanf(fid,'%f %f %f \n', [3 3]);
-%   tline = fgetl(fid); if ~ischar(tline); break; end
-%   blon(nf,:) = loc_f(1,:);
-%   blat(nf,:) = loc_f(2,:);
-%   bdep(nf,:) = loc_f(3,:);
-%   tline = fgetl(fid); if ~ischar(tline); break; end
-% end
-% fclose(fid);
-% tri.lon = blon;
-% tri.lat = blat;
-% tri.dep = bdep;
-% patch(tri.lon',tri.lat',zeros(size(tri.lon))'); hold on
-% colormap('white')
+pre_tri_f = 'Meshes/model_iwasaki/tri_phs_.20.txt';
+fid = fopen(pre_tri_f,'r');
+nf   = 0;
+blon = zeros(1,3);
+blat = zeros(1,3);
+bdep = zeros(1,3);
+figure(10); clf(10)
+while 1
+  nf    = nf+1;
+  tline = fgetl(fid); if ~ischar(tline); break; end
+  lchar = strsplit(tline); if strcmpi(lchar{1},''); break; end
+  loc_f = fscanf(fid,'%f %f %f \n', [3 3]);
+  blon(nf,:) = loc_f(1,:);  % lon
+  blat(nf,:) = loc_f(2,:);  % lat
+  bdep(nf,:) = loc_f(3,:);  % hight
+  tline = fgetl(fid); if ~ischar(tline); break; end
+  lchar = strsplit(tline); if strcmpi(lchar{1},''); break; end
+end
+fclose(fid);
+tri.lon = blon;
+tri.lat = blat;
+tri.dep = bdep;
+clear blon blat bdep
+patch(tri.lon',tri.lat',zeros(size(tri.lon))'); hold on
+colormap('white')
 
 % Coast line
 figure(10)
@@ -66,7 +71,7 @@ ax.YLim = [ 32  48]; % NE Japan
 hold on
 
 % Block line
-prm.dirblock = 'MODEL_JP/BLOCK_ne_japan';
+prm.dirblock = 'MODEL_JP/BLOCK_sw_japan';
 ext = '*.txt';
 file = dir([prm.dirblock,'/',ext]);
 [nblock,~] = size(file);

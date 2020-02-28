@@ -110,13 +110,11 @@ end
 function savetri(file,msh)
 fid = fopen(file,'wt');
 for ntri = 1:size(msh.TRIANGLES,1)
-    fprintf(fid,'%f %f %f\n',msh.POS(msh.TRIANGLES(ntri,1),1),msh.POS(msh.TRIANGLES(ntri,1),2),msh.POS(msh.TRIANGLES(ntri,1),3));
-    fprintf(fid,'%f %f %f\n',msh.POS(msh.TRIANGLES(ntri,2),1),msh.POS(msh.TRIANGLES(ntri,2),2),msh.POS(msh.TRIANGLES(ntri,2),3));
-    fprintf(fid,'%f %f %f\n',msh.POS(msh.TRIANGLES(ntri,3),1),msh.POS(msh.TRIANGLES(ntri,3),2),msh.POS(msh.TRIANGLES(ntri,3),3));
-    fprintf(fid,'%f %f %f\n',msh.POS(msh.TRIANGLES(ntri,1),1),msh.POS(msh.TRIANGLES(ntri,1),2),msh.POS(msh.TRIANGLES(ntri,1),3));
-    if ntri ~= size(msh.TRIANGLES,1)
-        fprintf(fid,'>\n');
-    end
+  fprintf(fid,'>\n');
+  fprintf(fid,'%f %f %f\n',msh.POS(msh.TRIANGLES(ntri,1),1),msh.POS(msh.TRIANGLES(ntri,1),2),msh.POS(msh.TRIANGLES(ntri,1),3));
+  fprintf(fid,'%f %f %f\n',msh.POS(msh.TRIANGLES(ntri,2),1),msh.POS(msh.TRIANGLES(ntri,2),2),msh.POS(msh.TRIANGLES(ntri,2),3));
+  fprintf(fid,'%f %f %f\n',msh.POS(msh.TRIANGLES(ntri,3),1),msh.POS(msh.TRIANGLES(ntri,3),2),msh.POS(msh.TRIANGLES(ntri,3),3));
+  fprintf(fid,'%f %f %f\n',msh.POS(msh.TRIANGLES(ntri,1),1),msh.POS(msh.TRIANGLES(ntri,1),2),msh.POS(msh.TRIANGLES(ntri,1),3));
 end
 fclose(fid);
 
