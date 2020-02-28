@@ -1,7 +1,7 @@
 // interplate_pac.geo
 
 radius = 5.0;
-cellsize = 0.25;
+cellsize = 0.15;
 pio2 = Pi/2;
 
 // Kuril trench
