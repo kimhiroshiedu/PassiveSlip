@@ -441,23 +441,24 @@ for nb1 = 1:blk(1).nblock
         blk(1).bound(nb1,nb2).blat = [bslat(bstri(:,1)), bslat(bstri(:,2)), bslat(bstri(:,3))];
         blk(1).bound(nb1,nb2).bdep = [bsdep(bstri(:,1)), bsdep(bstri(:,2)), bsdep(bstri(:,3))];
         blk(1).bound(nb1,nb2).type = blk(1).bound(nb1,nb2).flag1.*ones(1,size(bstri,1));
-%
-        out_tri_f = fullfile(prm.dirblock,['triB_',num2str(nb1),'_',num2str(nb2),'.out']);
-        nlen      = length(blk(1).bound(nb1,nb2).blat(:,1));
-        fid_out   = fopen(out_tri_f,'w+');
-        for ntri = 1:nlen
-          fprintf(fid_out,'> %i\n',blk(1).bound(nb1,nb2).type(ntri));
-          fprintf(fid_out,'%10.5f %9.5f %9.3f \n%10.5f %9.5f %9.3f \n%10.5f %9.5f %9.3f \n%10.5f %9.5f %9.3f \n',...
-                  [blk(1).bound(nb1,nb2).blon(ntri,1), blk(1).bound(nb1,nb2).blat(ntri,1), blk(1).bound(nb1,nb2).bdep(ntri,1);...
-                   blk(1).bound(nb1,nb2).blon(ntri,2), blk(1).bound(nb1,nb2).blat(ntri,2), blk(1).bound(nb1,nb2).bdep(ntri,2);...
-                   blk(1).bound(nb1,nb2).blon(ntri,3), blk(1).bound(nb1,nb2).blat(ntri,3), blk(1).bound(nb1,nb2).bdep(ntri,3);...
-                   blk(1).bound(nb1,nb2).blon(ntri,1), blk(1).bound(nb1,nb2).blat(ntri,1), blk(1).bound(nb1,nb2).bdep(ntri,1)]');
-        end
-        fclose(fid_out);
       end
     end
 
     if size(blk(1).bound(nb1,nb2).blon,1) ~= 0
+      % Save trimeshes to text file
+      out_tri_f = fullfile(prm.dirblock,['triB_',num2str(nb1),'_',num2str(nb2),'.out']);
+      nlen      = length(blk(1).bound(nb1,nb2).blat(:,1));
+      fid_out   = fopen(out_tri_f,'wt');
+      for ntri = 1:nlen
+        fprintf(fid_out,'> %i\n',blk(1).bound(nb1,nb2).type(ntri));
+        fprintf(fid_out,'%10.5f %9.5f %9.3f \n%10.5f %9.5f %9.3f \n%10.5f %9.5f %9.3f \n%10.5f %9.5f %9.3f \n',...
+                [blk(1).bound(nb1,nb2).blon(ntri,1), blk(1).bound(nb1,nb2).blat(ntri,1), blk(1).bound(nb1,nb2).bdep(ntri,1);...
+                 blk(1).bound(nb1,nb2).blon(ntri,2), blk(1).bound(nb1,nb2).blat(ntri,2), blk(1).bound(nb1,nb2).bdep(ntri,2);...
+                 blk(1).bound(nb1,nb2).blon(ntri,3), blk(1).bound(nb1,nb2).blat(ntri,3), blk(1).bound(nb1,nb2).bdep(ntri,3);...
+                 blk(1).bound(nb1,nb2).blon(ntri,1), blk(1).bound(nb1,nb2).blat(ntri,1), blk(1).bound(nb1,nb2).bdep(ntri,1)]');
+      end
+      fclose(fid_out);
+
       % Calc angle and area of trimeshes
       for nf=1:size(blk(1).bound(nb1,nb2).blon,1)
         [trix, triy] = PLTXY(blk(1).bound(nb1,nb2).blat(nf,:), blk(1).bound(nb1,nb2).blon(nf,:), alat, alon);
