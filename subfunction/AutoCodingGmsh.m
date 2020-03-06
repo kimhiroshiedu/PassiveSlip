@@ -8,7 +8,10 @@ CodingPHS(model)
 end
 
 %% Export routine
-function [cp,cl,cs,cll] = Export2gmshfile(edge,fid,cp,cl,cs,cll)
+function [cp,cl,cs,cll] = Export2gmshfile(edge,fid,cp,cl,cs,cll,scale)
+
+% Mesh size
+fprintf(fid,'cellsize = %f;\n',scale);
 
 % Points
 for np = 1:size(edge,1)
@@ -62,35 +65,41 @@ edges_PHS_ONS  = load(['Meshes/model_',model,'/edges_PHS_ONS.txt']);
 
 fid = fopen(['Meshes/model_',model,'/plate_',model,'_phs.geo'],'wt');
 fprintf(fid,'// interplate_phs.geo\n\n');
-fprintf(fid,'radius = 5.0;\ncellsize = 0.15;\npio2 = Pi/2;\n\n');
+fprintf(fid,'radius = 5.0;\npio2 = Pi/2;\n\n');
 
 cp  =    1;
 cl  =  501;
 cll = 1001;
 cs  = 2001;
 % IMP \ OK
+scale = 0.15;
 fprintf(fid,'// IMP to OK\n');
-[cp,cl,cs,cll] = Export2gmshfile(edges_IMP_OKH,fid,cp,cl,cs,cll);
+[cp,cl,cs,cll] = Export2gmshfile(edges_IMP_OKH,fid,cp,cl,cs,cll,scale);
 
 % IMP \ NAN
+scale = 0.15;
 fprintf(fid,'// IMP to NAN\n');
-[cp,cl,cs,cll] = Export2gmshfile(edges_IMP_NAN,fid,cp,cl,cs,cll);
+[cp,cl,cs,cll] = Export2gmshfile(edges_IMP_NAN,fid,cp,cl,cs,cll,scale);
 
 % PHS to NAN
+scale = 0.15;
 fprintf(fid,'// PHS to NAN\n');
-[cp,cl,cs,cll] = Export2gmshfile(edges_PHS_NAN,fid,cp,cl,cs,cll);
+[cp,cl,cs,cll] = Export2gmshfile(edges_PHS_NAN,fid,cp,cl,cs,cll,scale);
 
 % PHS to ON-North
+scale = 0.15;
 fprintf(fid,'// PHS to ON-North\n');
-[cp,cl,cs,cll] = Export2gmshfile(edges_PHS_ONN,fid,cp,cl,cs,cll);
+[cp,cl,cs,cll] = Export2gmshfile(edges_PHS_ONN,fid,cp,cl,cs,cll,scale);
 
 % PHS to ON-Center
+scale = 0.15;
 fprintf(fid,'// PHS to ON-Center\n');
-[cp,cl,cs,cll] = Export2gmshfile(edges_PHS_ONC,fid,cp,cl,cs,cll);
+[cp,cl,cs,cll] = Export2gmshfile(edges_PHS_ONC,fid,cp,cl,cs,cll,scale);
 
 % PHS to ON-South
+scale = 0.15;
 fprintf(fid,'// PHS to ON-South\n');
-[~,~,~,~] = Export2gmshfile(edges_PHS_ONS,fid,cp,cl,cs,cll);
+[~,~,~,~] = Export2gmshfile(edges_PHS_ONS,fid,cp,cl,cs,cll,scale);
 
 fclose(fid);
 end
@@ -103,23 +112,26 @@ edges_IMP_THW = load(['Meshes/model_',model,'/edges_IMP_THW.txt']);
 
 fid = fopen(['Meshes/model_',model,'/plate_',model,'_phssagami.geo'],'wt');
 fprintf(fid,'// interplate_phssagami.geo\n\n');
-fprintf(fid,'radius = 5.0;\ncellsize = 0.15;\npio2 = Pi/2;\n\n');
+fprintf(fid,'radius = 5.0;\npio2 = Pi/2;\n\n');
 
 cp  =    1;
 cl  =  501;
 cll = 1001;
 cs  = 2001;
 % Sagami Trough
+scale = 0.15;
 fprintf(fid,'// Sagami Trough\n');
-[cp,cl,cs,cll] = Export2gmshfile(edges_IOG_THE,fid,cp,cl,cs,cll);
+[cp,cl,cs,cll] = Export2gmshfile(edges_IOG_THE,fid,cp,cl,cs,cll,scale);
 
 % IMP \ THE
+scale = 0.15;
 fprintf(fid,'// IMP to THE\n');
-[cp,cl,cs,cll] = Export2gmshfile(edges_IMP_THE,fid,cp,cl,cs,cll);
+[cp,cl,cs,cll] = Export2gmshfile(edges_IMP_THE,fid,cp,cl,cs,cll,scale);
 
 % IMP \ THW
+scale = 0.15;
 fprintf(fid,'// IMP to THW\n');
-[~,~,~,~] = Export2gmshfile(edges_IMP_THW,fid,cp,cl,cs,cll);
+[~,~,~,~] = Export2gmshfile(edges_IMP_THW,fid,cp,cl,cs,cll,scale);
 
 fclose(fid);
 end
@@ -132,7 +144,7 @@ edges_PAC_IOG = load(['Meshes/model_',model,'/edges_PAC_IOG.txt']);
 
 fid = fopen(['Meshes/model_',model,'/plate_',model,'_pac.geo'],'wt');
 fprintf(fid,'// interplate_pac.geo\n\n');
-fprintf(fid,'radius = 5.0;\ncellsize = 0.15;\npio2 = Pi/2;\n\n');
+fprintf(fid,'radius = 5.0;\npio2 = Pi/2;\n\n');
 
 cp  =    1;
 cl  =  501;
@@ -140,16 +152,19 @@ cll = 1001;
 cs  = 2001;
 
 % Kuril trench
+scale = 0.15;
 fprintf(fid,'// Kuril trench\n');
-[cp,cl,cs,cll] = Export2gmshfile(edges_PAC_KUR,fid,cp,cl,cs,cll);
+[cp,cl,cs,cll] = Export2gmshfile(edges_PAC_KUR,fid,cp,cl,cs,cll,scale);
 
 % Japan trench
+scale = 0.15;
 fprintf(fid,'// Japan trench\n');
-[cp,cl,cs,cll] = Export2gmshfile(edges_PAC_THE,fid,cp,cl,cs,cll);
+[cp,cl,cs,cll] = Export2gmshfile(edges_PAC_THE,fid,cp,cl,cs,cll,scale);
 
 % Izu-Ogasawara trench
+scale = 0.15;
 fprintf(fid,'// Izu-Ogasawara trench\n');
-[~,~,~,~] = Export2gmshfile(edges_PAC_IOG,fid,cp,cl,cs,cll);
+[~,~,~,~] = Export2gmshfile(edges_PAC_IOG,fid,cp,cl,cs,cll,scale);
 
 fclose(fid);
 end
