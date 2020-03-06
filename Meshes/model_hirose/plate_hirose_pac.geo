@@ -1,10 +1,10 @@
 // interplate_pac.geo
 
 radius = 5.0;
-cellsize = 0.15;
 pio2 = Pi/2;
 
 // Kuril trench
+cellsize = 1.000000;
 Point(1) =  {144.982390, 41.171590, 0, cellsize};
 Point(2) =  {145.569683, 41.602876, 0, cellsize};
 Point(3) =  {146.115016, 42.027286, 0, cellsize};
@@ -71,6 +71,7 @@ Line Loop(1001) = {501, 502, 503, 504, 505, 506, 507, 508, 509, 510, 511, 512, 5
 Plane Surface(2001) = {1001};
 
 // Japan trench
+cellsize = 1.000000;
 Point(31) =  {141.883000, 34.212700, 0, cellsize};
 Point(32) =  {142.120000, 34.830000, 0, cellsize};
 Point(33) =  {142.340000, 35.400000, 0, cellsize};
@@ -155,6 +156,7 @@ Line Loop(1002) = {531, 532, 533, 534, 535, 536, 537, 538, 539, 540, 541, 542, 5
 Plane Surface(2002) = {1002};
 
 // Izu-Ogasawara trench
+cellsize = 1.000000;
 Point(70) =  {142.288514, 30.545359, 0, cellsize};
 Point(71) =  {142.235935, 30.942721, 0, cellsize};
 Point(72) =  {142.179777, 31.347760, 0, cellsize};

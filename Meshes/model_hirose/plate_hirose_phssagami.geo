@@ -1,10 +1,10 @@
 // interplate_phssagami.geo
 
 radius = 5.0;
-cellsize = 0.15;
 pio2 = Pi/2;
 
 // Sagami Trough
+cellsize = 0.150000;
 Point(1) =  {141.883000, 34.212700, 0, cellsize};
 Point(2) =  {141.723527, 34.727051, 0, cellsize};
 Point(3) =  {141.498353, 35.206267, 0, cellsize};
@@ -45,6 +45,7 @@ Line Loop(1001) = {501, 502, 503, 504, 505, 506, 507, 508, 509, 510, 511, 512, 5
 Plane Surface(2001) = {1001};
 
 // IMP to THE
+cellsize = 0.150000;
 Point(18) =  {139.313298, 35.105794, 0, cellsize};
 Point(19) =  {139.332086, 35.360903, 0, cellsize};
 Point(20) =  {139.362086, 35.806732, 0, cellsize};
@@ -69,6 +70,7 @@ Line Loop(1002) = {518, 519, 520, 521, 522, 523, 524, 525, 526};
 Plane Surface(2002) = {1002};
 
 // IMP to THW
+cellsize = 0.150000;
 Point(27) =  {139.000000, 35.348000, 0, cellsize};
 Point(28) =  {139.027699, 35.570309, 0, cellsize};
 Point(29) =  {139.058464, 35.862579, 0, cellsize};
