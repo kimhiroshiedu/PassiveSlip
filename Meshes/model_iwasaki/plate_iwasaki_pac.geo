@@ -4,7 +4,7 @@ radius = 5.0;
 pio2 = Pi/2;
 
 // Kuril trench
-cellsize = 0.150000;
+cellsize = 1.000000;
 Point(1) =  {142.762927, 42.714838, 0, cellsize};
 Point(2) =  {143.036685, 42.316727, 0, cellsize};
 Point(3) =  {143.443646, 41.738414, 0, cellsize};
@@ -71,7 +71,7 @@ Line Loop(1001) = {501, 502, 503, 504, 505, 506, 507, 508, 509, 510, 511, 512, 5
 Plane Surface(2001) = {1001};
 
 // Japan trench
-cellsize = 0.150000;
+cellsize = 1.000000;
 Point(31) =  {144.461120, 40.773660, 0, cellsize};
 Point(32) =  {144.043379, 41.224357, 0, cellsize};
 Point(33) =  {143.443646, 41.738414, 0, cellsize};
@@ -150,7 +150,7 @@ Line Loop(1002) = {531, 532, 533, 534, 535, 536, 537, 538, 539, 540, 541, 542, 5
 Plane Surface(2002) = {1002};
 
 // Izu-Ogasawara trench
-cellsize = 0.150000;
+cellsize = 1.000000;
 Point(67) =  {142.288514, 30.545359, 0, cellsize};
 Point(68) =  {142.235935, 30.942721, 0, cellsize};
 Point(69) =  {142.179777, 31.347760, 0, cellsize};
