@@ -44,6 +44,6 @@ subfunction/*~
 !Est_PassiveSlip.m
 !proceed_HMC.m
 !HMC_sample.m
-!Meshes/model_hirose/for_swjp/*.m
-!Meshes/model_iwasaki/for_swjp/*.m
+!Meshes/model_hirose/for_swjp/*
+!Meshes/model_iwasaki/for_swjp/*
 
