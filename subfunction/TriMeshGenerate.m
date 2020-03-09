@@ -2,6 +2,7 @@ function TriMeshGenerate(model)
 % This script generate tri_*.txt file of GMT format
 % Coded by Hiroshi Kimura 2019/11/08
 figure(10); clf(10)
+GeneratePACmesh_SWJP(model);
 GeneratePACmesh(model);
 GeneratePHSmesh(model);
 GeneratePHSsagamimesh(model);
@@ -98,6 +99,39 @@ F = scatteredInterpolant(pac(:,1),pac(:,2),pac(:,3));
 msh.POS(:,3) = F(msh.POS(:,1),msh.POS(:,2));
 
 file = ['Meshes/model_',model,'/tri_pac.txt'];
+savetri(file,msh);
+
+figure(10)
+trisurf(msh.TRIANGLES(:,1:3),msh.POS(:,1),msh.POS(:,2),msh.POS(:,3))
+hold on
+
+end
+
+%% PAC SW Jp model
+function GeneratePACmesh_SWJP(model)
+switch model
+    case 'iwasaki'
+        plate_iwasaki_pac_sw;
+        if ispc
+            pac = load('/MasterResearch/plate_data/plate_iwasaki/PAC_Plate/pac_regional/pac_2017_4a.xyz');
+        else
+            pac = load('~/MasterResearch/plate_data/plate_iwasaki/PAC_Plate/pac_regional/pac_2017_4a.xyz');
+        end
+    case 'hirose'
+        plate_hirose_pac_sw;
+        if ispc
+            pac = load('/MasterResearch/plate_data/plate_hirose/PAC/pac_hirose_slab1_combine.xyz');
+        else
+            pac = load('~/MasterResearch/plate_data/plate_hirose/PAC/pac_hirose_slab1_combine.xyz');
+        end
+    otherwise
+        fprintf('Not applicable.\n'); return
+end
+
+F = scatteredInterpolant(pac(:,1),pac(:,2),pac(:,3));
+msh.POS(:,3) = F(msh.POS(:,1),msh.POS(:,2));
+
+file = ['Meshes/model_',model,'/tri_pac_sw.txt'];
 savetri(file,msh);
 
 figure(10)

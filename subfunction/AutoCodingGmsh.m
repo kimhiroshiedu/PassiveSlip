@@ -2,6 +2,7 @@ function AutoCodingGmsh(model)
 % This script generates Gmsh script for making trimesh
 % Coded by Hiroshi Kimura 2019/11/07
 
+CodingPAC_sw(model)
 CodingPAC(model)
 CodingPHS_Sagami(model)
 CodingPHS(model)
@@ -160,6 +161,33 @@ fprintf(fid,'// Kuril trench\n');
 scale = 0.15;
 fprintf(fid,'// Japan trench\n');
 [cp,cl,cs,cll] = Export2gmshfile(edges_PAC_THE,fid,cp,cl,cs,cll,scale);
+
+% Izu-Ogasawara trench
+scale = 0.15;
+fprintf(fid,'// Izu-Ogasawara trench\n');
+[~,~,~,~] = Export2gmshfile(edges_PAC_IOG,fid,cp,cl,cs,cll,scale);
+
+fclose(fid);
+end
+
+%% Generating for PAC subduction zone (for SW Japan model)
+function CodingPAC_sw(model)
+edges_PAC_OKH = load(['Meshes/model_',model,'/edges_PAC_OKH.txt']);
+edges_PAC_IOG = load(['Meshes/model_',model,'/edges_PAC_IOG.txt']);
+
+fid = fopen(['Meshes/model_',model,'/plate_',model,'_pac_sw.geo'],'wt');
+fprintf(fid,'// interplate_pac.geo\n\n');
+fprintf(fid,'radius = 5.0;\npio2 = Pi/2;\n\n');
+
+cp  =    1;
+cl  =  501;
+cll = 1001;
+cs  = 2001;
+
+% Japan trench
+scale = 0.15;
+fprintf(fid,'// Kuril-Japan trench\n');
+[cp,cl,cs,cll] = Export2gmshfile(edges_PAC_OKH,fid,cp,cl,cs,cll,scale);
 
 % Izu-Ogasawara trench
 scale = 0.15;
