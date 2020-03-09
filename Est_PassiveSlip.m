@@ -15,8 +15,9 @@ close all
 % Combined by Hiroshi Kimura     2018/11/12
 % Revised by Hiroshi Kimura      2019/02/16
 % Revised by Hiroshi Kimura      2019/07/09
+% Revised by Hiroshi Kimura      2020/03/09
 %--- 
-prm.input      = 'PARAMETER/parameter_inversion_nejp.txt';
+prm.input      = 'PARAMETER/parameter_inversion_swjp.txt';
 prm.optfile    = 'PARAMETER/opt_bound_par.txt';
 prm.interpfile = 'PARAMETER/interp_randwalkline.txt';
 %--
@@ -331,12 +332,8 @@ for nb1 = 1:blk(1).nblock
       for ii = 1:size(blk(1).dipbo,1)
         dippingid = ismember([nb1 nb2],blk(1).dipbo(ii,2:3));
         ispair    = sum(dippingid);
-        if ispair == 2
-          if max(blk(1).dipbo(ii,2:3)) == blk(1).dipbo(ii,1)
-            blk(1).bound(nb1,nb2).flag1 = 1;
-          else
-            blk(1).bound(nb1,nb2).flag1 = 2;
-          end
+        if ispair == 2 && ismember(blk(1).dipbo(ii,1),[0:2])
+          blk(1).bound(nb1,nb2).flag1 = blk(1).dipbo(ii,1);
           break
         end
       end
@@ -388,12 +385,8 @@ for nb1 = 1:blk(1).nblock
         for ii = 1:size(blk(1).dipbo,1)
           dippingid = ismember([nb1 nb2],blk(1).dipbo(ii,2:3));
           ispair    = sum(dippingid);
-          if ispair == 2
-            if max(blk(1).dipbo(ii,2:3)) == blk(1).dipbo(ii,1)
-              blk(1).bound(nb1,nb2).flag1 = 1;
-            else
-              blk(1).bound(nb1,nb2).flag1 = 2;
-            end
+          if ispair == 2 && ismember(blk(1).dipbo(ii,1),[0:2])
+            blk(1).bound(nb1,nb2).flag1 = blk(1).dipbo(ii,1);
             break
           end
         end
@@ -491,12 +484,8 @@ for nb1 = 1:blk(1).nblock
       for ii = 1:size(blk(1).dipbo,1)
         dippingid = ismember([nb1 nb2],blk(1).dipbo(ii,2:3));
         ispair    = sum(dippingid);
-        if ispair == 2
-          if max(blk(1).dipbo(ii,2:3)) == blk(1).dipbo(ii,1)
-            blk(1).bound(nb1,nb2).flag1 = 1;
-          else
-            blk(1).bound(nb1,nb2).flag1 = 2;
-          end
+        if ispair == 2 && ismember(blk(1).dipbo(ii,1),[0:2])
+          blk(1).bound(nb1,nb2).flag1 = blk(1).dipbo(ii,1);
           break
         end
       end
