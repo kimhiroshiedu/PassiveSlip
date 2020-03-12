@@ -19,7 +19,6 @@ close all
 %--- 
 prm.input      = 'PARAMETER/parameter_inversion_swjp.txt';
 prm.optfile    = 'PARAMETER/opt_bound_par.txt';
-prm.interpfile = 'PARAMETER/interp_randwalkline.txt';
 %--
 % Read Parameters.
 [prm]     = ReadParameters(prm);
@@ -40,6 +39,8 @@ ShowBlockBound(blk)
 [eul,prm] = ReadEulerPoles(blk,prm);
 % Read internal strain flag.
 [blk,prm] = ReadInternalStrain(blk,obs,prm);
+% Read UDline settings.
+[blk]     = ReadUDlineSettings(blk,prm);
 % Read random walk line definitions.
 [blk,asp] = DefRandomWalkLine(blk,prm,obs);
 % Estimate rigid motion and calculate AIC.
@@ -146,6 +147,7 @@ dirblock_interface = fscanf(fid,'%s \n',[1,1]); [~] = fgetl(fid);
 filepole           = fscanf(fid,'%s \n',[1,1]); [~] = fgetl(fid);
 filebound          = fscanf(fid,'%s \n',[1,1]); [~] = fgetl(fid);
 fileinternal       = fscanf(fid,'%s \n',[1,1]); [~] = fgetl(fid);
+fileudconfig       = fscanf(fid,'%s \n',[1,1]); [~] = fgetl(fid);
 dirresult          = fscanf(fid,'%s \n',[1,1]); [~] = fgetl(fid);
 prm.home_d = pwd;
 prm.fileobs            = fullfile(prm.home_d,fileobs);
@@ -154,6 +156,7 @@ prm.dirblock_interface = fullfile(prm.home_d,dirblock_interface);
 prm.filepole           = fullfile(prm.home_d,filepole);
 prm.filebound          = fullfile(prm.home_d,filebound);
 prm.fileinternal       = fullfile(prm.home_d,fileinternal);
+prm.fileUDconfig       = fullfile(prm.home_d,fileudconfig);
 prm.dirresult          = fullfile(prm.home_d,dirresult);
 %
 prm.gpu = fscanf(fid,'%d \n',[1,1]); [~] = fgetl(fid);
@@ -173,12 +176,6 @@ prm.optb1  = tmp(:,1);
 prm.optb2  = tmp(:,2);
 prm.optint = tmp(:,3);
 %====================================================
-tmp = load(prm.interpfile);
-prm.interpnum = size(tmp,1);
-prm.interpb1  = tmp(:,1);
-prm.interpb2  = tmp(:,2);
-prm.interpint = tmp(:,3);
-%====================================================
 fprintf('==================\nINPUT PARAMETERS\n==================\n') 
 fprintf('HOME_D                    : %s \n',prm.home_d)
 fprintf('FileOBS                   : %s \n',prm.fileobs)
@@ -187,6 +184,7 @@ fprintf('DIRBlock_Interface        : %s \n',prm.dirblock_interface)
 fprintf('File fixed epole          : %s \n',prm.filepole)
 fprintf('File Rigid boundary       : %s \n',prm.filebound)
 fprintf('File Internal deformation : %s \n',prm.fileinternal)
+fprintf('File UDline settings      : %s \n',prm.fileUDconfig)
 fprintf('DIRResult                 : %s \n',prm.dirresult)
 fprintf('GPUdev (CPU:99)           : %i \n',prm.gpu)
 fprintf('ITR(Max_Nitr)             : %i \n',prm.itr)
@@ -792,8 +790,69 @@ prm.aprioripole = tmp';
 % 
 end
 
+%% Read udline share and interp interval
+function [blk] = ReadUDlineSettings(blk,prm)
+%--example from here--
+% # Interp intervals
+% 5 8 2
+% 6 8 2
+% 7 8 4
+% 10 10 3
+% 11 13 5
+% # UDline share
+% 5 8  6 8  7 8
+% 10 13  11 13
+% --- END HERE ---
+%--end of example--
+fid = fopen(prm.fileUDconfig,'r');
+for nb1 = 1:blk(1).nblock
+  for nb2 = nb1+1:blk(1).nblock
+    blk(1).bound(nb1,nb2).udshare  = [];
+    blk(1).bound(nb1,nb2).udinterp = [];
+  end
+end
+if fid ~= 0
+  tline = char(fgetl(fid));
+  while 1
+    switch tline
+      case '# UDline share'
+        while 1
+          tline = char(fgetl(fid));
+          Tline = strtrim(strsplit(tline));
+          if ~or(strcmpi(Tline(1),'---'),or(strcmpi(Tline(1),'#'),strcmpi(Tline(1),'')))
+            Tline=str2num(char(Tline))';
+            if ~isempty(Tline)
+              for n = 2:size(Tline,2)/2
+                blk(1).bound(Tline(2*n-1),Tline(2*n)).udshare = Tline(1:2);
+              end
+            end
+          else
+            break
+          end
+        end
+      case '# Interp intervals'
+        while 1
+          tline = char(fgetl(fid));
+          Tline = strtrim(strsplit(tline));
+          if ~or(strcmpi(Tline(1),'---'),or(strcmpi(Tline(1),'#'),strcmpi(Tline(1),'')))
+            Tline=str2num(char(Tline));
+            if ~isempty(Tline)
+              blk(1).bound(Tline(1),Tline(2)).udinterp = Tline(3);
+            end
+          else
+            break
+          end
+        end
+      otherwise
+        tline = char(fgetl(fid));
+    end
+    if strcmpi(tline,'--- END HERE ---'); break; end
+  end
+end
+
+end
+
 %% Read dipping block boundary
-%% TO DO: dipping, asperities, vertical,
 function [blk,prm] = ReadBoundaryTypes(blk,prm)
 % Note:
 % Prepare the export parameter file in the 'PARAMETER' folder as bellows,
@@ -804,7 +863,7 @@ function [blk,prm] = ReadBoundaryTypes(blk,prm)
 % 9 8 9
 % 10 9 10
 % 12 10 12
-% Mechanical coupled boundaries
+% # Mechanical coupled boundaries
 % 8 11
 % 8 9
 % 9 10
@@ -1569,12 +1628,19 @@ for nb1 = 1:blk(1).nblock
         G(1).zc(mm1:mm1+nf-1) = -blk(1).cdep(mf1:mf1+nf-1);
         tmp.zlimit(ma:ma+nasp-1, 1) = blk(1).bound(nb1,nb2).asp_depd;
         tmp.zlimit(ma:ma+nasp-1, 2) = blk(1).bound(nb1,nb2).asp_depu;
-        tmp.idstrip(mm1:mm1+  nf-1, ms:ms+nstp-1) = blk(1).bound(nb1,nb2).stripid ;
-        tmp.idMit(   ms:ms +nstp-1, ma:ma+nasp-1) = blk(1).bound(nb1,nb2).interpid;
+        if size(blk(1).bound(nb1,nb2).udshare,1) ~= 0
+          matmp = tmp.pair(blk(1).bound(nb1,nb2).udshare).matmp;
+          tmp.idMit(ms:ms+nstp-1,matmp:matmp+nasp-1) = blk(1).bound(nb1,nb2).interpid;
+          break
+        else
+          tmp.idMit(ms:ms+nstp-1,   ma:   ma+nasp-1) = blk(1).bound(nb1,nb2).interpid;
+          tmp.pair(nb1,nb2).matmp = ma;
+          ma = ma + nasp;
+        end
+        tmp.idstrip(mm1:mm1+nf-1,ms:ms+nstp-1) = blk(1).bound(nb1,nb2).stripid ;
         mm1 = mm1 +   nf;
         mm3 = mm3 + 3*nf;
         ms = ms + nstp;
-        ma = ma + nasp;
       else
         d(1).mcid(mk3:mk3+3*nf-1,mk1:mk1+nf-1) = repmat(eye(nf),3,1);
         mk1 = mk1 +   nf;
@@ -2658,18 +2724,19 @@ for nb1 = 1:blk(1).nblock
     nf = size(blk(1).bound(nb1,nb2).blon,1);
     if nf ~= 0
       if blk(1).bound(nb1,nb2).flag2 == 1
-        rwlfile = fullfile(prm.dirblock_interface,['udlineb_',num2str(nb1),'_',num2str(nb2),'.txt']);
+        if size(blk(1).bound(nb1,nb2).udshare,1) == 0
+          rwlfile = fullfile(prm.dirblock_interface,['udlineb_',num2str(nb1),'_',num2str(nb2),'.txt']);
+        else
+          rwlfile = fullfile(prm.dirblock_interface,['udlineb_',num2str(blk(1).bound(nb1,nb2).udshare(1)),'_',num2str(blk(1).bound(nb1,nb2).udshare(2)),'.txt']);
+        end
         fid     = fopen(rwlfile,'r');
         if fid >= 0
           asp(np).nb1 = nb1;
           asp(np).nb2 = nb2;
-          nint = Nint;
-          for n = 1:size(prm.interpb1, 1)
-            interpid = ismember([asp(n).nb1, asp(n).nb2], [prm.interpb1(n), prm.interpb2(n)]);
-            ispair   = sum(interpid);
-            if ispair == 2
-              nint = prm.interpint(n); break;
-            end
+          if size(blk(1).bound(nb1,nb2).udinterp,1) ~= 0
+            nint = blk(1).bound(nb1,nb2).udinterp;
+          else
+            nint = Nint;
           end
           tmp = fscanf(fid,'%f %f %f %f %f %f \n',[6, Inf]);
           nasp = size(tmp,2);
@@ -2696,14 +2763,16 @@ for nb1 = 1:blk(1).nblock
           blk(1).bound(nb1,nb2).asp_yu_interp = linspace2(blk(1).bound(nb1,nb2).asp_yu, nint);
           blk(1).bound(nb1,nb2).asp_zu_interp = linspace2(blk(1).bound(nb1,nb2).asp_zu, nint);
           np = np + 1;
-          blk(1).naspline  =  blk(1).naspline + nasp;
-          blk(1).aline_zu   = [blk(1).aline_zu  ; blk(1).bound(nb1,nb2).asp_depu];
-          blk(1).aline_zd   = [blk(1).aline_zd  ; blk(1).bound(nb1,nb2).asp_depd];
-          blk(1).aline_dz   = [blk(1).aline_dz  ; blk(1).bound(nb1,nb2).asp_ddep];
-          blk(1).aline_lonu = [blk(1).aline_lonu; blk(1).bound(nb1,nb2).asp_lonu];
-          blk(1).aline_lond = [blk(1).aline_lond; blk(1).bound(nb1,nb2).asp_lond];
-          blk(1).aline_latu = [blk(1).aline_latu; blk(1).bound(nb1,nb2).asp_latu];
-          blk(1).aline_latd = [blk(1).aline_latd; blk(1).bound(nb1,nb2).asp_latd];
+          if size(blk(1).bound(nb1,nb2).udshare,1) == 0
+            blk(1).naspline  =  blk(1).naspline + nasp;
+            blk(1).aline_zu   = [blk(1).aline_zu  ; blk(1).bound(nb1,nb2).asp_depu];
+            blk(1).aline_zd   = [blk(1).aline_zd  ; blk(1).bound(nb1,nb2).asp_depd];
+            blk(1).aline_dz   = [blk(1).aline_dz  ; blk(1).bound(nb1,nb2).asp_ddep];
+            blk(1).aline_lonu = [blk(1).aline_lonu; blk(1).bound(nb1,nb2).asp_lonu];
+            blk(1).aline_lond = [blk(1).aline_lond; blk(1).bound(nb1,nb2).asp_lond];
+            blk(1).aline_latu = [blk(1).aline_latu; blk(1).bound(nb1,nb2).asp_latu];
+            blk(1).aline_latd = [blk(1).aline_latd; blk(1).bound(nb1,nb2).asp_latd];
+          end
           % Indexing trimesh with each strip
           hx_d = (blk(1).bound(nb1,nb2).asp_xd_interp(1:end-1) + blk(1).bound(nb1,nb2).asp_xd_interp(2:end)) ./ 2;
           hx_u = (blk(1).bound(nb1,nb2).asp_xu_interp(1:end-1) + blk(1).bound(nb1,nb2).asp_xu_interp(2:end)) ./ 2;
