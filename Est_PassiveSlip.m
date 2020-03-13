@@ -1626,13 +1626,12 @@ for nb1 = 1:blk(1).nblock
         nstp = nint * (nasp - 1) + 1;
         d(1).idmec(mf3:mf3+3*nf-1) = true;
         G(1).zc(mm1:mm1+nf-1) = -blk(1).cdep(mf1:mf1+nf-1);
-        tmp.zlimit(ma:ma+nasp-1, 1) = blk(1).bound(nb1,nb2).asp_depd;
-        tmp.zlimit(ma:ma+nasp-1, 2) = blk(1).bound(nb1,nb2).asp_depu;
         if size(blk(1).bound(nb1,nb2).udshare,1) ~= 0
-          matmp = tmp.pair(blk(1).bound(nb1,nb2).udshare).matmp;
+          matmp = tmp.pair(blk(1).bound(nb1,nb2).udshare(1),blk(1).bound(nb1,nb2).udshare(2)).matmp;
           tmp.idMit(ms:ms+nstp-1,matmp:matmp+nasp-1) = blk(1).bound(nb1,nb2).interpid;
-          break
         else
+          tmp.zlimit(ma:ma+nasp-1,1) = blk(1).bound(nb1,nb2).asp_depd;
+          tmp.zlimit(ma:ma+nasp-1,2) = blk(1).bound(nb1,nb2).asp_depu;
           tmp.idMit(ms:ms+nstp-1,   ma:   ma+nasp-1) = blk(1).bound(nb1,nb2).interpid;
           tmp.pair(nb1,nb2).matmp = ma;
           ma = ma + nasp;
