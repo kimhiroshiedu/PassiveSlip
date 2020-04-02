@@ -2144,7 +2144,8 @@ function [cal] = Proceed_MCMC_RE(blk,asp,tri,prm,obs,eul,d,G)
 % Logging
 logfile = fullfile(prm.dirresult,'log.txt');
 logfid  = fopen(logfile,'a');
-d(1).invms = 1 ./ ((d(1).obs./d(1).err)'*(d(1).obs./d(1).err) ./ (size(d(1).obs,1)/3));
+% d(1).invms = 1 ./ ((d(1).obs./d(1).err)'*(d(1).obs./d(1).err) ./ (size(d(1).obs,1)/3));
+d(1).invms = 1 ./ ( d(1).obs'*d(1).obs ./ (size(d(1).obs,1)/3) );
 rr = (d(1).obs./d(1).err)'*(d(1).obs./d(1).err);
 fprintf('Residual=%9.3f \n',rr);
 fprintf(logfid,'Residual=%9.3f \n',rr);
