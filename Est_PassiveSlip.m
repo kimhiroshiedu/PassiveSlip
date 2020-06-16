@@ -2144,9 +2144,9 @@ function [cal] = Proceed_MCMC_RE(blk,asp,tri,prm,obs,eul,d,G)
 % Logging
 logfile = fullfile(prm.dirresult,'log.txt');
 logfid  = fopen(logfile,'a');
-% d(1).invms = 1 ./ ((d(1).obs./d(1).err)'*(d(1).obs./d(1).err) ./ (size(d(1).obs,1)/3));
 d(1).invms = 1 ./ ( d(1).obs'*d(1).obs ./ (size(d(1).obs,1)/3) );
 rr = (d(1).obs./d(1).err)'*(d(1).obs./d(1).err);
+rr_inv =  1 / rr;
 fprintf('Residual=%9.3f \n',rr);
 fprintf(logfid,'Residual=%9.3f \n',rr);
 
@@ -2239,7 +2239,7 @@ if prm.gpu ~= 99
   d(1).mcid      = gpuArray(single(     d(1).mcid     ));
   d(1).cfinv_mec = gpuArray(single(     d(1).cfinv_mec));
   d(1).cfinv_kin = gpuArray(single(     d(1).cfinv_kin));
-  d(1).invms     = gpuArray(single(     d(1).invms    ));
+  rr_inv         = gpuArray(single( rr_inv));
   res.old        = gpuArray(single(res.old));
 end
 
@@ -2341,7 +2341,7 @@ while not(count == prm.thr)
     res.smp = sum(((d(1).obs-cal.smp)./d(1).err).^2,1);
     % Mc is better Zero
     %% MAKE Probably Density Function
-    pdf = -0.5 .* (res.smp-res.old) .* d(1).invms .* T_inv;
+    pdf = -0.5 .* (res.smp-res.old) .* rr_inv .* T_inv;
     
     % Accept 
     acc = pdf > logu(it,:);
@@ -2356,7 +2356,7 @@ while not(count == prm.thr)
     % Exchange Replicas
     if mod(it,prm.efrq) == 0
       for nrep = 1:prm.nrep-1
-        r = -0.5 .* (res.old(nrep+1)-res.old(nrep)) * d(1).invms * (T_inv(nrep)-T_inv(nrep+1));
+        r = -0.5 .* (res.old(nrep+1)-res.old(nrep)) * rr_inv * (T_inv(nrep)-T_inv(nrep+1));
         if r > loge(it,nrep)
           mc.old(:,[nrep,nrep+1]) = fliplr(mc.old(:,[nrep,nrep+1]));
           ma.old(:,[nrep,nrep+1]) = fliplr(ma.old(:,[nrep,nrep+1]));
