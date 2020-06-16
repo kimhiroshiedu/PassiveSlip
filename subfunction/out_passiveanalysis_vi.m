@@ -16,7 +16,7 @@ G(1).tb_kin = full(G(1).tb_kin);
 G(1).tb_mec = full(G(1).tb_mec);
 % Common export
 [blk] = ReadAsperityRegions(savedir,blk,prm);
-[blk] = AsperityPoint(blk,obs);
+% [blk] = AsperityPoint(blk,obs);
 SaveBlockLine(savedir,blk)
 SaveAsperitySegmentArea(savedir,blk,obs,tcha)
 SaveAsperityPoint(savedir,blk);
