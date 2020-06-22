@@ -2209,8 +2209,9 @@ ma.old(ma.n/2+1:   end,:) = blk(1).aline_zu + repmat(blk(1).aline_zd-blk(1).alin
 % Substitute logical value if trimeshes are within asperities or not 
 ia.old = zeros(blk(1).ntmec,prm.nrep);
 
-la.old    = zeros(la.n,prm.nrep,precision);
+la.old    =  ones(la.n,prm.nrep,precision);
 res.old   =   inf(   1,prm.nrep,precision);
+res.oldl  =   inf(   1,prm.nrep,precision);
 % pri.old   =   inf(   1,prm.nrep,precision);
 
 % Scale adjastment of rwd
@@ -2218,6 +2219,7 @@ mcscale  = rwd * 5e-4;
 mascale  = rwd * 3e-1 .* (1e-2 .* repmat(blk(1).aline_dz,2,prm.nrep));
 mpscale  = rwd * 1e-10 .* repmat(ones(mp.n,1,precision).*~eul.id,1,prm.nrep);
 miscale  = rwd * 1e-10;
+lascale  = rwd * 1e+0;
 
 % Initial chains
 cha.mp = zeros(mp.n,prm.kep,prm.nrep,precision);
@@ -2241,6 +2243,7 @@ if prm.gpu ~= 99
   d(1).cfinv_kin = gpuArray(single(     d(1).cfinv_kin));
   rr_inv         = gpuArray(single( rr_inv));
   res.old        = gpuArray(single(res.old));
+  res.oldl       = gpuArray(single(res.oldl));
 end
 
 % MCMC iteration
@@ -2264,6 +2267,7 @@ while not(count == prm.thr)
   rmp       = -randw + (2 * randw) .* rand(mp.n,prm.nrep,prm.cha,precision);
   rmi       = -randw + (2 * randw) .* rand(mi.n,prm.nrep,prm.cha,precision);
   rla       = -randw + (2 * randw) .* rand(la.n,prm.nrep,prm.cha,precision);
+  rex       = randi(prm.nrep-1,1,prm.cha);
   
   rmp(         eul.id,:,:) = 0;
   rmi(~blk(1).idinter,:,:) = 0;
@@ -2272,7 +2276,7 @@ while not(count == prm.thr)
     mc.smp = mc.old + rwd .* mcscale .* rmc(:,:,it);
     mp.smp = mp.old + rwd .* mpscale .* rmp(:,:,it);
     mi.smp = mi.old + rwd .* miscale .* rmi(:,:,it);
-    la.smp = la.old + rwd .*  la.std .* rla(:,:,it);
+    la.smp = la.old + rwd .* lascale .* rla(:,:,it);
     ma.smp = ma.old + rwd .* mascale .* rma(:,:,it);
     % Re-sampling coupling ratio
     pdfmc = prior_mc(mc.smp,lo_mc,up_mc);
@@ -2287,7 +2291,12 @@ while not(count == prm.thr)
       ma.smp(~pdfma) = ma.old(~pdfma) + rwd .* mascale(~pdfma) .* (-randw + (2 * randw) .* rand(sum(sum(~pdfma)),1,precision));
       pdfma = prior_ma(ma.smp(ma.n/2+1:end,:),ma.smp(1:ma.n/2,:),blk(1).aline_zu,blk(1).aline_zd);
     end
-    
+    % Re-sampling lamda
+    pdfla = prior_mc(la.smp,0,Inf);
+    while sum(sum(~pdfla)) > 0
+      la.smp(~pdfla) = la.old(~pdfla) + rwd .* lascale .* (-randw + (2 * randw) .* rand(1,sum(sum(~pdfla)),precision));
+      pdfla = prior_mc(la.smp,0,Inf);
+    end
     % Calc gpu memory free capacity
     if prm.gpu ~= 99
       byte1 = whos('G');
@@ -2339,9 +2348,12 @@ while not(count == prm.thr)
     end
     % Calc residual section
     res.smp = sum(((d(1).obs-cal.smp)./d(1).err).^2,1);
+    res.smpl= sum(((d(1).obs-cal.smp)./d(1).err).^2,1) ./ (la.smp).^2;
     % Mc is better Zero
     %% MAKE Probably Density Function
-    pdf = -0.5 .* (res.smp-res.old) .* rr_inv .* T_inv;
+    %     pdf = -0.5 .* (res.smp-res.old) .* rr_inv .* T_inv;   % normalized by obs errors
+    pdf = (-2 .* (log(la.smp) - log(la.old)) -0.5 .* (res.smpl - res.oldl)) .* T_inv;  % consider model uncertainties
+    %     pdf = -2 .* (log(la.smp/la.old)) -0.5 .* (res.smpl - res.oldl) .* rr_inv .* T_inv;  % consider model and normalized by obs errors
     
     % Accept 
     acc = pdf > logu(it,:);
@@ -2350,24 +2362,38 @@ while not(count == prm.thr)
     mp.old( :,acc) = mp.smp( :,acc);
     mi.old( :,acc) = mi.smp( :,acc);
     ia.old( :,acc) = ia.smp( :,acc);
+    la.old( :,acc) = la.smp( :,acc);
     res.old(:,acc) = res.smp(:,acc);
+    res.oldl(:,acc)= res.smpl(:,acc);
     %     pri.old(:,acc)  = pri.smp(:,acc) ;
 
     % Exchange Replicas
     if mod(it,prm.efrq) == 0
-      for nrep = 1:prm.nrep-1
-        r = -0.5 .* (res.old(nrep+1)-res.old(nrep)) * rr_inv * (T_inv(nrep)-T_inv(nrep+1));
-        if r > loge(it,nrep)
-          mc.old(:,[nrep,nrep+1]) = fliplr(mc.old(:,[nrep,nrep+1]));
-          ma.old(:,[nrep,nrep+1]) = fliplr(ma.old(:,[nrep,nrep+1]));
-          mp.old(:,[nrep,nrep+1]) = fliplr(mp.old(:,[nrep,nrep+1]));
-          mi.old(:,[nrep,nrep+1]) = fliplr(mi.old(:,[nrep,nrep+1]));
-          ia.old(:,[nrep,nrep+1]) = fliplr(ia.old(:,[nrep,nrep+1]));
-          la.old(:,[nrep,nrep+1]) = fliplr(la.old(:,[nrep,nrep+1]));
-          res.old(:,[nrep,nrep+1]) = fliplr(res.old(:,[nrep,nrep+1]));
-          excount(nrep) = excount(nrep) + 1;
-        end
+      %       r = -0.5 .* (res.old(rex(it)+1)-res.old(rex(it))) * rr_inv * (T_inv(rex(it))-T_inv(rex(it)+1));
+      r = -2 .* (T_inv(rex(it))-T_inv(rex(it)+1)) .* (log(la.smp(rex(it)+1)) - log(la.smp(rex(it)))) -0.5 .* (res.oldl(rex(it)+1) - res.oldl(rex(it))) .* (T_inv(rex(it))-T_inv(rex(it)+1));
+      if r > loge(it)
+        mc.old(:,[rex(it),rex(it)+1]) = fliplr(mc.old(:,[rex(it),rex(it)+1]));
+        ma.old(:,[rex(it),rex(it)+1]) = fliplr(ma.old(:,[rex(it),rex(it)+1]));
+        mp.old(:,[rex(it),rex(it)+1]) = fliplr(mp.old(:,[rex(it),rex(it)+1]));
+        mi.old(:,[rex(it),rex(it)+1]) = fliplr(mi.old(:,[rex(it),rex(it)+1]));
+        ia.old(:,[rex(it),rex(it)+1]) = fliplr(ia.old(:,[rex(it),rex(it)+1]));
+        la.old(:,[rex(it),rex(it)+1]) = fliplr(la.old(:,[rex(it),rex(it)+1]));
+        res.old(:,[rex(it),rex(it)+1]) = fliplr(res.old(:,[rex(it),rex(it)+1]));
+        excount(nrep) = excount(nrep) + 1;
       end
+        %       for nrep = 1:prm.nrep-1
+        %         r = -0.5 .* (res.old(nrep+1)-res.old(nrep)) * rr_inv * (T_inv(nrep)-T_inv(nrep+1));
+        %         if r > loge(it,nrep)
+        %           mc.old(:,[nrep,nrep+1]) = fliplr(mc.old(:,[nrep,nrep+1]));
+        %           ma.old(:,[nrep,nrep+1]) = fliplr(ma.old(:,[nrep,nrep+1]));
+        %           mp.old(:,[nrep,nrep+1]) = fliplr(mp.old(:,[nrep,nrep+1]));
+        %           mi.old(:,[nrep,nrep+1]) = fliplr(mi.old(:,[nrep,nrep+1]));
+        %           ia.old(:,[nrep,nrep+1]) = fliplr(ia.old(:,[nrep,nrep+1]));
+        %           la.old(:,[nrep,nrep+1]) = fliplr(la.old(:,[nrep,nrep+1]));
+        %           res.old(:,[nrep,nrep+1]) = fliplr(res.old(:,[nrep,nrep+1]));
+        %           excount(nrep) = excount(nrep) + 1;
+        %         end
+        %       end
     end
 
     % Keep section
