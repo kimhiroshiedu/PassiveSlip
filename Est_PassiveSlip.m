@@ -2145,6 +2145,7 @@ function [cal] = Proceed_MCMC_RE(blk,asp,tri,prm,obs,eul,d,G)
 logfile = fullfile(prm.dirresult,'log.txt');
 logfid  = fopen(logfile,'a');
 d(1).invms = 1 ./ ( d(1).obs'*d(1).obs ./ (size(d(1).obs,1)/3) );
+d(1).sigma = sqrt(d(1).err.^2 + ones(size(d(1).err)).^2);
 rr = (d(1).obs./d(1).err)'*(d(1).obs./d(1).err);
 rr_inv =  1 / rr;
 fprintf('Residual=%9.3f \n',rr);
@@ -2348,12 +2349,13 @@ while not(count == prm.thr)
     end
     % Calc residual section
     res.smp = sum(((d(1).obs-cal.smp)./d(1).err).^2,1);
-    res.smpl= sum(((d(1).obs-cal.smp)./d(1).err).^2,1) ./ (la.smp).^2;
+    %     res.smpl= sum(((d(1).obs-cal.smp)./d(1).err).^2,1) ./ (la.smp).^2;  % considering model error
+    res.smpl= sum(abs(d(1).obs-cal.smp)./(d(1).sigma),1);  % L-1 norm (Ortega, 2013)
     % Mc is better Zero
     %% MAKE Probably Density Function
     %     pdf = -0.5 .* (res.smp-res.old) .* rr_inv .* T_inv;   % normalized by obs errors
-    pdf = (-2 .* (log(la.smp) - log(la.old)) -0.5 .* (res.smpl - res.oldl)) .* T_inv;  % consider model uncertainties
-    %     pdf = -2 .* (log(la.smp/la.old)) -0.5 .* (res.smpl - res.oldl) .* rr_inv .* T_inv;  % consider model and normalized by obs errors
+    %     pdf = (-2 .* (log(la.smp) - log(la.old)) -0.5 .* (res.smpl - res.oldl)) .* T_inv;  % consider model uncertainties
+    pdf = -1 .* (res.smpl - res.oldl) .* T_inv;   % PDF of L1-norm (Ortega, 2013)
     
     % Accept 
     acc = pdf > logu(it,:);
@@ -2370,30 +2372,35 @@ while not(count == prm.thr)
     % Exchange Replicas
     if mod(it,prm.efrq) == 0
       %       r = -0.5 .* (res.old(rex(it)+1)-res.old(rex(it))) * rr_inv * (T_inv(rex(it))-T_inv(rex(it)+1));
-      r = -2 .* (T_inv(rex(it))-T_inv(rex(it)+1)) .* (log(la.smp(rex(it)+1)) - log(la.smp(rex(it)))) -0.5 .* (res.oldl(rex(it)+1) - res.oldl(rex(it))) .* (T_inv(rex(it))-T_inv(rex(it)+1));
-      if r > loge(it)
-        mc.old(:,[rex(it),rex(it)+1]) = fliplr(mc.old(:,[rex(it),rex(it)+1]));
-        ma.old(:,[rex(it),rex(it)+1]) = fliplr(ma.old(:,[rex(it),rex(it)+1]));
-        mp.old(:,[rex(it),rex(it)+1]) = fliplr(mp.old(:,[rex(it),rex(it)+1]));
-        mi.old(:,[rex(it),rex(it)+1]) = fliplr(mi.old(:,[rex(it),rex(it)+1]));
-        ia.old(:,[rex(it),rex(it)+1]) = fliplr(ia.old(:,[rex(it),rex(it)+1]));
-        la.old(:,[rex(it),rex(it)+1]) = fliplr(la.old(:,[rex(it),rex(it)+1]));
-        res.old(:,[rex(it),rex(it)+1]) = fliplr(res.old(:,[rex(it),rex(it)+1]));
-        excount(nrep) = excount(nrep) + 1;
-      end
-        %       for nrep = 1:prm.nrep-1
+      %       r = -2 .* (T_inv(rex(it))-T_inv(rex(it)+1)) .* (log(la.smp(rex(it)+1)) - log(la.smp(rex(it)))) -0.5 .* (res.oldl(rex(it)+1) - res.oldl(rex(it))) .* (T_inv(rex(it))-T_inv(rex(it)+1));
+      %       r = -(res.oldl(rex(it)+1)-res.oldl(rex(it))) .* (T_inv(rex(it))-T_inv(rex(it)+1));
+      %       if r > loge(it)
+      %         mc.old(:,[rex(it),rex(it)+1]) = fliplr(mc.old(:,[rex(it),rex(it)+1]));
+      %         ma.old(:,[rex(it),rex(it)+1]) = fliplr(ma.old(:,[rex(it),rex(it)+1]));
+      %         mp.old(:,[rex(it),rex(it)+1]) = fliplr(mp.old(:,[rex(it),rex(it)+1]));
+      %         mi.old(:,[rex(it),rex(it)+1]) = fliplr(mi.old(:,[rex(it),rex(it)+1]));
+      %         ia.old(:,[rex(it),rex(it)+1]) = fliplr(ia.old(:,[rex(it),rex(it)+1]));
+      %         la.old(:,[rex(it),rex(it)+1]) = fliplr(la.old(:,[rex(it),rex(it)+1]));
+      %         res.old(:,[rex(it),rex(it)+1]) = fliplr(res.old(:,[rex(it),rex(it)+1]));
+      %         res.oldl(:,[rex(it),rex(it)+1]) = fliplr(res.oldl(:,[rex(it),rex(it)+1]));
+      %         excount(nrep) = excount(nrep) + 1;
+      %       end
+      for nrep = 1:prm.nrep-1
         %         r = -0.5 .* (res.old(nrep+1)-res.old(nrep)) * rr_inv * (T_inv(nrep)-T_inv(nrep+1));
-        %         if r > loge(it,nrep)
-        %           mc.old(:,[nrep,nrep+1]) = fliplr(mc.old(:,[nrep,nrep+1]));
-        %           ma.old(:,[nrep,nrep+1]) = fliplr(ma.old(:,[nrep,nrep+1]));
-        %           mp.old(:,[nrep,nrep+1]) = fliplr(mp.old(:,[nrep,nrep+1]));
-        %           mi.old(:,[nrep,nrep+1]) = fliplr(mi.old(:,[nrep,nrep+1]));
-        %           ia.old(:,[nrep,nrep+1]) = fliplr(ia.old(:,[nrep,nrep+1]));
-        %           la.old(:,[nrep,nrep+1]) = fliplr(la.old(:,[nrep,nrep+1]));
-        %           res.old(:,[nrep,nrep+1]) = fliplr(res.old(:,[nrep,nrep+1]));
-        %           excount(nrep) = excount(nrep) + 1;
-        %         end
-        %       end
+        %         r = -2 .* (T_inv(rex(it))-T_inv(rex(it)+1)) .* (log(la.smp(rex(it)+1)) - log(la.smp(rex(it)))) -0.5 .* (res.oldl(rex(it)+1) - res.oldl(rex(it))) .* (T_inv(rex(it))-T_inv(rex(it)+1));
+        r = -(res.oldl(nrep+1)-res.oldl(nrep)) .* (T_inv(nrep)-T_inv(nrep+1));
+        if r > loge(it,nrep)
+          mc.old(:,[nrep,nrep+1]) = fliplr(mc.old(:,[nrep,nrep+1]));
+          ma.old(:,[nrep,nrep+1]) = fliplr(ma.old(:,[nrep,nrep+1]));
+          mp.old(:,[nrep,nrep+1]) = fliplr(mp.old(:,[nrep,nrep+1]));
+          mi.old(:,[nrep,nrep+1]) = fliplr(mi.old(:,[nrep,nrep+1]));
+          ia.old(:,[nrep,nrep+1]) = fliplr(ia.old(:,[nrep,nrep+1]));
+          la.old(:,[nrep,nrep+1]) = fliplr(la.old(:,[nrep,nrep+1]));
+          res.old(:,[nrep,nrep+1]) = fliplr(res.old(:,[nrep,nrep+1]));
+          res.oldl(:,[nrep,nrep+1])= fliplr(res.oldl(:,[nrep,nrep+1]));
+          excount(nrep) = excount(nrep) + 1;
+        end
+      end
     end
 
     % Keep section
