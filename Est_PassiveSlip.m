@@ -1772,7 +1772,7 @@ function [pdfma] = prior_ma(zu,zd,ZU,ZD,dZ)
 % dZ: maximum length (difference) between ZU and ZD (Ortega, 2013)
 pdfma = (Heaviside(zu-(ZU-2.*dZ)) - Heaviside(zu- ZD       )).* ...
         (Heaviside(zd- ZU       ) - Heaviside(zd-(ZD+2.*dZ))).* ...
-        Heaviside(zd-zu) .* Heaviside(2.*dZ-(ZD-ZU));
+        Heaviside(zd-zu) .* Heaviside(2.*dZ-(zd-zu));
 end
 
 %% Estimate mechanical coupled area by MCMC (Metropolis-Hasting)
