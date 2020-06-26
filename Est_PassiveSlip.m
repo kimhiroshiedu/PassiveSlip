@@ -1766,12 +1766,13 @@ pdfmc = mc<=maxmc & mc>=minmc;
 end
 
 %% Prior function for asperity line
-function [pdfma] = prior_ma(zu,zd,ZU,ZD)
+function [pdfma] = prior_ma(zu,zd,ZU,ZD,dZ)
 % zu, zd: depth (down is +) of asperity lines
 % ZU, ZD: limiti depth (down is +) of plate interfaces
-pdfma = (Heaviside(zu-ZU) - Heaviside(zu-ZD)).* ...
-        (Heaviside(zd-ZU) - Heaviside(zd-ZD)).* ...
-        Heaviside(zd-zu);
+% dZ: maximum length (difference) between ZU and ZD (Ortega, 2013)
+pdfma = (Heaviside(zu-(ZU-2.*dZ)) - Heaviside(zu- ZD       )).* ...
+        (Heaviside(zd- ZU       ) - Heaviside(zd-(ZD+2.*dZ))).* ...
+        Heaviside(zd-zu) .* Heaviside(2.*dZ-(ZD-ZU));
 end
 
 %% Estimate mechanical coupled area by MCMC (Metropolis-Hasting)
@@ -2205,8 +2206,8 @@ mi.old = 1e-10.*(-0.5+rand(mi.n,prm.nrep,precision));
 mi.old = mi.old.*repmat(blk(1).idinter,1,prm.nrep)  ;
 % Substitute coordinates of up- and down-dip limit
 ma.old = zeros(ma.n,prm.nrep);
-ma.old(       1:ma.n/2,:) = blk(1).aline_zu + repmat(blk(1).aline_zd-blk(1).aline_zu,1,prm.nrep).*(0.6 + rand(ma.n./2,prm.nrep) ./ 5);
-ma.old(ma.n/2+1:   end,:) = blk(1).aline_zu + repmat(blk(1).aline_zd-blk(1).aline_zu,1,prm.nrep).*(0.1 + rand(ma.n./2,prm.nrep) ./ 5);
+ma.old(       1:ma.n/2,:) = blk(1).aline_zu + repmat(blk(1).aline_dz,1,prm.nrep).*(0.9 + rand(ma.n./2,prm.nrep) ./ 5);
+ma.old(ma.n/2+1:   end,:) = blk(1).aline_zu + repmat(blk(1).aline_dz,1,prm.nrep).*(0.1 + rand(ma.n./2,prm.nrep) ./ 5);
 % Substitute logical value if trimeshes are within asperities or not 
 ia.old = zeros(blk(1).ntmec,prm.nrep);
 
@@ -2286,18 +2287,18 @@ while not(count == prm.thr)
       pdfmc = prior_mc(mc.smp,lo_mc,up_mc);
     end
     % Re-sampling asperity line
-    pdfma = prior_ma(ma.smp(ma.n/2+1:end,:),ma.smp(1:ma.n/2,:),blk(1).aline_zu,blk(1).aline_zd);
+    pdfma = prior_ma(ma.smp(ma.n/2+1:end,:),ma.smp(1:ma.n/2,:),blk(1).aline_zu,blk(1).aline_zd,blk(1).aline_dz);
     while sum(sum(~pdfma)) > 0
       pdfma = repmat(pdfma,2,1);
       ma.smp(~pdfma) = ma.old(~pdfma) + rwd .* mascale(~pdfma) .* (-randw + (2 * randw) .* rand(sum(sum(~pdfma)),1,precision));
-      pdfma = prior_ma(ma.smp(ma.n/2+1:end,:),ma.smp(1:ma.n/2,:),blk(1).aline_zu,blk(1).aline_zd);
+      pdfma = prior_ma(ma.smp(ma.n/2+1:end,:),ma.smp(1:ma.n/2,:),blk(1).aline_zu,blk(1).aline_zd,blk(1).aline_dz);
     end
     % Re-sampling lamda
-    pdfla = prior_mc(la.smp,0,Inf);
-    while sum(sum(~pdfla)) > 0
-      la.smp(~pdfla) = la.old(~pdfla) + rwd .* lascale .* (-randw + (2 * randw) .* rand(1,sum(sum(~pdfla)),precision));
-      pdfla = prior_mc(la.smp,0,Inf);
-    end
+    %     pdfla = prior_mc(la.smp,0,Inf);
+    %     while sum(sum(~pdfla)) > 0
+    %       la.smp(~pdfla) = la.old(~pdfla) + rwd .* lascale .* (-randw + (2 * randw) .* rand(1,sum(sum(~pdfla)),precision));
+    %       pdfla = prior_mc(la.smp,0,Inf);
+    %     end
     % Calc gpu memory free capacity
     if prm.gpu ~= 99
       byte1 = whos('G');
