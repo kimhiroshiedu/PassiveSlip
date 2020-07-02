@@ -214,17 +214,20 @@ while 1
   if ~ischar(tline); break; end
   str   = strsplit(tline);
   n = n+1;
-  obs(1).name(n)   = cellstr(str(1));
-  obs(1).alon(n)   = str2double(cellstr(str(2)));   % LON
-  obs(1).alat(n)   = str2double(cellstr(str(3)));   % LAT
-  obs(1).ahig(n)   = str2double(cellstr(str(4)));   % HIG
-  obs(1).evec(n)   = str2double(cellstr(str(5)));   % E-W
-  obs(1).nvec(n)   = str2double(cellstr(str(6)));   % N-S
-  obs(1).hvec(n)   = str2double(cellstr(str(7)));   % U-D
-  obs(1).eerr(n)   = str2double(cellstr(str(8)));   % E-W
-  obs(1).nerr(n)   = str2double(cellstr(str(9)));   % N-S
-  obs(1).herr(n)   = str2double(cellstr(str(10)));  % U-D
-  obs(1).weight(n) = str2double(cellstr(str(11)));  % Weight
+  obs(1).name(n) = cellstr(str(1));
+  obs(1).alon(n) = str2double(cellstr(str(2)));   % LON
+  obs(1).alat(n) = str2double(cellstr(str(3)));   % LAT
+  obs(1).ahig(n) = str2double(cellstr(str(4)));   % HIG
+  obs(1).evec(n) = str2double(cellstr(str(5)));   % E-W
+  obs(1).nvec(n) = str2double(cellstr(str(6)));   % N-S
+  obs(1).hvec(n) = str2double(cellstr(str(7)));   % U-D
+  obs(1).eerr(n) = str2double(cellstr(str(8)));   % E-W
+  obs(1).nerr(n) = str2double(cellstr(str(9)));   % N-S
+  obs(1).herr(n) = str2double(cellstr(str(10)));  % U-D
+  obs(1).ewgt(n) = str2double(cellstr(str(11)));  % Weight-E
+  obs(1).nwgt(n) = str2double(cellstr(str(12)));  % Weight-N
+  obs(1).hwgt(n) = str2double(cellstr(str(13)));  % Weight-U
+  %   obs(1).weight(n) = str2double(cellstr(str(11)));  % Weight
   obs(1).axyz(n,:) = conv2ell(obs(1).alat(n),obs(1).alon(n),obs(1).ahig(n));
 end
 obs(1).nobs   = n;
@@ -287,11 +290,14 @@ for n = 1:blk(1).nblock
   obs(n).eer  = obs(1).eerr(ind);
   obs(n).ner  = obs(1).nerr(ind);
   obs(n).her  = obs(1).herr(ind);
-  obs(n).wgt  = obs(1).weight(ind);
+  obs(n).ewg  = obs(1).ewgt(ind);
+  obs(n).nwg  = obs(1).nwgt(ind);
+  obs(n).hwg  = obs(1).hwgt(ind);
+  %   obs(n).wgt  = obs(1).weight(ind);
   obs(n).oxyz = conv2ell(obs(n).lat,obs(n).lon,obs(n).hig);
   obs(n).vne  = reshape([obs(1).evec(ind); obs(1).nvec(ind)],obs(n).nblk.*2,1);
   obs(n).ver  = reshape([obs(1).eerr(ind); obs(1).nerr(ind)],obs(n).nblk.*2,1);
-  obs(n).vww  = reshape([obs(1).weight(ind)./(obs(1).eerr(ind).^2); obs(1).weight(ind)./(obs(1).nerr(ind).^2)],obs(n).nblk.*2,1);
+  obs(n).vww  = reshape([obs(1).ewgt(ind)./(obs(1).eerr(ind).^2); obs(1).nwgt(ind)./(obs(1).nerr(ind).^2)],obs(n).nblk.*2,1);
 end
 end
 
@@ -1577,13 +1583,17 @@ nobs = length(obs(1).evec);
 tmp.obs(1:3:3*nobs) = obs(1).evec;
 tmp.obs(2:3:3*nobs) = obs(1).nvec;
 tmp.obs(3:3:3*nobs) = obs(1).hvec;
-tmp.err(1:3:3*nobs) = obs(1).eerr./sqrt(obs(1).weight);
-tmp.err(2:3:3*nobs) = obs(1).nerr./sqrt(obs(1).weight);
+tmp.err(1:3:3*nobs) = obs(1).eerr;
+tmp.err(2:3:3*nobs) = obs(1).nerr;
 tmp.err(3:3:3*nobs) = obs(1).herr;
+tmp.wgt(1:3:3*nobs) = obs(1).ewgt;
+tmp.wgt(2:3:3*nobs) = obs(1).nwgt;
+tmp.wgt(3:3:3*nobs) = obs(1).hwgt;
 %
 d(1).ind   = find(tmp.err ~= 0)';
 d(1).obs   = tmp.obs(d(1).ind)';
 d(1).err   = tmp.err(d(1).ind)';
+d(1).wgt   = tmp.wgt(d(1).ind)';
 d(1).mcid  = zeros(3*blk(1).ntkin,blk(1).nbkin);  % kinematic couple
 d(1).maid  = zeros(3*blk(1).ntmec,blk(1).nbmec);  % mechanical couple
 d(1).idmec = false(3*blk(1).nt   ,           1);
@@ -1772,7 +1782,7 @@ function [pdfma] = prior_ma(zu,zd,ZU,ZD,dZ)
 % dZ: maximum length (difference) between ZU and ZD (Ortega, 2013)
 pdfma = (Heaviside(zu-(ZU-2.*dZ)) - Heaviside(zu- ZD       )).* ...
         (Heaviside(zd- ZU       ) - Heaviside(zd-(ZD+2.*dZ))).* ...
-        Heaviside(zd-zu) .* Heaviside(2.*dZ-(zd-zu));
+        Heaviside(dZ+(zd-zu)) .* Heaviside(2.*dZ-(zd-zu));
 end
 
 %% Estimate mechanical coupled area by MCMC (Metropolis-Hasting)
@@ -2145,8 +2155,9 @@ function [cal] = Proceed_MCMC_RE(blk,asp,tri,prm,obs,eul,d,G)
 % Logging
 logfile = fullfile(prm.dirresult,'log.txt');
 logfid  = fopen(logfile,'a');
+d(1).wterr = d(1).err./sqrt(d(1).wgt);
 d(1).invms = 1 ./ ( d(1).obs'*d(1).obs ./ (size(d(1).obs,1)/3) );
-d(1).sigma = sqrt(d(1).err.^2 + ones(size(d(1).err)).^2);
+d(1).sigma = sqrt((d(1).err.^2+ones(size(d(1).err)))./d(1).wgt);
 rr = (d(1).obs./d(1).err)'*(d(1).obs./d(1).err);
 rr_inv =  1 / rr;
 fprintf('Residual=%9.3f \n',rr);
@@ -2273,6 +2284,7 @@ while not(count == prm.thr)
   
   rmp(         eul.id,:,:) = 0;
   rmi(~blk(1).idinter,:,:) = 0;
+  repc = 0;
   for it = 1:prm.cha
     % Sample section
     mc.smp = mc.old + rwd .* mcscale .* rmc(:,:,it);
@@ -2349,9 +2361,9 @@ while not(count == prm.thr)
       clear('cal.rig','cal,kin','cal.mec','cal.ine');
     end
     % Calc residual section
-    res.smp = sum(((d(1).obs-cal.smp)./d(1).err).^2,1);
-    %     res.smpl= sum(((d(1).obs-cal.smp)./d(1).err).^2,1) ./ (la.smp).^2;  % considering model error
-    res.smpl= sum(abs(d(1).obs-cal.smp)./(d(1).sigma),1);  % L-1 norm (Ortega, 2013)
+    res.smp = sum(((d(1).obs-cal.smp)./d(1).wterr).^2,1);
+    %     res.smpl= sum(((d(1).obs-cal.smp)./d(1).wterr).^2,1) ./ (la.smp).^2;  % considering model error
+    res.smpl= sum(abs((d(1).obs-cal.smp)./d(1).sigma),1);  % normalized L-1 norm (after Ortega, 2013)
     % Mc is better Zero
     %% MAKE Probably Density Function
     %     pdf = -0.5 .* (res.smp-res.old) .* rr_inv .* T_inv;   % normalized by obs errors
@@ -2386,7 +2398,7 @@ while not(count == prm.thr)
       %         res.oldl(:,[rex(it),rex(it)+1]) = fliplr(res.oldl(:,[rex(it),rex(it)+1]));
       %         excount(nrep) = excount(nrep) + 1;
       %       end
-      for nrep = 1:prm.nrep-1
+      for nrep = 1+rem(repc,2):2:prm.nrep-1
         %         r = -0.5 .* (res.old(nrep+1)-res.old(nrep)) * rr_inv * (T_inv(nrep)-T_inv(nrep+1));
         %         r = -2 .* (T_inv(rex(it))-T_inv(rex(it)+1)) .* (log(la.smp(rex(it)+1)) - log(la.smp(rex(it)))) -0.5 .* (res.oldl(rex(it)+1) - res.oldl(rex(it))) .* (T_inv(rex(it))-T_inv(rex(it)+1));
         r = -(res.oldl(nrep+1)-res.oldl(nrep)) .* (T_inv(nrep)-T_inv(nrep+1));
@@ -2402,6 +2414,7 @@ while not(count == prm.thr)
           excount(nrep) = excount(nrep) + 1;
         end
       end
+      repc = repc + 1;
     end
 
     % Keep section
