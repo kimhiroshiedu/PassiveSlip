@@ -59,10 +59,10 @@ if strcmpi(prm.method,'Forward')
   [cal]   = CalcPassiveSlip(blk,asp,tri,prm,obs,eul,d,G);
 elseif strcmpi(prm.method,'MCMC.MH')
   % Metropolis-Hasting
-  [cal]   = Proceed_MCMC_MH(blk,asp,tri,prm,obs,eul,d,G);
+  [cal]   = Proceed_MCMC_MH(blk,prm,obs,eul,d,G);
 elseif strcmpi(prm.method,'MCMC.RE')
   % Replica exchange Monte Carlo
-  [cal]   = Proceed_MCMC_RE(blk,asp,tri,prm,obs,eul,d,G);
+  [cal]   = Proceed_MCMC_RE(blk,prm,obs,eul,d,G);
 end
 
 % Save data.
@@ -1786,7 +1786,7 @@ pdfma = (Heaviside(zu-(ZU-2.*dZ)) - Heaviside(zu- ZD       )).* ...
 end
 
 %% Estimate mechanical coupled area by MCMC (Metropolis-Hasting)
-function [cal] = Proceed_MCMC_MH(blk,asp,tri,prm,obs,eul,d,G)
+function [cal] = Proceed_MCMC_MH(blk,prm,obs,eul,d,G)
 % Test version coded by Hiroshi Kimura in 2019/2/1
 % Combined by Hiroshi Kimura in 2019/4/22
 % Revised by Hiroshi Kimura in 2019/7/16
@@ -2147,7 +2147,7 @@ fclose(logfid);
 end
 
 %% Estimate mechanical coupled area by MCMC (Replica exchange method)
-function [cal] = Proceed_MCMC_RE(blk,asp,tri,prm,obs,eul,d,G)
+function [cal] = Proceed_MCMC_RE(blk,prm,obs,eul,d,G)
 % Test version coded by Hiroshi Kimura in 2019/2/1
 % Combined by Hiroshi Kimura in 2019/4/22
 % Revised by Hiroshi Kimura in 2019/7/16
