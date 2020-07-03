@@ -1,5 +1,5 @@
 % Trimesh (use all files)
-prm.dirblock = 'MODEL_JP/BLOCK_Int_ne_japan/plate_hirose';
+prm.dirblock = 'MODEL_JP/BLOCK_Int_sw_japan/plate_iwasaki';
 ext = 'triB_*.txt';
 file = dir([prm.dirblock,'/',ext]);
 [nbound,~] = size(file);
@@ -23,13 +23,14 @@ for nb = 1:tri(1).nbound
     lchar = strsplit(tline); if strcmpi(lchar{1},''); break; end
   end
   fclose(fid);
-  patch(tri(nb).blon',tri(nb).blat',zeros(size(tri(nb).blon))'); hold on
+  patch(tri(nb).blon',tri(nb).blat',zeros(size(tri(nb).blon))','EdgeColor',[128,128,128]./255); hold on
   colormap('white')
 end
 
 % Trimesh (use one file)
 % pre_tri_f = 'MODEL_JP/BLOCK_Int_ne_japan/triB_5_8.txt';
-pre_tri_f = 'Meshes/model_iwasaki/tri_phs_.20.txt';
+pre_tri_f = 'MODEL_JP/BLOCK_Int_sw_japan/plate_iwasaki/triB_2_12.txt';
+% pre_tri_f = 'Meshes/model_iwasaki/tri_phs_.20.txt';
 fid = fopen(pre_tri_f,'r');
 nf   = 0;
 blon = zeros(1,3);
@@ -52,7 +53,7 @@ tri.lon = blon;
 tri.lat = blat;
 tri.dep = bdep;
 clear blon blat bdep
-patch(tri.lon',tri.lat',zeros(size(tri.lon))'); hold on
+patch(tri.lon',tri.lat',zeros(size(tri.lon))','EdgeColor',[128,128,128]./255); hold on
 colormap('white')
 
 % Coast line
@@ -62,12 +63,12 @@ lonlim   = [120 150];
 % filename = gunzip('gshhs_l.b.gz', tempdir);
 filename = gunzip('gshhs_i.b.gz', tempdir);
 japan    = gshhs(filename{1},latlim,lonlim);
-geoshow([japan.Lat], [japan.Lon])
+geoshow([japan.Lat], [japan.Lon], 'displaytype','line','color','c')
 ax = gca;
-ax.XLim = [138 152]; % NE Japan
-ax.YLim = [ 32  48]; % NE Japan
-% ax.XLim = [130 142]; % SW Japan
-% ax.YLim = [ 30  37]; % SW Japan
+% ax.XLim = [138 152]; % NE Japan
+% ax.YLim = [ 32  48]; % NE Japan
+ax.XLim = [130 142]; % SW Japan
+ax.YLim = [ 30  37]; % SW Japan
 hold on
 
 % Block line
@@ -86,8 +87,8 @@ for nb = 1:blk(1).nblock
   blk(nb).lat  = tmp(:,2);
   blon = [blon; blk(nb).lon];
   blat = [blat; blk(nb).lat];
-  plot(blk(nb).lon,blk(nb).lat, 'r'); hold on
-  plot(blk(nb).lon,blk(nb).lat,'xr'); hold on
+  plot(blk(nb).lon,blk(nb).lat, 'm'); hold on
+  plot(blk(nb).lon,blk(nb).lat,'xm'); hold on
 end
 
 % Pick points
@@ -104,7 +105,7 @@ while 1
     yc = y;
     alon = [alon; [count, xc]];
     alat = [alat; [count, yc]];
-    plot(xc,yc,'om')
+    plot(xc,yc,'ob')
     text(xc,yc,[num2str(count)])
   elseif id1 == 3
     count = count + 1;
@@ -113,7 +114,7 @@ while 1
     yc = blat(Ip);
     slon = [slon; [count, xc]];
     slat = [slat; [count, yc]];
-    plot(xc,yc,'sm')
+    plot(xc,yc,'sb')
     text(xc,yc,[num2str(count)])
   else
     break
@@ -135,4 +136,4 @@ Newlat = [Newlat; newlat];
 
 % Final plot
 figure(10)
-plot(Newlon, Newlat, 'm')
+plot(Newlon, Newlat, 'b')
