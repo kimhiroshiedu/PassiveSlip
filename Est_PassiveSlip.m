@@ -2615,56 +2615,30 @@ ccha.ma =  single(ccha.ma);
 ccha.ia = logical(ccha.ia);
 ccha.mp =  single(ccha.mp);
 ccha.mi =  single(ccha.mi);
+% 
+covmc = zeros(size(ccha.mc,1),size(ccha.mc,1),prm.nrep);
+covma = zeros(size(ccha.ma,1),size(ccha.ma,1),prm.nrep);
+covia = zeros(size(ccha.ia,1),size(ccha.ia,1),prm.nrep);
+covmp = zeros(size(ccha.mp,1),size(ccha.mp,1),prm.nrep);
+covmi = zeros(size(ccha.mi,1),size(ccha.mi,1),prm.nrep);
 % if prm.gpu==99&&gpudevicecount==0
-if prm.gpu == 99
-  meanmc = mean(ccha.mc,2);
-  meanma = mean(ccha.ma,2);
-  meania = mean(ccha.ia,2);
-  meanmp = mean(ccha.mp,2);
-  meanmi = mean(ccha.mi,2);
-  for nrep = 1:prm.nrep
-    covmc(:,:,nrep) = cov(ccha.mc(:,:,nrep)');
-    covma(:,:,nrep) = cov(ccha.ma(:,:,nrep)');
-    covia(:,:,nrep) = cov(ccha.ia(:,:,nrep)');
-    covmp(:,:,nrep) = cov(ccha.mp(:,:,nrep)');
-    covmi(:,:,nrep) = cov(ccha.mi(:,:,nrep)');  
-  end
-else
-  gcha.mc = gpuArray(ccha.mc);
-  gcha.ma = gpuArray(ccha.ma);
-  gcha.ia = gpuArray(ccha.ia);
-  gcha.mp = gpuArray(ccha.mp);
-  gcha.mi = gpuArray(ccha.mi);
-  meanmc  =  mean(gcha.mc,2);
-  meanma  =  mean(gcha.ma,2);
-  meania  =  mean(gcha.ia,2);
-  meanmp  =  mean(gcha.mp,2);
-  meanmi  =  mean(gcha.mi,2);
-  for nrep = 1:prm.nrep
-    covmc(:,:,nrep) = cov(gcha.mc(:,:,nrep)');
-    covma(:,:,nrep) = cov(gcha.ma(:,:,nrep)');
-    covia(:,:,nrep) = cov(gcha.ia(:,:,nrep)');
-    covmp(:,:,nrep) = cov(gcha.mp(:,:,nrep)');
-    covmi(:,:,nrep) = cov(gcha.mi(:,:,nrep)');
-  end
-  meanmc = gather(meanmc);
-  meanma = gather(meanma);
-  meania = gather(meania);
-  meanmp = gather(meanmp);
-  meanmi = gather(meanmi);
-  covmc  =  gather(covmc);
-  covma  =  gather(covma);
-  covia  =  gather(covia);
-  covmp  =  gather(covmp);
-  covmi  =  gather(covmi);
+meanmc = mean(ccha.mc,2);
+meanma = mean(ccha.ma,2);
+meania = mean(ccha.ia,2);
+meanmp = mean(ccha.mp,2);
+meanmi = mean(ccha.mi,2);
+for nrep = 1:prm.nrep
+  covmc(:,:,nrep) = cov(ccha.mc(:,:,nrep)');
+  covma(:,:,nrep) = cov(ccha.ma(:,:,nrep)');
+  covia(:,:,nrep) = cov(ccha.ia(:,:,nrep)');
+  covmp(:,:,nrep) = cov(ccha.mp(:,:,nrep)');
+  covmi(:,:,nrep) = cov(ccha.mi(:,:,nrep)');
 end
 % 
 mcmax = max(ccha.mc,[],2);
 mcmin = min(ccha.mc,[],2);
 mamax = max(ccha.ma,[],2);
 mamin = min(ccha.ma,[],2);
-iamax = max(ccha.ia,[],2);
-iamin = min(ccha.ia,[],2);
 mpmax = max(ccha.mp,[],2);
 mpmin = min(ccha.mp,[],2);
 mimax = max(ccha.mi,[],2);
