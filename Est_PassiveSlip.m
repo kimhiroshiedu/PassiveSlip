@@ -1952,7 +1952,7 @@ while not(count == prm.thr)
       b = waitGPU(byte1.bytes+byte2.bytes);
     end
 
-    ia.smp = (Heaviside(G(1).zd*ma.smp-G(1).zc) - Heaviside(G(1).zu*ma.smp-G(1).zc)) .* Hlim;
+    ia.smp = ((Heaviside(G(1).zd*ma.smp-G(1).zc) - Heaviside(G(1).zu*ma.smp-G(1).zc)) > 0) .* Hlim;
     idl = logical(d(1).maid *  ia.smp);
     idc = logical(d(1).maid * ~ia.smp);
     
@@ -2093,7 +2093,7 @@ while not(count == prm.thr)
   mamean = mean(cha.ma,2);
   mimean = mean(cha.mi,2);
 
-  iamean = (Heaviside(G(1).zd*mamean-G(1).zc) - Heaviside(G(1).zu*mamean-G(1).zc)) .* Hlim;
+  iamean = ((Heaviside(G(1).zd*mamean-G(1).zc) - Heaviside(G(1).zu*mamean-G(1).zc)) > 0) .* Hlim;
   idl = logical(d(1).maid *  iamean);
   idc = logical(d(1).maid * ~iamean);
   
@@ -2217,8 +2217,8 @@ mi.old = 1e-10.*(-0.5+rand(mi.n,prm.nrep,precision));
 mi.old = mi.old.*repmat(blk(1).idinter,1,prm.nrep)  ;
 % Substitute coordinates of up- and down-dip limit
 ma.old = zeros(ma.n,prm.nrep);
-ma.old(       1:ma.n/2,:) = blk(1).aline_zu + repmat(blk(1).aline_dz,1,prm.nrep).*(0.9 + rand(ma.n./2,prm.nrep) ./ 5);
-ma.old(ma.n/2+1:   end,:) = blk(1).aline_zu + repmat(blk(1).aline_dz,1,prm.nrep).*(0.1 + rand(ma.n./2,prm.nrep) ./ 5);
+ma.old(       1:ma.n/2,:) = blk(1).aline_zu + repmat(blk(1).aline_dz,1,prm.nrep).*(0.8  + rand(ma.n./2,prm.nrep) ./ 5);
+ma.old(ma.n/2+1:   end,:) = blk(1).aline_zu + repmat(blk(1).aline_dz,1,prm.nrep).*(0.05 + rand(ma.n./2,prm.nrep) ./ 5);
 % Substitute logical value if trimeshes are within asperities or not 
 ia.old = zeros(blk(1).ntmec,prm.nrep);
 
@@ -2318,7 +2318,7 @@ while not(count == prm.thr)
       b = waitGPU(byte1.bytes+byte2.bytes);
     end
 
-    ia.smp = (Heaviside(G(1).zd*ma.smp-G(1).zc) - Heaviside(G(1).zu*ma.smp-G(1).zc)) .* Hlim;
+    ia.smp = ((Heaviside(G(1).zd*ma.smp-G(1).zc) - Heaviside(G(1).zu*ma.smp-G(1).zc)) > 0) .* Hlim;
     idl    = logical(d(1).maid *  ia.smp);
     idc    = logical(d(1).maid * ~ia.smp);
     
@@ -2494,7 +2494,7 @@ while not(count == prm.thr)
   mamean = permute(mean(cha.ma,2),[1 3 2]);
   mimean = permute(mean(cha.mi,2),[1 3 2]);
 
-  iamean = (Heaviside(G(1).zd*mamean-G(1).zc) - Heaviside(G(1).zu*mamean-G(1).zc)) .* Hlim;
+  iamean = ((Heaviside(G(1).zd*mamean-G(1).zc) - Heaviside(G(1).zu*mamean-G(1).zc)) > 0) .* Hlim;
   idl = logical(d(1).maid *  iamean);
   idc = logical(d(1).maid * ~iamean);
   
