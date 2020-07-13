@@ -167,7 +167,8 @@ prm.kep = fscanf(fid,'%d \n',[1,1]); [~] = fgetl(fid);
 prm.rwd = fscanf(fid,'%f \n',[1,1]); [~] = fgetl(fid);
 prm.nrep= fscanf(fid,'%i \n',[1,1]); [~] = fgetl(fid);
 prm.efrq= fscanf(fid,'%i \n',[1,1]); [~] = fgetl(fid);
-prm.tmax= fscanf(fid,'%f \n',[1,1]);
+prm.tmax= fscanf(fid,'%f \n',[1,1]); [~] = fgetl(fid);
+prm.ongo= fscanf(fid,'%i \n',[1,1]);
 fclose(fid);
 %====================================================
 tmp = load(prm.optfile);
@@ -194,7 +195,8 @@ fprintf('KEP(KEEP)                 : %i \n',prm.kep)
 fprintf('RWD(Walk_dis)             : %4.2f \n',prm.rwd)
 fprintf('Number of Replica         : %i \n',prm.nrep)
 fprintf('Exchange Frequency        : %i \n',prm.efrq)
-fprintf('Maximum temperature       : %5.1f \n',prm.tmax) 
+fprintf('Maximum temperature       : %5.1f \n',prm.tmax)
+fprintf('On-going calculation (y:1): %i \n',prm.ongo)
 fprintf('==================\n') 
 %====================================================
 disp('PASS READ_PARAMETERS')
@@ -621,7 +623,7 @@ end
 function SaveData(prm,blk,obs,tri,d,G,cal)
 
 logfile=fullfile(prm.dirresult,'log.txt');
-log_fid=fopen(logfile,'a');
+logfid=fopen(logfile,'a');
 ext=fullfile(prm.dirresult,'Test_*');
 file=dir(ext);
 if size(file,1)~=0
@@ -661,8 +663,8 @@ else
   savefig(100,fullfile(f_fir,'bslip_vector'))
 end
 % 
-fprintf(log_fid,'MODEL= %s\n',prm.dirblock);
-fprintf(log_fid,'OBSDATA= %s\n',prm.fileobs);
+fprintf(logfid,'MODEL= %s\n',prm.dirblock);
+fprintf(logfid,'OBSDATA= %s\n',prm.fileobs);
 fclose('all');
 movefile(logfile,a_dir);
 end
@@ -673,7 +675,11 @@ t_sig = 0;
 num_b = 0;
 blk(1).pole = [];
 logfile = fullfile(prm.dirresult,'log.txt');
-logfid  = fopen(logfile,'wt');
+if prm.ongo == 1
+  logfid = fopen(logfile, 'a');
+else
+  logfid = fopen(logfile,'wt' );
+end
 for n = 1:blk(1).nblock
   sig  = 0;
   evne = [];
@@ -2267,6 +2273,10 @@ up_mc   = 1     ;
 lo_mc   = 0     ;
 decrate = 0.9^ 1;
 incrate = 0.9^-1;
+% On-going calculation
+if prm.ongo == 1
+  [mp,mc,mi,ma,res,rt,rwd,count] = ExpandData(prm,d,G,precision,mp,mc,mi,ma);
+end
 while not(count == prm.thr)
   rt   = rt+1;
   nacc = zeros(1,prm.nrep);tic
@@ -2602,6 +2612,106 @@ cal.smp = cal.rig + cal.kin + cal.mec + cal.ine;
 
 MakeFigs(blk,cal,bslip,obs)
 
+end
+
+%% Expand cha sampling
+function [mp,mc,mi,ma,res,nit,rwd,count] = ExpandData(prm,d,G,precision,mp,mc,mi,ma)
+% Read log
+logfid = fopen(fullfile(prm.dirresult,'log.txt'));
+nit = 0;
+accthreshold = 0;
+while ~feof(logfid)
+  tline = char(fgetl(logfid));
+  if isempty(tline); continue; end
+  if strcmpi(tline(1:2),'t=')
+    % read rwd
+    Tline = strtrim(strsplit(tline,{'rwd=','time='}));
+    rwd = str2double(Tline(2));
+    nit = nit + 1;
+    % read accept
+    if accthreshold ~= 1
+      tline = char(fgetl(logfid));
+      Tline = strtrim(strsplit(tline,{'accept=','%'}));
+      acc = str2double(Tline(2));
+      if acc/100 < 0.24 && acc/100 > 0.22
+        accthreshold = 1;
+        accthresholdno = nit;
+      end
+    end
+  end
+end
+count = nit - accthresholdno + 1;
+
+% Expand sampling
+file = dir([prm.dirresult,'/cha_test*.mat']);
+lastfile = fullfile(file(end).folder,file(end).name);
+sfactor = 2^16;
+cha = load(lastfile); cha = cha.cha;
+nrep = prm.nrep;
+nch = size(cha.mpcompress.smpmp,2);
+npol = size(cha.mpcompress.npol,2);
+nflt = size(cha.mccompress.nflt,2);
+nine = size(cha.micompress.nine,2);
+nasp = size(cha.macompress.nasp,2);
+%
+ccha.mp = zeros(npol,nch,nrep);
+ccha.mc = zeros(nflt,nch,nrep);
+ccha.mi = zeros(nine,nch,nrep);
+ccha.ma = zeros(nasp,nch,nrep);
+for np = 1:npol % Euler vector
+  infid = cha.mpcompress.npol(np).mpscale==inf;
+  ccha.mp(np,:,~infid) = (double(cha.mpcompress.smpmp(np,:,~infid))+(sfactor/2))./((sfactor-1).*cha.mpcompress.npol(np).mpscale(:,:,~infid))+cha.mpcompress.npol(np).mpmin(:,:,~infid);
+  ccha.mp(np,:, infid) = ones(1,nch,sum(infid)).*cha.mpcompress.npol(np).mpmax(:,:,infid);
+end
+for nf = 1:nflt % Coupling ratio
+  infid = cha.mccompress.nflt(nf).mcscale==inf;
+  ccha.mc(nf,:,~infid) = (double(cha.mccompress.smpmc(nf,:,~infid))+(sfactor/2))./((sfactor-1).*cha.mccompress.nflt(nf).mcscale(:,:,~infid))+cha.mccompress.nflt(nf).mcmin(:,:,~infid);
+  ccha.mc(nf,:, infid) = ones(1,nch,sum(infid)).*cha.mccompress.nflt(nf).mcmax(:,:,infid);
+end
+for ni = 1:nine % Internal strain rate
+  infid = cha.micompress.nine(ni).miscale==inf;
+  ccha.mi(ni,:,~infid) = (double(cha.micompress.smpmi(ni,:,~infid))+(sfactor/2))./((sfactor-1).*cha.micompress.nine(ni).miscale(:,:,~infid))+cha.micompress.nine(ni).mimin(:,:,~infid);
+  ccha.mi(ni,:, infid) = ones(1,nch,sum(infid)).*cha.micompress.nine(ni).mimax(:,:,infid);
+end
+for na = 1:nasp % Depth limit of asperities
+  infid = cha.macompress.nasp(na).mascale==inf;
+  ccha.ma(na,:,~infid) = (double(cha.macompress.smpma(na,:,~infid))+(sfactor/2))./((sfactor-1).*cha.macompress.nasp(na).mascale(:,:,~infid))+cha.macompress.nasp(na).mamin(:,:,~infid);
+  ccha.ma(na,:, infid) = ones(1,nch,sum(infid)).*cha.macompress.nasp(na).mamax(:,:,infid);
+end
+ccha.ia = cha.iacompress.smpia; % Asperity binaries
+% Calc residuals
+mp.old = permute(ccha.mp(:,end,:),[1 3 2]);
+mc.old = permute(ccha.mc(:,end,:),[1 3 2]);
+mi.old = permute(ccha.mi(:,end,:),[1 3 2]);
+ma.old = permute(ccha.ma(:,end,:),[1 3 2]);
+ia.old = permute(ccha.ia(:,end,:),[1 3 2]);
+idl    = logical(d(1).maid *  ia.old);
+idc    = logical(d(1).maid * ~ia.old);
+% 
+bslip   = (G(1).tb_mec * mp.old) .* d(1).cfinv_mec .* idl;
+for nrep=1:prm.nrep
+  bslip(idc(:,nrep),nrep) = -G(1).s(idc(:,nrep),idc(:,nrep)) \ (G(1).s(idc(:,nrep),idl(:,nrep)) * bslip(idl(:,nrep),nrep));
+end
+cal.rig = G(1).p * mp.old;
+cal.kin = G(1).c_kin * ((G(1).tb_kin * mp.old) .* d(1).cfinv_kin .* (d(1).mcid * mc.old));
+cal.mec = G(1).c_mec * bslip;
+cal.ine = G(1).i * mi.old;
+if prm.gpu ~= 99
+  if isempty(cal.rig); cal.rig = zeros(size(d(1).ind,1),prm.nrep,precision,'gpuArray'); end
+  if isempty(cal.kin); cal.kin = zeros(size(d(1).ind,1),prm.nrep,precision,'gpuArray'); end
+  if isempty(cal.mec); cal.mec = zeros(size(d(1).ind,1),prm.nrep,precision,'gpuArray'); end
+  if isempty(cal.ine); cal.ine = zeros(size(d(1).ind,1),prm.nrep,precision,'gpuArray'); end
+else
+  if isempty(cal.rig); cal.rig = zeros(size(d(1).ind,1),prm.nrep); end
+  if isempty(cal.kin); cal.kin = zeros(size(d(1).ind,1),prm.nrep); end
+  if isempty(cal.mec); cal.mec = zeros(size(d(1).ind,1),prm.nrep); end
+  if isempty(cal.ine); cal.ine = zeros(size(d(1).ind,1),prm.nrep); end
+end
+cal.old = cal.rig + cal.kin + cal.mec + cal.ine;
+res.old = sum(((d(1).obs-cal.old)./d(1).wterr).^2,1);
+res.oldl= sum(abs((d(1).obs-cal.old)./d(1).sigma),1);  % normalized L-1 norm (after Ortega, 2013)
+% 
+fprintf('Last file is restored\n')
 end
 
 %% Compress CHA sampling
