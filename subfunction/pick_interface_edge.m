@@ -23,7 +23,7 @@ for nb = 1:tri(1).nbound
     lchar = strsplit(tline); if strcmpi(lchar{1},''); break; end
   end
   fclose(fid);
-  patch(tri(nb).blon',tri(nb).blat',zeros(size(tri(nb).blon))','EdgeColor',[128,128,128]./255); hold on
+  patch(tri(nb).blon',tri(nb).blat',tri(nb).bdep',zeros(size(tri(nb).blon))','EdgeColor',[128,128,128]./255); hold on
   colormap('white')
 end
 
