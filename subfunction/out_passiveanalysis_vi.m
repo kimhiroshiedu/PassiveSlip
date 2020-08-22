@@ -490,7 +490,7 @@ Bslip.mec  = bslip;
 Bslip.mecl = bslipl;
 Bslip.kin  = ((G(1).tb_kin * mpmean) .* d(1).cfinv_kin .* (d(1).mcid * mcmean));
 Slip.mec   = -((G(1).tb_mec * mpmean) .* d(1).cfinv_mec - Bslip.mec );
-Slip.mecl  = -((G(1).tb_mec * mpmean) .* d(1).cfinv_mec - Bslip.mecl); Slip.mecl(idc) = NaN;
+Slip.mecl  = -((G(1).tb_mec * mpmean) .* d(1).cfinv_mec - Bslip.mecl);
 Slip.kin   = -((G(1).tb_kin * mpmean) .* d(1).cfinv_kin - Bslip.kin );
 
 % Calc vectors for mean parameters
