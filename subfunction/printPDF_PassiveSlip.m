@@ -17,6 +17,12 @@ d_u = (edges_u(1:end-1) + edges_u(2:end)) ./ 2;
 npdf_d = pdf_d ./ max([pdf_d,pdf_u]);
 npdf_u = pdf_u ./ max([pdf_d,pdf_u]);
 
+% Calc Confidence Intervals
+sort_d = sort(tcha.smpasp(    ud,:,T));
+sort_u = sort(tcha.smpasp(nud+ud,:,T));
+ci95_d = [sort_d(round(size(tcha.smpasp,2)*0.025)),sort_d(round(size(tcha.smpasp,2)*0.975))];
+ci95_u = [sort_u(round(size(tcha.smpasp,2)*0.025)),sort_u(round(size(tcha.smpasp,2)*0.975))];
+
 % Calc PDF of Pc
 ma = zeros(size(tcha.smpasp,1),1);
 ma(ud) = 1;
@@ -32,11 +38,18 @@ figure(230); clf(230)
 subplot(1,2,1)
 stairs(d_d,npdf_d,'-b','LineWidth',1); hold on
 stairs(d_u,npdf_u,'-r','LineWidth',1);
-xline(tcha.aveasp(nud+ud,1,T),'--r');
-xline(tcha.aveasp(    ud,1,T),'--b');
+xl_mean_zd = xline(tcha.aveasp(    ud,1,T),'-b');
+xl_mean_zu = xline(tcha.aveasp(nud+ud,1,T),'-r');
+xl_ci95_zd = xline(ci95_d(1),'--b'); xline(ci95_d(2),'--b');
+xl_ci95_zu = xline(ci95_u(1),'--r'); xline(ci95_u(2),'--r');
 plot(x,y,'Color','g','LineWidth',1)
 xl_bot = xline(blk(1).aline_zd(ud),'-k');
 xl_top = xline(blk(1).aline_zu(ud),'-k');
+legend([xl_mean_zu, xl_mean_zd, xl_ci95_zu, xl_ci95_zd],...
+    {['Mean: ',num2str(tcha.aveasp(nud+ud,1,T),'%-4.0f'),'km'],...
+     ['Mean: ',num2str(tcha.aveasp(    ud,1,T),'%-4.0f'),'km'],...
+     ['95% CI: ',num2str(diff(ci95_u),'%-4.0f'),'km'],...
+     ['95% CI: ',num2str(diff(ci95_d),'%-4.0f'),'km']});
 view(90,90)
 hold off
 
@@ -57,8 +70,8 @@ figure(230)
 subplot(1,2,2)
 stairs(d_d,npdf_d,'-b','LineWidth',1); hold on
 stairs(d_u,npdf_u,'-r','LineWidth',1);
-xl_u = xline(tcha.aveasp(nud+ud,1,T),'--r',[num2str(tcha.aveasp(nud+ud,1,T),'%-4.0f\n'),'km']);
-xl_d = xline(tcha.aveasp(    ud,1,T),'--b',[num2str(tcha.aveasp(    ud,1,T),'%-4.0f\n'),'km']);
+xl_d = xline(tcha.aveasp(    ud,1,T),'-b',[num2str(tcha.aveasp(    ud,1,T),'%-4.0f\n'),'km']);
+xl_u = xline(tcha.aveasp(nud+ud,1,T),'-r',[num2str(tcha.aveasp(nud+ud,1,T),'%-4.0f\n'),'km']);
 plot(x,y,'Color','g','LineWidth',1)
 view(90,90)
 hold off
@@ -74,12 +87,13 @@ ax2.FontSize = 11;
 ax2.XLabel.String = 'Depth (km)'; ax2.XLabel.Color = 'k';
 ax2.YLabel.String = 'PDF'       ; ax2.YLabel.Color = 'k';
 
+% return
 %% Save figures
 savefolder = fullfile(pwd,folder,'figure','pdf_graphs');
 if exist(savefolder,'dir') ~= 7; mkdir(savefolder); end
-saveas(230,fullfile(savefolder,['pdf_ud_',num2str(ud)]))
-print(fullfile(savefolder,['pdf_ud_',num2str(ud)]),'-dpdf','-painters')
-print(fullfile(savefolder,['pdf_ud_',num2str(ud)]),'-dpng')
+saveas(230,fullfile(savefolder,['T',num2str(T,'%02i'),'_pdf_ud_',num2str(ud)]))
+print(fullfile(savefolder,['T',num2str(T,'%02i'),'_pdf_ud_',num2str(ud)]),'-dpdf','-painters')
+print(fullfile(savefolder,['T',num2str(T,'%02i'),'_pdf_ud_',num2str(ud)]),'-dpng')
 end
 
 function printPDF_PassiveSlip_old(tcha,burn,id_zd,binw)
