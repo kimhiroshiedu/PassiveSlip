@@ -25,9 +25,9 @@ for rep = 1:prm.nrep
   if strcmpi(prm.method,'MCMC.RE')
     savedir = fullfile(pwd,folder,['T_',num2str(rep,'%02i')]);
   end
-  [bslip,slip,idl,vec] = CalcOptimumValue(prm,obs,tcha,G,d,rep);
+  [s,vec] = CalcOptimumValue(prm,obs,tcha,G,d,rep);
   SavePoles(savedir,blk,tcha,rep);
-  SaveBackslip(savedir,blk,tcha,bslip,slip,idl,rep);
+  SaveBackslip(savedir,blk,tcha,s,rep);
   SaveVectors(savedir,obs,vec);
   SaveInternalStrain(savedir,tcha,blk,prm,obs,G,rep);
   SaveRelativeMotion(savedir,blk,tcha,rep);
@@ -255,7 +255,7 @@ fclose(fid);
 end
 
 %% Save coupling and backslip
-function SaveBackslip(folder,blk,tcha,bslip,slip,idl,rep)
+function SaveBackslip(folder,blk,tcha,s,rep)
 savedir = fullfile(folder,'backslip');
 if exist(savedir) ~=7; mkdir(savedir); end
 mm1m = 1;
@@ -275,56 +275,74 @@ for nb1 = 1:blk(1).nblock
       if blk(1).bound(nb1,nb2).flag2 == 1
         file = fullfile(savedir,['trimec_',num2str(nb1),'_',num2str(nb2),'.txt']);
         fmec = fopen(file,'wt');
-        bslip_st  = bslip.mec( mm3m     :mm3m+  nf-1);
-        bslip_dp  = bslip.mec( mm3m+  nf:mm3m+2*nf-1);
-        bslip_ts  = bslip.mec( mm3m+2*nf:mm3m+3*nf-1);
-        bslipl_st = bslip.mecl(mm3m     :mm3m+  nf-1);
-        bslipl_dp = bslip.mecl(mm3m+  nf:mm3m+2*nf-1);
-        bslipl_ts = bslip.mecl(mm3m+2*nf:mm3m+3*nf-1);
-        id_lock   =        idl(mm3m     :mm3m+  nf-1);
-        slip_st   =  slip.mec( mm3m     :mm3m+  nf-1);
-        slip_dp   =  slip.mec( mm3m+  nf:mm3m+2*nf-1);
-        slip_ts   =  slip.mec( mm3m+2*nf:mm3m+3*nf-1);
-        slipl_st  =  slip.mecl(mm3m     :mm3m+  nf-1);
-        slipl_dp  =  slip.mecl(mm3m+  nf:mm3m+2*nf-1);
-        slipl_ts  =  slip.mecl(mm3m+2*nf:mm3m+3*nf-1);
+        rel_st    = s.rel_mec(   mm3m     :mm3m+  nf-1);
+        rel_dp    = s.rel_mec(   mm3m+  nf:mm3m+2*nf-1);
+        rel_ts    = s.rel_mec(   mm3m+2*nf:mm3m+3*nf-1);
+        bslip_st  = s.sdr_mec(   mm3m     :mm3m+  nf-1);
+        bslip_dp  = s.sdr_mec(   mm3m+  nf:mm3m+2*nf-1);
+        bslip_ts  = s.sdr_mec(   mm3m+2*nf:mm3m+3*nf-1);
+        bslip_st25= s.sdr_mec25( mm3m     :mm3m+  nf-1);
+        bslip_dp25= s.sdr_mec25( mm3m+  nf:mm3m+2*nf-1);
+        bslip_ts25= s.sdr_mec25( mm3m+2*nf:mm3m+3*nf-1);
+        bslip_st50= s.sdr_mec50( mm3m     :mm3m+  nf-1);
+        bslip_dp50= s.sdr_mec50( mm3m+  nf:mm3m+2*nf-1);
+        bslip_ts50= s.sdr_mec50( mm3m+2*nf:mm3m+3*nf-1);
+        bslip_st75= s.sdr_mec75( mm3m     :mm3m+  nf-1);
+        bslip_dp75= s.sdr_mec75( mm3m+  nf:mm3m+2*nf-1);
+        bslip_ts75= s.sdr_mec75( mm3m+2*nf:mm3m+3*nf-1);
+        bslipl_st = s.sdr_mecl(mm3m     :mm3m+  nf-1);
+        bslipl_dp = s.sdr_mecl(mm3m+  nf:mm3m+2*nf-1);
+        bslipl_ts = s.sdr_mecl(mm3m+2*nf:mm3m+3*nf-1);
+        id_lock   = s.idl(mm3m     :mm3m+  nf-1);
+        id_lock25 = s.idl25(mm3m     :mm3m+  nf-1);
+        id_lock50 = s.idl50(mm3m     :mm3m+  nf-1);
+        id_lock75 = s.idl75(mm3m     :mm3m+  nf-1);
+        slip_st   = s.sr_mec( mm3m     :mm3m+  nf-1);
+        slip_dp   = s.sr_mec( mm3m+  nf:mm3m+2*nf-1);
+        slip_ts   = s.sr_mec( mm3m+2*nf:mm3m+3*nf-1);
+        slipl_st  = s.sr_mecl(mm3m     :mm3m+  nf-1);
+        slipl_dp  = s.sr_mecl(mm3m+  nf:mm3m+2*nf-1);
+        slipl_ts  = s.sr_mecl(mm3m+2*nf:mm3m+3*nf-1);
         pc = tcha.aveaid(mm1m:mm1m+nf-1,:,rep);
         outdata = [fltnum',...
             blk(1).bound(nb1,nb2).blon,...
             blk(1).bound(nb1,nb2).blat,...
             blk(1).bound(nb1,nb2).bdep,...
-            clon,clat,cdep,...
-            bslip_st, bslip_dp, bslip_ts,...
-            bslipl_st,bslipl_dp,bslipl_ts,...
-            slip_st,slip_dp,slip_ts,...
-            slipl_st,slipl_dp,slipl_ts,...
-            pc];
-        fprintf(fmec,'#    1        2        3        4       5       6       7       8       9      10       11      12      13      14      15      16      17      18      19      20      21      22      23      24      25     26\n');
-        fprintf(fmec,'#  tri     lon1     lon2     lon3    lat1    lat2    lat3    dep1    dep2    dep3     clon    clat    cdep  sdr_st  sdr_dp  sdr_ts sdrl_st sdrl_dp sdrl_ts   sr_st   sr_dp   sr_ts  srl_st  srl_dp  srl_ts p_lock\n');
-        fprintf(fmec,'%6i %8.3f %8.3f %8.3f %7.3f %7.3f %7.3f %7.2f %7.2f %7.2f %8.3f %7.3f %7.2f %7.2f %7.2f %7.2f %7.2f %7.2f %7.2f %7.2f %7.2f %7.2f %7.2f %7.2f %7.2f %6.2f\n',outdata');
+            clon, clat, cdep,...
+            rel_st, rel_dp, rel_ts, pc,...
+            id_lock, bslip_st, bslip_dp, bslip_ts,...
+            id_lock25, bslip_st25, bslip_dp25, bslip_ts25,...
+            id_lock50, bslip_st50, bslip_dp50, bslip_ts50,...
+            id_lock75, bslip_st75, bslip_dp75, bslip_ts75];
+        fprintf(fmec,'#    1        2        3        4       5       6       7       8       9      10       11      12      13      14      15      16   17   18      19      20      21     18       19       20       21     22       23       24       25     26       27       28       29\n');
+        fprintf(fmec,'#  tri     lon1     lon2     lon3    lat1    lat2    lat3    dep1    dep2    dep3     clon    clat    cdep  rel_st  rel_dp  rel_ts  P_l id_l  sdr_st  sdr_dp  sdr_ts id_l25 sdr_st25 sdr_dp25 sdr_ts25 id_l50 sdr_st50 sdr_dp50 sdr_ts50 id_l75 sdr_st75 sdr_dp75 sdr_ts75\n');
+        fprintf(fmec,'%6i %8.3f %8.3f %8.3f %7.3f %7.3f %7.3f %7.2f %7.2f %7.2f %8.3f %7.3f %7.2f %7.2f %7.2f %7.2f %4.2f %4i %7.2f %7.2f %7.2f %6i %8.2f %8.2f %8.2f %6i %8.2f %8.2f %8.2f %6i %8.2f %8.2f %8.2f\n',outdata');
         fclose(fmec);
         mm1m = mm1m +   nf;
         mm3m = mm3m + 3*nf;
       else
         file = fullfile(savedir,['trikin_',num2str(nb1),'_',num2str(nb2),'.txt']);
         fkin = fopen(file,'wt');
-        sdr_st  = bslip.kin(mm3k     :mm3k+  nf-1);
-        sdr_dp  = bslip.kin(mm3k+  nf:mm3k+2*nf-1);
-        sdr_ts  = bslip.kin(mm3k+2*nf:mm3k+3*nf-1);
-        sr_st   =  slip.kin(mm3k     :mm3k+  nf-1);
-        sr_dp   =  slip.kin(mm3k+  nf:mm3k+2*nf-1);
-        sr_ts   =  slip.kin(mm3k+2*nf:mm3k+3*nf-1);
+        rel_st  = s.rel_kin(mm3k     :mm3k+  nf-1);
+        rel_dp  = s.rel_kin(mm3k+  nf:mm3k+2*nf-1);
+        rel_ts  = s.rel_kin(mm3k+2*nf:mm3k+3*nf-1);
+        sdr_st  = s.sdr_kin(mm3k     :mm3k+  nf-1);
+        sdr_dp  = s.sdr_kin(mm3k+  nf:mm3k+2*nf-1);
+        sdr_ts  = s.sdr_kin(mm3k+2*nf:mm3k+3*nf-1);
+        sr_st   =  s.sr_kin(mm3k     :mm3k+  nf-1);
+        sr_dp   =  s.sr_kin(mm3k+  nf:mm3k+2*nf-1);
+        sr_ts   =  s.sr_kin(mm3k+2*nf:mm3k+3*nf-1);
         cpmean  = tcha.aveflt(mm1k:mm1k+nf-1,:,rep);
         outdata = [fltnum',...
             blk(1).bound(nb1,nb2).blon,...
             blk(1).bound(nb1,nb2).blat,...
             blk(1).bound(nb1,nb2).bdep,...
-            clon,clat,cdep,...
-            sdr_st, sdr_dp, sdr_ts,...
-            sr_st, sr_dp, sr_ts, cpmean];
-        fprintf(fkin,'#    1        2        3        4       5       6       7       8       9      10       11      12      13      14      15      16      17      18      19     20\n');
-        fprintf(fkin,'#  tri     lon1     lon2     lon3    lat1    lat2    lat3    dep1    dep2    dep3     clon    clat    cdep  sdr_st  sdr_dp  sdr_ts   sr_st   sr_dp   sr_ts p_lock\n');
-        fprintf(fkin,'%6i %8.3f %8.3f %8.3f %7.3f %7.3f %7.3f %7.2f %7.2f %7.2f %8.3f %7.3f %7.2f %7.2f %7.2f %7.2f %7.2f %7.2f %7.2f %6.2f\n',outdata');
+            clon, clat, cdep,...
+            rel_st, rel_dp, rel_ts,...
+            cpmean, sdr_st, sdr_dp, sdr_ts];
+        fprintf(fkin,'#    1        2        3        4       5       6       7       8       9      10       11      12      13      14      15      16    14      15      16      17\n');
+        fprintf(fkin,'#  tri     lon1     lon2     lon3    lat1    lat2    lat3    dep1    dep2    dep3     clon    clat    cdep  rel_st  rel_dp  rel_ts    CC  sdr_st  sdr_dp  sdr_ts\n');
+        fprintf(fkin,'%6i %8.3f %8.3f %8.3f %7.3f %7.3f %7.3f %7.2f %7.2f %7.2f %8.3f %7.3f %7.2f %7.2f %7.2f %7.2f %5.2f %7.2f %7.2f %7.2f\n',outdata');
         fclose(fkin);
         mm1k = mm1k +   nf;
         mm3k = mm3k + 3*nf;
@@ -469,11 +487,12 @@ fprintf('=== Asperity edge points, below === \n');
 end
 
 %% Calc optimum value from tcha.mat
-function [Bslip,Slip,idl,vec] = CalcOptimumValue(prm,obs,tcha,G,d,rep)
+function [s,vec] = CalcOptimumValue(prm,obs,tcha,G,d,rep)
 mpmean = tcha.avepol(:,:,rep);
 mcmean = tcha.aveflt(:,:,rep);
 mamean = tcha.aveasp(:,:,rep);
 mimean = tcha.aveine(:,:,rep);
+idmean = tcha.aveaid(:,:,rep);
 
 Hu = Heaviside(G(1).zulim - G(1).zc);
 Hd = Heaviside(G(1).zdlim - G(1).zc);
@@ -482,22 +501,62 @@ Hlim = Hd - Hu;
 idl1 = (Heaviside(G(1).zd*mamean-G(1).zc) - Heaviside(G(1).zu*mamean-G(1).zc)) .* Hlim;
 idl = logical(d(1).maid *  idl1);
 idc = logical(d(1).maid * ~idl1);
+idl25 = logical(d(1).maid *  (idmean>=0.25));
+idl50 = logical(d(1).maid *  (idmean>=0.50));
+idl75 = logical(d(1).maid *  (idmean>=0.75));
+idc25 = logical(d(1).maid * ~(idmean>=0.25));
+idc50 = logical(d(1).maid * ~(idmean>=0.50));
+idc75 = logical(d(1).maid * ~(idmean>=0.75));
 
 % Calculate back-slip on locked and creeping patches.
-bslip      = (G(1).tb_mec * mpmean) .* d(1).cfinv_mec .* idl;
+rel_mec    = (G(1).tb_mec * mpmean) .* d(1).cfinv_mec;
+rel_kin    = (G(1).tb_kin * mpmean) .* d(1).cfinv_kin;
+bslip      = rel_mec .* idl;
+bslip25    = rel_mec .* idl25;
+bslip50    = rel_mec .* idl50;
+bslip75    = rel_mec .* idl75;
 bslipl     = bslip;
+bslipl25   = bslip25;
+bslipl50   = bslip50;
+bslipl75   = bslip75;
+
 bslip(idc) = -G(1).s(idc,idc) \ (G(1).s(idc,idl) * bslip(idl));
-Bslip.mec  = bslip;
-Bslip.mecl = bslipl;
-Bslip.kin  = ((G(1).tb_kin * mpmean) .* d(1).cfinv_kin .* (d(1).mcid * mcmean));
-Slip.mec   = -((G(1).tb_mec * mpmean) .* d(1).cfinv_mec - Bslip.mec );
-Slip.mecl  = -((G(1).tb_mec * mpmean) .* d(1).cfinv_mec - Bslip.mecl);
-Slip.kin   = -((G(1).tb_kin * mpmean) .* d(1).cfinv_kin - Bslip.kin );
+bslip25(idc25) = -G(1).s(idc25,idc25) \ (G(1).s(idc25,idl25) * bslip(idl25));
+bslip50(idc50) = -G(1).s(idc50,idc50) \ (G(1).s(idc50,idl50) * bslip(idl50));
+bslip75(idc75) = -G(1).s(idc75,idc75) \ (G(1).s(idc75,idl75) * bslip(idl75));
+s.idl      = idl;
+s.idl25    = idl25;
+s.idl50    = idl50;
+s.idl75    = idl75;
+s.idc      = idc;
+s.idc25    = idc25;
+s.idc50    = idc50;
+s.idc75    = idc75;
+s.rel_mec  = rel_mec;
+s.rel_kin  = rel_kin;
+s.sdr_mec  = bslip;
+s.sdr_mec25  = bslip25;
+s.sdr_mec50  = bslip50;
+s.sdr_mec75  = bslip75;
+s.sdr_mecl   = bslipl;
+s.sdr_mecl25 = bslipl25;
+s.sdr_mecl50 = bslipl50;
+s.sdr_mecl75 = bslipl75;
+s.sdr_kin    = (s.rel_kin .* (d(1).mcid * mcmean));
+s.sr_mec     = -(s.rel_mec - s.sdr_mec );
+s.sr_mec25   = -(s.rel_mec - s.sdr_mec25 );
+s.sr_mec50   = -(s.rel_mec - s.sdr_mec50 );
+s.sr_mec75   = -(s.rel_mec - s.sdr_mec75 );
+s.sr_mecl    = -(s.rel_mec - s.sdr_mecl);
+s.sr_mecl25  = -(s.rel_mec - s.sdr_mecl25);
+s.sr_mecl50  = -(s.rel_mec - s.sdr_mecl50);
+s.sr_mecl75  = -(s.rel_mec - s.sdr_mecl75);
+s.sr_kin     = -(s.rel_kin - s.sdr_kin );
 
 % Calc vectors for mean parameters
 vec.rig = G(1).p * mpmean;
-vec.kin = G(1).c_kin * Bslip.kin;
-vec.mec = G(1).c_mec * Bslip.mec;
+vec.kin = G(1).c_kin * s.sdr_kin;
+vec.mec = G(1).c_mec * s.sdr_mec;
 vec.ine = G(1).i * mimean;
 % Zero padding
 if prm.gpu ~= 99
