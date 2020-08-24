@@ -314,7 +314,7 @@ for nb1 = 1:blk(1).nblock
             id_lock25, bslip_st25, bslip_dp25, bslip_ts25,...
             id_lock50, bslip_st50, bslip_dp50, bslip_ts50,...
             id_lock75, bslip_st75, bslip_dp75, bslip_ts75];
-        fprintf(fmec,'#    1        2        3        4       5       6       7       8       9      10       11      12      13      14      15      16   17   18      19      20      21     18       19       20       21     22       23       24       25     26       27       28       29\n');
+        fprintf(fmec,'#    1        2        3        4       5       6       7       8       9      10       11      12      13      14      15      16   17   18      19      20      21     22       23       24       25     26       27       28       29     30       31       32       33\n');
         fprintf(fmec,'#  tri     lon1     lon2     lon3    lat1    lat2    lat3    dep1    dep2    dep3     clon    clat    cdep  rel_st  rel_dp  rel_ts  P_l id_l  sdr_st  sdr_dp  sdr_ts id_l25 sdr_st25 sdr_dp25 sdr_ts25 id_l50 sdr_st50 sdr_dp50 sdr_ts50 id_l75 sdr_st75 sdr_dp75 sdr_ts75\n');
         fprintf(fmec,'%6i %8.3f %8.3f %8.3f %7.3f %7.3f %7.3f %7.2f %7.2f %7.2f %8.3f %7.3f %7.2f %7.2f %7.2f %7.2f %4.2f %4i %7.2f %7.2f %7.2f %6i %8.2f %8.2f %8.2f %6i %8.2f %8.2f %8.2f %6i %8.2f %8.2f %8.2f\n',outdata');
         fclose(fmec);
