@@ -225,16 +225,16 @@ end
 fclose(fobs);
 % Save vcal
 file = fullfile(savedir,'cal_vector.txt');
-savevector(file,obs,vec.sum);
+savevector3(file,obs,vec.sum,vec.sum25,vec.sum50,vec.sum75);
 % Save vres
 file = fullfile(savedir,'res_vector.txt');
-savevector(file,obs,vec.res);
+savevector3(file,obs,vec.res,vec.res25,vec.res50,vec.res75);
 % Save vrig
 file = fullfile(savedir,'rig_vector.txt');
 savevector(file,obs,vec.rig);
 % Save vmec
 file = fullfile(savedir,'mec_vector.txt');
-savevector(file,obs,vec.mec);
+savevector3(file,obs,vec.mec,vec.mec25,vec.mec50,vec.mec75);
 % Save vkin
 file = fullfile(savedir,'kin_vector.txt');
 savevector(file,obs,vec.kin);
@@ -245,11 +245,34 @@ ve = v(1:3:end);
 vn = v(2:3:end);
 vu = v(3:3:end);
 fid = fopen(file,'wt');
-fprintf(fid,'# site lon  lat  hei  ve   vn   vu\n');
+fprintf(fid,'#   site      lon     lat        hei     ve     vn     vu\n');
 for nob = 1:obs(1).nobs
-  fprintf(fid,'%s %f %f %f %6.2f %6.2f %6.2f\n',...
+  fprintf(fid,'%8s %8.3f %7.3f %10.3f %6.2f %6.2f %6.2f\n',...
       obs(1).name{nob},obs(1).alon(nob),obs(1).alat(nob),obs(1).ahig(nob),...
       ve(nob),vn(nob),vu(nob));
+end
+fclose(fid);
+end
+
+function savevector3(file,obs,v,v1,v2,v3)
+ve = v(1:3:end);
+vn = v(2:3:end);
+vu = v(3:3:end);
+ve1 = v1(1:3:end);
+vn1 = v1(2:3:end);
+vu1 = v1(3:3:end);
+ve2 = v2(1:3:end);
+vn2 = v2(2:3:end);
+vu2 = v2(3:3:end);
+ve3 = v3(1:3:end);
+vn3 = v3(2:3:end);
+vu3 = v3(3:3:end);
+fid = fopen(file,'wt');
+fprintf(fid,'#   site      lon     lat        hei     ve     vn     vu   ve25   vn25   vu25   ve50   vn50   vu50   ve75   vn75   vu75\n');
+for nob = 1:obs(1).nobs
+  fprintf(fid,'%8s %8.3f %7.3f %10.3f %6.2f %6.2f %6.2f %6.2f %6.2f %6.2f %6.2f %6.2f %6.2f %6.2f %6.2f %6.2f\n',...
+      obs(1).name{nob},obs(1).alon(nob),obs(1).alat(nob),obs(1).ahig(nob),...
+      ve(nob),vn(nob),vu(nob),ve1(nob),vn1(nob),vu1(nob),ve2(nob),vn2(nob),vu2(nob),ve3(nob),vn3(nob),vu3(nob));
 end
 fclose(fid);
 end
@@ -557,23 +580,38 @@ s.sr_kin     = -(s.rel_kin - s.sdr_kin );
 vec.rig = G(1).p * mpmean;
 vec.kin = G(1).c_kin * s.sdr_kin;
 vec.mec = G(1).c_mec * s.sdr_mec;
+vec.mec25 = G(1).c_mec * s.sdr_mec25;
+vec.mec50 = G(1).c_mec * s.sdr_mec50;
+vec.mec75 = G(1).c_mec * s.sdr_mec75;
 vec.ine = G(1).i * mimean;
 % Zero padding
 if prm.gpu ~= 99
   if isempty(vec.rig); vec.rig = zeros(size(d(1).ind),precision,'gpuArray'); end
   if isempty(vec.kin); vec.kin = zeros(size(d(1).ind),precision,'gpuArray'); end
   if isempty(vec.mec); vec.mec = zeros(size(d(1).ind),precision,'gpuArray'); end
+  if isempty(vec.mec25); vec.mec25 = zeros(size(d(1).ind),precision,'gpuArray'); end
+  if isempty(vec.mec50); vec.mec50 = zeros(size(d(1).ind),precision,'gpuArray'); end
+  if isempty(vec.mec75); vec.mec75 = zeros(size(d(1).ind),precision,'gpuArray'); end
   if isempty(vec.ine); vec.ine = zeros(size(d(1).ind),precision,'gpuArray'); end
 else
   if isempty(vec.rig); vec.rig = zeros(size(d(1).ind)); end
   if isempty(vec.kin); vec.kin = zeros(size(d(1).ind)); end
   if isempty(vec.mec); vec.mec = zeros(size(d(1).ind)); end
-  if isempty(vec.ine); vec.ine = zeros(size(d(1).ind)); end
+  if isempty(vec.mec25); vec.mec25 = zeros(size(d(1).ind)); end
+  if isempty(vec.mec50); vec.mec50 = zeros(size(d(1).ind)); end
+  if isempty(vec.mec75); vec.mec75 = zeros(size(d(1).ind)); end
+if isempty(vec.ine); vec.ine = zeros(size(d(1).ind)); end
 end
 % Total velocities
 vec.sum = vec.rig + vec.kin + vec.mec + vec.ine;
+vec.sum25 = vec.rig + vec.kin + vec.mec25 + vec.ine;
+vec.sum50 = vec.rig + vec.kin + vec.mec50 + vec.ine;
+vec.sum75 = vec.rig + vec.kin + vec.mec75 + vec.ine;
 vobs = reshape([obs(1).evec; obs(1).nvec; obs(1).hvec],3*obs(1).nobs,1);
 vec.res = vobs - vec.sum;
+vec.res25 = vobs - vec.sum25;
+vec.res50 = vobs - vec.sum50;
+vec.res75 = vobs - vec.sum75;
 
 end
 

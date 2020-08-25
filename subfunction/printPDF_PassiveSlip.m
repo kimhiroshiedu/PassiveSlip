@@ -1,27 +1,28 @@
-function printPDF_PassiveSlip(folder,blk,G,tcha,ud,T)
+function printPDF_PassiveSlip(folder,blk,G,tcha,ud,T,burn)
 % tcha, blk and grn.mat must be loaded before using the function.
 
 % Given parameters
-sint   = 10;
+sint   =  1;
 binint =  2;
 nud    = size(tcha.smpasp,1) / 2;
-W       = blk(1).aline_zd(ud) - blk(1).aline_zu(ud);
+W      = blk(1).aline_zd(ud) - blk(1).aline_zu(ud);
+sid    = round(size(tcha.smpasp,2)*burn/100);
 
 % Calc PDF of z_u and z_d
 edges_d = blk(1).aline_zu(ud)    :binint:blk(1).aline_zd(ud)+2*W+binint;
 edges_u = blk(1).aline_zu(ud)-2*W:binint:blk(1).aline_zd(ud)    +binint;
-pdf_d = histcounts(tcha.smpasp(    ud,1:sint:end,T),edges_d,'Normalization','pdf');
-pdf_u = histcounts(tcha.smpasp(nud+ud,1:sint:end,T),edges_u,'Normalization','pdf');
+pdf_d = histcounts(tcha.smpasp(    ud,sid:sint:end,T),edges_d,'Normalization','pdf');
+pdf_u = histcounts(tcha.smpasp(nud+ud,sid:sint:end,T),edges_u,'Normalization','pdf');
 d_d = (edges_d(1:end-1) + edges_d(2:end)) ./ 2;
 d_u = (edges_u(1:end-1) + edges_u(2:end)) ./ 2;
 npdf_d = pdf_d ./ max([pdf_d,pdf_u]);
 npdf_u = pdf_u ./ max([pdf_d,pdf_u]);
 
 % Calc Confidence Intervals
-sort_d = sort(tcha.smpasp(    ud,:,T));
-sort_u = sort(tcha.smpasp(nud+ud,:,T));
-ci95_d = [sort_d(round(size(tcha.smpasp,2)*0.025)),sort_d(round(size(tcha.smpasp,2)*0.975))];
-ci95_u = [sort_u(round(size(tcha.smpasp,2)*0.025)),sort_u(round(size(tcha.smpasp,2)*0.975))];
+sort_d = sort(tcha.smpasp(    ud,sid:sint:end,T));
+sort_u = sort(tcha.smpasp(nud+ud,sid:sint:end,T));
+ci95_d = [sort_d(round(size(sort_d,2)*0.025)),sort_d(round(size(sort_d,2)*0.975))];
+ci95_u = [sort_u(round(size(sort_u,2)*0.025)),sort_u(round(size(sort_u,2)*0.975))];
 
 % Calc PDF of Pc
 ma = zeros(size(tcha.smpasp,1),1);
