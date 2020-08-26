@@ -1,4 +1,4 @@
-function printPDF_PassiveSlip(folder,blk,G,tcha,ud,T,burn)
+function printPDF_PassiveSlip(folder,blk,G,tcha,ud,T)
 % tcha, blk and grn.mat must be loaded before using the function.
 
 % Given parameters
@@ -6,7 +6,7 @@ sint   =  1;
 binint =  2;
 nud    = size(tcha.smpasp,1) / 2;
 W      = blk(1).aline_zd(ud) - blk(1).aline_zu(ud);
-sid    = round(size(tcha.smpasp,2)*burn/100);
+sid    = round(size(tcha.smpasp,2)*tcha.burnin/100);
 
 % Calc PDF of z_u and z_d
 edges_d = blk(1).aline_zu(ud)    :binint:blk(1).aline_zd(ud)+2*W+binint;
