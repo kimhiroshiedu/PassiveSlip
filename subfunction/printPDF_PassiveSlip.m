@@ -50,7 +50,7 @@ savefolder = fullfile(pwd,folder,'figure','pdf_graphs');
 if exist(savefolder,'dir') ~= 7; mkdir(savefolder); end
 fid = fopen(fullfile(savefolder,'makepdflog.txt'),'a+');
 dt = datetime('now','TimeZone','Asia/Tokyo');
-DateString = datestr(dt,'yyyy/MM/dd HH:mm:ss');
+DateString = datestr(dt,'yyyy/mm/dd HH:MM:SS');
 fprintf(fid,'%s\n ud_No.:',DateString);
 for ud = udlist
   fprintf(fid,' %i',ud);
@@ -103,40 +103,29 @@ fig = figure(230); clf(230)
 fig.Position = [488 200 560 520];
 subplot(2,1,2)
 yyaxis right
-hd = histogram('BinEdges',edges_d,'BinCounts',pdf_d,'DisplayStyle','stairs','EdgeColor','b','EdgeAlpha',1,'LineWidth',1); hold on
-hu = histogram('BinEdges',edges_u,'BinCounts',pdf_u,'DisplayStyle','stairs','EdgeColor','r','EdgeAlpha',1,'LineWidth',1);
-xl_mean_zd = xline(zd_mean,'-b',[num2str(zd_mean,'%-4.0f'),'(',num2str(diff(ci95_d),'%-3.0f'),') km']);
-xl_mean_zu = xline(zu_mean,'-r',[num2str(zu_mean,'%-4.0f'),'(',num2str(diff(ci95_u),'%-3.0f'),') km']);
-xl_ci95_zd = xline(ci95_d(1),'--b'); xline(ci95_d(2),'--b');
-xl_ci95_zu = xline(ci95_u(1),'--r'); xline(ci95_u(2),'--r');
+hd  = histogram('BinEdges',edges_d,'BinCounts',pdf_d,'DisplayStyle','stairs','EdgeColor','b','EdgeAlpha',1,'LineWidth',1); hold on
+hu  = histogram('BinEdges',edges_u,'BinCounts',pdf_u,'DisplayStyle','stairs','EdgeColor','r','EdgeAlpha',1,'LineWidth',1);
+hdc = histogram('BinEdges',edges_d,'BinCounts',pdf_dcross,'DisplayStyle','bar','EdgeColor','none','FaceColor','b','FaceAlpha',0.3);
+huc = histogram('BinEdges',edges_u,'BinCounts',pdf_ucross,'DisplayStyle','bar','EdgeColor','none','FaceColor','r','FaceAlpha',0.3);
+xl_mean_zd = xline(zd_mean,'-b',[num2str(zd_mean,'%-4.0f'),'(',num2str(diff(ci95_d),'%-3.0f'),') km'],'FontName','Helvetica');
+xl_mean_zu = xline(zu_mean,'-r',[num2str(zu_mean,'%-4.0f'),'(',num2str(diff(ci95_u),'%-3.0f'),') km'],'FontName','Helvetica');
+xl_ci95_zd = xline(ci95_d(1),':b','Linewidth',1); xline(ci95_d(2),':b','Linewidth',1);
+xl_ci95_zu = xline(ci95_u(1),':r','Linewidth',1); xline(ci95_u(2),':r','Linewidth',1);
 yyaxis left
 plot(pl_x,pl_y,'Color','g','LineWidth',1)
-xl_bot = xline(blk(1).aline_zd(ud),'-k'); xl_bot.LineWidth = 1; xl_bot.Alpha = 1;
-xl_top = xline(blk(1).aline_zu(ud),'-k'); xl_top.LineWidth = 1; xl_top.Alpha = 1;
+xl_bot = xline(blk(1).aline_zd(ud),'-k','Linewidth',1,'Alpha',1);
+xl_top = xline(blk(1).aline_zu(ud),'-k','Linewidth',1,'Alpha',1);
+ax1 = gca;
+ax1.XLim = [blk(1).aline_zu(ud)-2*W,blk(1).aline_zd(ud)+2*W];
+ax1.XLabel.String = 'Depth (km)';
+ax1.XLabel.Rotation = 180;
+ax1.XLabel.VerticalAlignment = "bottom";
+ax1 = graph_settings(ax1,maxpdf);
 % legend([xl_mean_zu, xl_mean_zd, xl_ci95_zu, xl_ci95_zd],...
 %     {['Mean: ',num2str(tcha.aveasp(nud+ud,1,T),'%-4.0f'),'km'],...
 %      ['Mean: ',num2str(tcha.aveasp(    ud,1,T),'%-4.0f'),'km'],...
 %      ['95% CI: ',num2str(diff(ci95_u),'%-4.0f'),'km'],...
 %      ['95% CI: ',num2str(diff(ci95_d),'%-4.0f'),'km']});
-ax1 = gca;
-ax1.PlotBoxAspectRatio = [2,1,1];
-ax1.FontSize = 11;
-ax1.XLim = [blk(1).aline_zu(ud)-2*W,blk(1).aline_zd(ud)+2*W];
-ax1.XColor = 'k'; ax1.XLabel.Color = 'k';
-ax1.XLabel.String = 'Depth (km)';
-ax1.XLabel.Rotation = 180;
-ax1.XLabel.VerticalAlignment = "bottom";
-ax1.XTickLabelRotation = 90;
-yyaxis left
-ax1.YLim = [0,1.1];
-ax1.YColor = 'k';
-ax1.YLabel.String = 'Locking probability'; ax1.YLabel.Color = 'k';
-ax1.YTickLabelRotation = 90;
-yyaxis right
-ax1.YLim = [0,1.1*maxpdf];
-ax1.YColor = 'k';
-ax1.YLabel.String = 'Locking depth probability'; ax1.YLabel.Color = 'k';
-ax1.YTickLabelRotation = 90;
 hold off
 
 %% Plot zoomed depth range
@@ -147,50 +136,17 @@ hd  = histogram('BinEdges',edges_d,'BinCounts',pdf_d,'DisplayStyle','stairs','Ed
 hu  = histogram('BinEdges',edges_u,'BinCounts',pdf_u,'DisplayStyle','stairs','EdgeColor','r','EdgeAlpha',1,'LineWidth',1);
 hdc = histogram('BinEdges',edges_d,'BinCounts',pdf_dcross,'DisplayStyle','bar','EdgeColor','none','FaceColor','b','FaceAlpha',0.3);
 huc = histogram('BinEdges',edges_u,'BinCounts',pdf_ucross,'DisplayStyle','bar','EdgeColor','none','FaceColor','r','FaceAlpha',0.3);
-xl_mean_zd = xline(zd_mean,'-b',[num2str(zd_mean,'%-4.0f'),'(',num2str(diff(ci95_d),'%-3.0f'),') km']);
-xl_mean_zu = xline(zu_mean,'-r',[num2str(zu_mean,'%-4.0f'),'(',num2str(diff(ci95_u),'%-3.0f'),') km']);
-xl_ci95_zd = xline(ci95_d(1),'--b'); xline(ci95_d(2),'--b');
-xl_ci95_zu = xline(ci95_u(1),'--r'); xline(ci95_u(2),'--r');
+xl_mean_zd = xline(zd_mean,'-b',[num2str(zd_mean,'%-4.0f'),'(',num2str(diff(ci95_d),'%-3.0f'),') km'],'FontName','Helvetica');
+xl_mean_zu = xline(zu_mean,'-r',[num2str(zu_mean,'%-4.0f'),'(',num2str(diff(ci95_u),'%-3.0f'),') km'],'FontName','Helvetica');
+xl_ci95_zd = xline(ci95_d(1),':b','Linewidth',1); xline(ci95_d(2),':b','Linewidth',1);
+xl_ci95_zu = xline(ci95_u(1),':r','Linewidth',1); xline(ci95_u(2),':r','Linewidth',1);
 yyaxis left
 plot(pl_x,pl_y,'Color','g','LineWidth',1)
 
 ax2 = gca;
-ax2.PlotBoxAspectRatio = [2,1,1];
-ax2.FontSize = 11;
 ax2.XLim = [blk(1).aline_zu(ud),blk(1).aline_zd(ud)];
-ax2.XColor = 'k'; 
-ax1.XTickLabelRotation = 90;
-yyaxis left
-ax2.YLim = [0,1.1];
-ax2.YColor = 'k';
-ax2.YLabel.String = 'Locking probability' ; ax2.YLabel.Color = 'k';
-ax2.YTickLabelRotation = 90;
-yyaxis right
-ax2.YLim = [0,1.1*maxpdf];
-ax2.YColor = 'k';
-ax2.YLabel.String = 'Locking depth probability'; ax2.YLabel.Color = 'k';
-ax2.YTickLabelRotation = 90;
+ax2 = graph_settings(ax2,maxpdf);
 hold off
-
-% subplot(1,2,2)
-% stairs(d_d,npdf_d,'-b','LineWidth',1); hold on
-% stairs(d_u,npdf_u,'-r','LineWidth',1);
-% xl_mean_zd = xline(tcha.aveasp(    ud,1,T),'-b',[num2str(tcha.aveasp(    ud,1,T),'%-4.0f\n'),'km']);
-% xl_mean_zu = xline(tcha.aveasp(nud+ud,1,T),'-r',[num2str(tcha.aveasp(nud+ud,1,T),'%-4.0f\n'),'km']);
-% plot(pl_x,pl_y,'Color','g','LineWidth',1)
-% view(90,90)
-% hold off
-% 
-% xl_mean_zd.LabelHorizontalAlignment =  'right'; xl_mean_zd.LabelVerticalAlignment   = 'middle';
-% xl_mean_zu.LabelHorizontalAlignment =   'left'; xl_mean_zu.LabelVerticalAlignment   = 'middle';
-% ax2 = gca;
-% ax2.PlotBoxAspectRatio = [2,1,1];
-% ax2.XLim = [blk(1).aline_zu(ud),blk(1).aline_zd(ud)];
-% ax2.YLim = [0,1.1];
-% ax2.XColor = 'k'; ax2.YColor = 'k';
-% ax2.FontSize = 11;
-% ax2.XLabel.String = 'Depth (km)'; ax2.XLabel.Color = 'k';
-% ax2.YLabel.String = 'PDF'       ; ax2.YLabel.Color = 'k';
 
 %% Save figures
 savefolder = fullfile(pwd,folder,'figure','pdf_graphs');
@@ -199,6 +155,26 @@ saveas(230,fullfile(savefolder,['T',num2str(T,'%02i'),'_pdf_ud_',num2str(ud)]))
 print(fullfile(savefolder,['T',num2str(T,'%02i'),'_pdf_ud_',num2str(ud)]),'-dpdf','-painters')
 print(fullfile(savefolder,['T',num2str(T,'%02i'),'_pdf_ud_',num2str(ud)]),'-dpng')
 
+end
+
+function [ax] = graph_settings(ax,maxpdf)
+% axis
+ax.FontName = 'Helvetica';
+ax.PlotBoxAspectRatio = [2,1,1];
+ax.FontSize = 11;
+% x-axis
+ax.XColor = 'k'; 
+ax.XTickLabelRotation = 90;
+% y-axis
+yyaxis left
+ax.YLim = [0,1.1];
+ax.YColor = 'k';
+ax.YTickLabelRotation = 90;
+yyaxis right
+ax.YLim = [0,1.1*maxpdf];
+ax.YColor = 'k';
+ax.YLabel.String = 'Probability'; ax.YLabel.Color = 'k';
+ax.YTickLabelRotation = 90;
 end
 
 %% old version
