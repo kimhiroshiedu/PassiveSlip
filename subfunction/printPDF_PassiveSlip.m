@@ -120,6 +120,7 @@ ax1.XLim = [blk(1).aline_zu(ud)-2*W,blk(1).aline_zd(ud)+2*W];
 ax1.XLabel.String = 'Depth (km)';
 ax1.XLabel.Rotation = 180;
 ax1.XLabel.VerticalAlignment = "bottom";
+ax1.YLabel.String = ['Line: ',num2str(ud)];
 ax1 = graph_settings(ax1,maxpdf);
 % legend([xl_mean_zu, xl_mean_zd, xl_ci95_zu, xl_ci95_zd],...
 %     {['Mean: ',num2str(tcha.aveasp(nud+ud,1,T),'%-4.0f'),'km'],...
