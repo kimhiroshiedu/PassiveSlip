@@ -3,58 +3,70 @@ function CalcLockedSegmentArea(savefolder,prm,blk,obs,G,d,tcha,patchfolder,T)
 % rt, reccurence time to calculate slip magnitude (positive, coseismic; negative, interseismic)
 G(1).tb_kin = full(G(1).tb_kin);
 G(1).tb_mec = full(G(1).tb_mec);
-blk = ReadLockedPatch(blk,patchfolder);
+[blk,lock] = ReadLockedPatch(blk,patchfolder);
 [s,~] = CalcOptimumValue(prm,obs,tcha,G,d,T);
-SaveAsperitySegmentArea(savefolder,blk,obs,tcha,T,s);
+SaveAsperitySegmentArea(savefolder,blk,obs,tcha,lock,T,s);
 end
 
 %%
-function SaveAsperitySegmentArea(folder,blk,obs,tcha,T,s)
+function SaveAsperitySegmentArea(folder,blk,obs,tcha,lock,T,s)
 savefolder = fullfile(folder,['T_',num2str(T,'%02i')],'locksegments');
 if exist(savefolder,'dir')~=7; mkdir(savefolder); end
 alat0 = mean(obs(1).alat,2);
 alon0 = mean(obs(1).alon,2);
 mm1m = 1;
 mm3m = 1;
+idl50 = zeros(size(tcha.aveaid,1),1);
+tricx = zeros(size(tcha.aveaid,1),1);
+tricy = zeros(size(tcha.aveaid,1),1);
+triarea = zeros(size(tcha.aveaid,1),1);
+triline = zeros(size(tcha.aveaid,1),1);
 for nb1 = 1:blk(1).nblock
   for nb2 = nb1+1:blk(1).nblock
     nf = size(blk(1).bound(nb1,nb2).blon,1);
     if nf ~= 0
-      [trix,triy] = PLTXY(blk(1).bound(nb1,nb2).blat,blk(1).bound(nb1,nb2).blon,alat0,alon0);
-      triz = blk(1).bound(nb1,nb2).bdep;
-      [tricx,tricy] = PLTXY(mean(blk(1).bound(nb1,nb2).blat,2),mean(blk(1).bound(nb1,nb2).blon,2),alat0,alon0);
-      tricz = mean(blk(1).bound(nb1,nb2).bdep,2);
-      area = zeros(size(blk(1).bound(nb1,nb2).blat,1),1);
-      for ntri = 1:size(blk(1).bound(nb1,nb2).blat,1)
-        area(ntri) = triangle_area([trix(ntri,:)', triy(ntri,:)', triz(ntri,:)']);
-      end
-      triasp(1).bound(nb1,nb2).area = area;
-      triasp(1).bound(nb1,nb2).line = sqrt((4/sqrt(3)).*area);
       if blk(1).bound(nb1,nb2).flag2 == 1
-        if blk(1).bound(nb1,nb2).segmentid == 1
-          fid = fopen(fullfile(savefolder,['lockingarea_',num2str(nb1,'%i'),'_',num2str(nb2,'%i'),'.txt']),'wt');
-          fprintf(fid,'#     segment   area(km^2)\n');
-          for nseg = 1:size(blk(1).bound(nb1,nb2).segment,2)
-            triasp(1).bound(nb1,nb2).segment(nseg).triid = false(size(tcha.aveaid,1),1);
-            [edgex,edgey] = PLTXY(blk(1).bound(nb1,nb2).segment(nseg).lat,blk(1).bound(nb1,nb2).segment(nseg).lon,alat0,alon0);
-            segid = inpolygon(tricx,tricy,edgex,edgey);
-            triasp(1).bound(nb1,nb2).segment(nseg).name = blk(1).bound(nb1,nb2).segment(nseg).name;
-            triasp(1).bound(nb1,nb2).segment(nseg).triid(mm1m:mm1m+nf-1) = segid .* s.idl50(mm3m:mm3m+nf-1);
-            triasp(1).bound(nb1,nb2).segment(nseg).lockarea = segid'.*area' * s.idl50(mm3m:mm3m+nf-1,:);
-            fprintf(fid,'%15s %10.2f\n',...
-                triasp(1).bound(nb1,nb2).segment(nseg).name,triasp(1).bound(nb1,nb2).segment(nseg).lockarea);
-          end
-          fclose(fid);
-        else
-          triasp(1).bound(nb1,nb2).smparea = blk(1).bound(nb1,nb2).triarea' * tcha.smpaid(mm1m:mm1m+nf-1,:);
+        [trix,triy] = PLTXY(blk(1).bound(nb1,nb2).blat,blk(1).bound(nb1,nb2).blon,alat0,alon0);
+        triz = blk(1).bound(nb1,nb2).bdep;
+        [cx,cy] = PLTXY(mean(blk(1).bound(nb1,nb2).blat,2),mean(blk(1).bound(nb1,nb2).blon,2),alat0,alon0);
+        area = zeros(nf,1);
+        for ntri = 1:size(blk(1).bound(nb1,nb2).blat,1)
+          area(ntri) = triangle_area([trix(ntri,:)', triy(ntri,:)', triz(ntri,:)']);
         end
+        blk(1).bound(nb1,nb2).triid = false(size(tcha.aveaid,1),1);
+        blk(1).bound(nb1,nb2).triid(mm1m:mm1m+nf-1) = true;
+        tricx(mm1m:mm1m+nf-1) = cx;
+        tricy(mm1m:mm1m+nf-1) = cy;
+        triarea(mm1m:mm1m+nf-1) = area;
+        triline(mm1m:mm1m+nf-1) = sqrt((4/sqrt(3)).*area);
+        lock(1).bound(nb1,nb2).area = triarea(mm1m:mm1m+nf-1);
+        lock(1).bound(nb1,nb2).line = triline(mm1m:mm1m+nf-1);
+        idl50(mm1m:mm1m+nf-1) = s.idl50(mm3m:mm3m+nf-1);
         mm1m = mm1m +   nf;
-        mm3m = mm3m + 3*nf;  
+        mm3m = mm3m + 3*nf;
       end
     end
   end
 end
-save(fullfile(savefolder,'triasp'),'triasp');
+
+fid = fopen(fullfile(savefolder,'locksegments_area.txt'),'wt');
+fprintf(fid,'#     segment   area(km^2)\n');
+for nlock = 1:size(lock,2)
+  id_lock = zeros(size(tcha.aveaid,1),1);
+  [edgex,edgey] = PLTXY(lock(nlock).lat,lock(nlock).lon,alat0,alon0);
+  id_segment = inpolygon(tricx,tricy,edgex,edgey);
+  for nbound = 1:size(lock(nlock).boundary,1)
+    nb1 = min(lock(nlock).boundary(nbound,:));
+    nb2 = max(lock(nlock).boundary(nbound,:));
+    id = blk(1).bound(nb1,nb2).triid .* id_segment .* idl50;
+    id_lock = id_lock | id;
+  end
+  lock(nlock).area = triarea' * id_lock;
+  lock(nlock).idl50 = id_lock;
+  fprintf(fid,'%15s %10.2f\n',lock(nlock).name,lock(nlock).area);
+end
+save(fullfile(savefolder,'lock'),'lock');
+fprintf('=== Pass SaveAsperitySegmentArea === \n');
 end
 
 %% Save vector of seismic cycle
@@ -184,51 +196,59 @@ vec.res25 = vobs - vec.sum25;
 vec.res50 = vobs - vec.sum50;
 vec.res75 = vobs - vec.sum75;
 
+fprintf('=== Pass CalcOptimumValue === \n');
+
 end
 
 %% Read locked patches
-function [blk] = ReadLockedPatch(blk,patchfolder)
+function [blk,lock] = ReadLockedPatch(blk,patchfolder)
 %    Test version coded by H. Kimura 2019/1/29
 % Revised version coded by H. Kimura 2019/2/5
 
-for nb1 = 1:blk(1).nblock
-  for nb2 = nb1+1:blk(1).nblock
-    if blk(1).bound(nb1,nb2).flag2 == 1
-      blk(1).bound(nb1,nb2).segmentid = 0;
-      patchfile = fullfile(patchfolder,['locksegments_',num2str(nb1),'_',num2str(nb2),'.txt']);
-      fid       = fopen(patchfile,'r');
-      if fid >= 0
-        blk(1).bound(nb1,nb2).segmentid = 1;
-        np    = 0;
-        n     = 0;
-        while 1
-          tline = fgetl(fid);
-          if ~ischar(tline) ; break; end
-          if tline(1) ~= '>'
-            n   = n+1;
-            tmp = strsplit(strtrim(tline));
-            blk(1).bound(nb1,nb2).segment(np).lon(n) = str2double(cellstr(tmp(1)));
-            blk(1).bound(nb1,nb2).segment(np).lat(n) = str2double(cellstr(tmp(2)));
-          elseif tline(1) == '>'
-            np = np+1;
-            lstr = strsplit(tline);
-            if size(lstr,2) > 1
-              blk(1).bound(nb1,nb2).segment(np).name = strjoin(lstr(2:end));
-            else
-              blk(1).bound(nb1,nb2).segment(np).name = num2str(np);
-            end
-            n  = 0;
-            continue;
+patchfile = fullfile(patchfolder,'locksegments.txt');
+fid       = fopen(patchfile,'r');
+if fid > 0
+  np = 0;
+  while 1
+    n  = 0;
+    tline = fgetl(fid);
+    if ~ischar(tline)
+      break
+    elseif tline(1) == '#'
+      continue
+    elseif tline(1) == '@'
+      lstr = strsplit(tline);
+      share = zeros((size(lstr,2)-1)/2,2);
+      for nshare = 1:size(share,1)
+        share(nshare,:) = [str2num(lstr{1+2*nshare-1}),str2num(lstr{1+2*nshare})];
+      end
+      while 1
+        tline = fgetl(fid);
+        if ~ischar(tline) || tline(1) == '#'; break; end
+        if tline(1) == '>'
+          np = np+1;
+          lstr = strsplit(tline);
+          if size(lstr,2) > 1
+            lock(np).name = strjoin(lstr(2:end));
+          else
+            lock(np).name = num2str(np);
           end
+          lock(np).boundary = share;
+          n  = 0;
+          continue
+        elseif tline(1) ~= '>' && tline(1) ~= '@'
+          n   = n+1;
+          tmp = strsplit(strtrim(tline));
+          lock(np).lon(n) = str2double(cellstr(tmp(1)));
+          lock(np).lat(n) = str2double(cellstr(tmp(2)));
+        elseif tline(1) == '@'
+          error('Leave one line between segment combinations')
         end
-      else
-        %         error(['Not found', patchfile]);
       end
     end
   end
 end
-
-fprintf('=== Read Locked Patches=== \n');
+fprintf('=== Pass ReadLockedPatches === \n');
 end
 
 %% Subroutines
