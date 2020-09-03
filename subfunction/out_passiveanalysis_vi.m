@@ -521,7 +521,7 @@ Hu = Heaviside(G(1).zulim - G(1).zc);
 Hd = Heaviside(G(1).zdlim - G(1).zc);
 Hlim = Hd - Hu;
 
-idl1 = ((Heaviside(G(1).zd*mamean-G(1).zc) - Heaviside(G(1).zu*mamean-G(1).zc)) > 0) .* Hlim;
+idl1 = (Heaviside(G(1).zd*mamean-G(1).zc) - Heaviside(G(1).zu*mamean-G(1).zc)) .* Hlim;
 idl = logical(d(1).maid *  idl1);
 idc = logical(d(1).maid * ~idl1);
 idl25 = logical(d(1).maid *  (idmean>=0.25));
