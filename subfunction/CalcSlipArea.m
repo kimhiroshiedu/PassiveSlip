@@ -1,4 +1,4 @@
-function CalcSlipArea(savefolder,blk,obs,G,d,tcha,lock,T,event,eqname)
+function CalcSlipArea(savefolder,blk,obs,G,d,tcha,lock,T,event,threratio,eqname)
 % Load blk, grn, obs, tcha and lock.mat files before running this script.
 % event
 % segment_number1  max_slip1
@@ -18,7 +18,7 @@ for eq = event'
   slipl = slipl + s.slipl50;
 end
 [s] = calc_slip_total(d,G,slipl,idl);
-[s] = calc_seismic_moment(blk,lock,event,s);
+[s] = calc_seismic_moment(blk,lock,event,threratio,s);
 [v] = calc_surface_velocity(obs,G,s);
 save_result(obs,blk,tcha,lock,s,v,T,event,savefolder,eqname)
 end
@@ -74,10 +74,9 @@ s.slipl = slipl;
 s.slip  = slip50;
 end
 
-function [s] = calc_seismic_moment(blk,lock,event,s)
+function [s] = calc_seismic_moment(blk,lock,event,threratio,s)
 mu = 40; % (GPa)
 uf = 1e12; % unit translation factor
-threratio = 0.23;
 
 combibo = [];
 for eq = event'
