@@ -1,203 +1,240 @@
-function CalcSlipArea(savefolder,prm,blk,obs,G,d,tcha,patchfolder,event,T)
+function CalcSlipArea(savefolder,blk,obs,G,d,tcha,lock,T,event,eqname)
+% Load blk, grn, obs, tcha and lock.mat files before running this script.
 % event
 % segment_number1  max_slip1
 % segment_number2  max_slip2
 %  :                  :
 %  :                  :
-[s,vec] = CalcOptimumValue(prm,obs,tcha,G,d,T);
-SaveSlipArea(folder,blk,obs,tcha,lock,T,s);
-SaveVectors(folder,obs,vec,T);
+G(1).tb_kin = full(G(1).tb_kin);
+G(1).tb_mec = full(G(1).tb_mec);
+
+idl   = zeros(  size(tcha.aveaid,1),1);
+slipl = zeros(3*size(tcha.aveaid,1),1);
+for eq = event'
+  [s] = calc_slip_asperity(tcha,G,d,lock,T,eq,-1);
+  [rt,lock] = est_reccurence_time(blk,lock,s,eq);
+  [s] = calc_slip_asperity(tcha,G,d,lock,T,eq,rt);
+  idl = idl | lock(eq(1)).idl50;
+  slipl = slipl + s.slipl50;
+end
+[s] = calc_slip_total(d,G,slipl,idl);
+[s] = calc_seismic_moment(blk,lock,event,s);
+[v] = calc_surface_velocity(obs,G,s);
+save_result(obs,blk,tcha,lock,s,v,T,event,savefolder,eqname)
 end
 
-%% Calc optimum value from tcha.mat
-function [s,vec] = CalcOptimumValue(prm,obs,tcha,G,d,T)
+function [s] = calc_slip_asperity(tcha,G,d,lock,T,eq,rt)
+event = eq(1);
+sslip = eq(2);
 mpmean = tcha.avepol(:,:,T);
-mcmean = tcha.aveflt(:,:,T);
-mamean = tcha.aveasp(:,:,T);
-mimean = tcha.aveine(:,:,T);
-idmean = tcha.aveaid(:,:,T);
-
-Hu = Heaviside(G(1).zulim - G(1).zc);
-Hd = Heaviside(G(1).zdlim - G(1).zc);
-Hlim = Hd - Hu;
-
-idl1 = ((Heaviside(G(1).zd*mamean-G(1).zc) - Heaviside(G(1).zu*mamean-G(1).zc)) > 0) .* Hlim;
-idl = logical(d(1).maid *  idl1);
-idc = logical(d(1).maid * ~idl1);
-idl25 = logical(d(1).maid *  (idmean>=0.25));
-idl50 = logical(d(1).maid *  (idmean>=0.50));
-idl75 = logical(d(1).maid *  (idmean>=0.75));
-idc25 = logical(d(1).maid * ~(idmean>=0.25));
-idc50 = logical(d(1).maid * ~(idmean>=0.50));
-idc75 = logical(d(1).maid * ~(idmean>=0.75));
+idl50 = logical(d(1).maid *  lock(event).idl50);
 
 % Calculate back-slip on locked and creeping patches.
-rel_mec    = (G(1).tb_mec * mpmean) .* d(1).cfinv_mec;
-rel_kin    = (G(1).tb_kin * mpmean) .* d(1).cfinv_kin;
-bslip      = rel_mec .* idl;
-bslip25    = rel_mec .* idl25;
-bslip50    = rel_mec .* idl50;
-bslip75    = rel_mec .* idl75;
-bslipl     = bslip;
-bslipl25   = bslip25;
-bslipl50   = bslip50;
-bslipl75   = bslip75;
+rel_mec    = -rt .* (G(1).tb_mec * mpmean) .* d(1).cfinv_mec;
+slipl50    = rel_mec .* idl50;
 
-bslip(idc) = -G(1).s(idc,idc) \ (G(1).s(idc,idl) * bslip(idl));
-bslip25(idc25) = -G(1).s(idc25,idc25) \ (G(1).s(idc25,idl25) * bslip(idl25));
-bslip50(idc50) = -G(1).s(idc50,idc50) \ (G(1).s(idc50,idl50) * bslip(idl50));
-bslip75(idc75) = -G(1).s(idc75,idc75) \ (G(1).s(idc75,idl75) * bslip(idl75));
-s.idl      = idl;
-s.idl25    = idl25;
 s.idl50    = idl50;
-s.idl75    = idl75;
-s.idc      = idc;
-s.idc25    = idc25;
-s.idc50    = idc50;
-s.idc75    = idc75;
 s.rel_mec  = rel_mec;
-s.rel_kin  = rel_kin;
-s.sdr_mec  = bslip;
-s.sdr_mec25  = bslip25;
-s.sdr_mec50  = bslip50;
-s.sdr_mec75  = bslip75;
-s.sdr_mecl   = bslipl;
-s.sdr_mecl25 = bslipl25;
-s.sdr_mecl50 = bslipl50;
-s.sdr_mecl75 = bslipl75;
-s.sdr_kin    = (s.rel_kin .* (d(1).mcid * mcmean));
-s.sr_mec     = -(s.rel_mec - s.sdr_mec );
-s.sr_mec25   = -(s.rel_mec - s.sdr_mec25 );
-s.sr_mec50   = -(s.rel_mec - s.sdr_mec50 );
-s.sr_mec75   = -(s.rel_mec - s.sdr_mec75 );
-s.sr_mecl    = -(s.rel_mec - s.sdr_mecl);
-s.sr_mecl25  = -(s.rel_mec - s.sdr_mecl25);
-s.sr_mecl50  = -(s.rel_mec - s.sdr_mecl50);
-s.sr_mecl75  = -(s.rel_mec - s.sdr_mecl75);
-s.sr_kin     = -(s.rel_kin - s.sdr_kin );
-
-% Calc vectors for mean parameters
-vec.rig = G(1).p * mpmean;
-vec.kin = G(1).c_kin * s.sdr_kin;
-vec.mec = G(1).c_mec * s.sdr_mec;
-vec.mec25 = G(1).c_mec * s.sdr_mec25;
-vec.mec50 = G(1).c_mec * s.sdr_mec50;
-vec.mec75 = G(1).c_mec * s.sdr_mec75;
-vec.ine = G(1).i * mimean;
-% Zero padding
-if prm.gpu ~= 99
-  if isempty(vec.rig); vec.rig = zeros(size(d(1).ind),precision,'gpuArray'); end
-  if isempty(vec.kin); vec.kin = zeros(size(d(1).ind),precision,'gpuArray'); end
-  if isempty(vec.mec); vec.mec = zeros(size(d(1).ind),precision,'gpuArray'); end
-  if isempty(vec.mec25); vec.mec25 = zeros(size(d(1).ind),precision,'gpuArray'); end
-  if isempty(vec.mec50); vec.mec50 = zeros(size(d(1).ind),precision,'gpuArray'); end
-  if isempty(vec.mec75); vec.mec75 = zeros(size(d(1).ind),precision,'gpuArray'); end
-  if isempty(vec.ine); vec.ine = zeros(size(d(1).ind),precision,'gpuArray'); end
-else
-  if isempty(vec.rig); vec.rig = zeros(size(d(1).ind)); end
-  if isempty(vec.kin); vec.kin = zeros(size(d(1).ind)); end
-  if isempty(vec.mec); vec.mec = zeros(size(d(1).ind)); end
-  if isempty(vec.mec25); vec.mec25 = zeros(size(d(1).ind)); end
-  if isempty(vec.mec50); vec.mec50 = zeros(size(d(1).ind)); end
-  if isempty(vec.mec75); vec.mec75 = zeros(size(d(1).ind)); end
-if isempty(vec.ine); vec.ine = zeros(size(d(1).ind)); end
-end
-% Total velocities
-vec.sum = vec.rig + vec.kin + vec.mec + vec.ine;
-vec.sum25 = vec.rig + vec.kin + vec.mec25 + vec.ine;
-vec.sum50 = vec.rig + vec.kin + vec.mec50 + vec.ine;
-vec.sum75 = vec.rig + vec.kin + vec.mec75 + vec.ine;
-vobs = reshape([obs(1).evec; obs(1).nvec; obs(1).hvec],3*obs(1).nobs,1);
-vec.res = vobs - vec.sum;
-vec.res25 = vobs - vec.sum25;
-vec.res50 = vobs - vec.sum50;
-vec.res75 = vobs - vec.sum75;
-
-fprintf('=== Pass CalcOptimumValue === \n');
-
+s.slipl50  = slipl50;
 end
 
-%%
-function SaveSlipArea(folder,blk,obs,tcha,lock,T,s)
-savefolder = fullfile(folder,['T_',num2str(T,'%02i')],'locksegments');
-if exist(savefolder,'dir')~=7; mkdir(savefolder); end
-alat0 = mean(obs(1).alat,2);
-alon0 = mean(obs(1).alon,2);
-mm1m = 1;
+function [rt,lock] = est_reccurence_time(blk,lock,s,eq)
+event = eq(1);
+sslip = eq(2);
+idl = lock(event).idl50;
+lock(event).rt = [];
 mm3m = 1;
-idl50 = zeros(size(tcha.aveaid,1),1);
-tricx = zeros(size(tcha.aveaid,1),1);
-tricy = zeros(size(tcha.aveaid,1),1);
-triarea = zeros(size(tcha.aveaid,1),1);
-triline = zeros(size(tcha.aveaid,1),1);
 for nb1 = 1:blk(1).nblock
   for nb2 = nb1+1:blk(1).nblock
     nf = size(blk(1).bound(nb1,nb2).blon,1);
     if nf ~= 0
       if blk(1).bound(nb1,nb2).flag2 == 1
-        [trix,triy] = PLTXY(blk(1).bound(nb1,nb2).blat,blk(1).bound(nb1,nb2).blon,alat0,alon0);
-        triz = blk(1).bound(nb1,nb2).bdep;
-        [cx,cy] = PLTXY(mean(blk(1).bound(nb1,nb2).blat,2),mean(blk(1).bound(nb1,nb2).blon,2),alat0,alon0);
-        area = zeros(nf,1);
-        for ntri = 1:size(blk(1).bound(nb1,nb2).blat,1)
-          area(ntri) = triangle_area([trix(ntri,:)', triy(ntri,:)', triz(ntri,:)']);
-        end
-        blk(1).bound(nb1,nb2).triid = false(size(tcha.aveaid,1),1);
-        blk(1).bound(nb1,nb2).triid(mm1m:mm1m+nf-1) = true;
-        tricx(mm1m:mm1m+nf-1) = cx;
-        tricy(mm1m:mm1m+nf-1) = cy;
-        triarea(mm1m:mm1m+nf-1) = area;
-        triline(mm1m:mm1m+nf-1) = sqrt((4/sqrt(3)).*area);
-        lock(1).bound(nb1,nb2).area = triarea(mm1m:mm1m+nf-1);
-        lock(1).bound(nb1,nb2).line = triline(mm1m:mm1m+nf-1);
-        idl50(mm1m:mm1m+nf-1) = s.idl50(mm3m:mm3m+nf-1);
-        mm1m = mm1m +   nf;
+        slip50_st = s.slipl50(mm3m     :mm3m+  nf-1);
+        slip50_dp = s.slipl50(mm3m+  nf:mm3m+2*nf-1);
+        slip50_ts = s.slipl50(mm3m+2*nf:mm3m+3*nf-1);
+        bslip50_s  = sqrt(slip50_st.^2 + slip50_dp.^2 + slip50_ts.^2);
+        rt = sslip ./ bslip50_s;
+        lock(event).rt = [lock(event).rt; rt];
         mm3m = mm3m + 3*nf;
       end
     end
   end
 end
+rt = max(lock(event).rt(idl));
+end
 
-fid = fopen(fullfile(savefolder,'locksegments_area.txt'),'wt');
-fprintf(fid,'#     segment   area(km^2)\n');
-for nlock = 1:size(lock,2)
-  id_lock = zeros(size(tcha.aveaid,1),1);
-  [edgex,edgey] = PLTXY(lock(nlock).lat,lock(nlock).lon,alat0,alon0);
-  id_segment = inpolygon(tricx,tricy,edgex,edgey);
-  for nbound = 1:size(lock(nlock).boundary,1)
-    nb1 = min(lock(nlock).boundary(nbound,:));
-    nb2 = max(lock(nlock).boundary(nbound,:));
-    id = blk(1).bound(nb1,nb2).triid .* id_segment .* idl50;
-    id_lock = id_lock | id;
+function [s] = calc_slip_total(d,G,slipl,idl)
+idl50 = logical(d(1).maid *  idl);
+idc50 = logical(d(1).maid * ~idl);
+slip50 = slipl;
+slip50(idc50) = -G(1).s(idc50,idc50) \ (G(1).s(idc50,idl50) * slipl(idl50));
+s.idl   = idl50;
+s.idc   = idc50;
+s.slipl = slipl;
+s.slip  = slip50;
+end
+
+function [s] = calc_seismic_moment(blk,lock,event,s)
+mu = 40; % (GPa)
+uf = 1e12; % unit translation factor
+threratio = 0.23;
+
+combibo = [];
+for eq = event'
+  combibo = [combibo; lock(eq(1)).boundary];
+end
+combibo = unique(combibo,'rows');
+
+mm3m = 1;
+maxslipl = 0;
+for nb1 = 1:blk(1).nblock
+  for nb2 = nb1+1:blk(1).nblock
+    nf = size(blk(1).bound(nb1,nb2).blon,1);
+    if nf ~= 0
+      if blk(1).bound(nb1,nb2).flag2 == 1
+        slipl = sqrt(s.slipl(mm3m     :mm3m+  nf-1).^2 ...
+                   + s.slipl(mm3m+  nf:mm3m+2*nf-1).^2 ...
+                   + s.slipl(mm3m+2*nf:mm3m+3*nf-1).^2);
+        maxslipl = max(maxslipl,max(slipl));
+        tmp(1).bound(nb1,nb2).slip_st  = s.slip(mm3m     :mm3m+  nf-1);
+        tmp(1).bound(nb1,nb2).slip_dp  = s.slip(mm3m+  nf:mm3m+2*nf-1);
+        tmp(1).bound(nb1,nb2).slip_ts  = s.slip(mm3m+2*nf:mm3m+3*nf-1);
+        tmp(1).bound(nb1,nb2).triarea  = lock(1).bound(nb1,nb2).area;
+        mm3m = mm3m + 3*nf;
+      end
+    end
   end
-  lock(nlock).area = triarea' * id_lock;
-  lock(nlock).idl50 = id_lock;
-  fprintf(fid,'%15s %10.2f\n',lock(nlock).name,lock(nlock).area);
 end
-save(fullfile(savefolder,'lock'),'lock');
-fprintf('=== Pass SaveAsperitySegmentArea === \n');
+Mo     =  0;
+Mo_cut =  0;
+S = 0;
+D = 0;
+cutoff_total = 0;
+for bo = combibo'
+  nb1 = min(bo);
+  nb2 = max(bo);
+  slip_st = tmp(1).bound(nb1,nb2).slip_st;
+  slip_dp = tmp(1).bound(nb1,nb2).slip_dp;
+  slip_ts = tmp(1).bound(nb1,nb2).slip_ts;
+  area    = tmp(1).bound(nb1,nb2).triarea;
+  slip    = sqrt(slip_st.^2 + slip_dp.^2 + slip_ts.^2);
+  cutoff  = slip >= threratio*maxslipl;
+  sliparea= cutoff .* area;
+  Mo_i     = uf .* mu .*            slip'  * area;
+  Mo_i_cut = uf .* mu .* (cutoff .* slip)' * area;
+  S = S + sum(sliparea);
+  D = D + cutoff' * slip;
+  cutoff_total = cutoff_total + sum(cutoff);
+  Mo     = Mo + Mo_i;
+  Mo_cut = Mo_cut + Mo_i_cut;
+  s(1).bound(nb1,nb2).slip_st = tmp(1).bound(nb1,nb2).slip_st;
+  s(1).bound(nb1,nb2).slip_dp = tmp(1).bound(nb1,nb2).slip_dp;
+  s(1).bound(nb1,nb2).slip_ts = tmp(1).bound(nb1,nb2).slip_ts;
+  s(1).bound(nb1,nb2).slip    = slip;
+  s(1).bound(nb1,nb2).sliparea= sliparea;
+  s(1).bound(nb1,nb2).cutoff  = cutoff;
+  s(1).bound(nb1,nb2).Mo     = Mo_i;
+  s(1).bound(nb1,nb2).Mo_cut = Mo_i_cut;
+  s(1).bound(nb1,nb2).Dmean = mean(slip(cutoff));
+  s(1).bound(nb1,nb2).S     = sum(sliparea);
 end
 
-%% Save vector of seismic cycle
-function SaveVectors(folder,obs,vec,T)
-savedir = fullfile(folder,'vector');
-if exist(savedir) ~=7; mkdir(savedir); end
-% Save vmec
-file = fullfile(savedir,'mec_vector.txt');
-savevector(file,obs,vec.mec,vec.mec50);
+s(1).mu = mu;
+s(1).threratio = threratio;
+s(1).threslip  = threratio * maxslipl;
+s(1).Mo = Mo;
+s(1).Mo_cut = Mo_cut;
+s(1).S = S;
+s(1).D_mean = D / cutoff_total;
 end
 
-function savevector(file,obs,v)
-ve = v(1:3:end);
-vn = v(2:3:end);
-vu = v(3:3:end);
-fid = fopen(file,'wt');
-fprintf(fid,'#   site      lon     lat        hei     ve     vn     vu\n');
-for nob = 1:obs(1).nobs
-  fprintf(fid,'%8s %8.3f %7.3f %10.3f %6.2f %6.2f %6.2f\n',...
-      obs(1).name{nob},obs(1).alon(nob),obs(1).alat(nob),obs(1).ahig(nob),...
-      ve(nob),vn(nob),vu(nob));
+function [v] = calc_surface_velocity(obs,G,s)
+v.coseis = G(1).c_mec * s.slip;
+v.obs = reshape([obs(1).evec; obs(1).nvec; obs(1).hvec],3*obs(1).nobs,1);
+end
+
+function save_result(obs,blk,tcha,lock,s,v,T,event,folder,eqname)
+savefolder = fullfile(folder,['T_',num2str(T,'%02i')],'locksegments',eqname);
+if exist(savefolder,'dir')~=7; mkdir(savefolder); end
+% Save coseismic slip magnitude
+mm1  = 1;
+mm3m = 1;
+mm1m = 1;
+for nb1 = 1:blk(1).nblock
+  for nb2 = nb1+1:blk(1).nblock
+    nf = size(blk(1).bound(nb1,nb2).blon,1);
+    if nf ~= 0
+      fltnum = mm1:mm1+nf-1;
+      if blk(1).bound(nb1,nb2).flag2 == 1
+        clon = mean(blk(1).bound(nb1,nb2).blon,2);
+        clat = mean(blk(1).bound(nb1,nb2).blat,2);
+        cdep = mean(blk(1).bound(nb1,nb2).bdep,2);
+        slip_st  = s.slip(mm3m     :mm3m+  nf-1);
+        slip_dp  = s.slip(mm3m+  nf:mm3m+2*nf-1);
+        slip_ts  = s.slip(mm3m+2*nf:mm3m+3*nf-1);
+        id_lock  = s.idl( mm3m     :mm3m+  nf-1);
+        id_slip  = sqrt(slip_st.^2+slip_dp.^2+slip_ts.^2) >= s(1).threslip;
+        pc = tcha.aveaid(mm1m:mm1m+nf-1,:,T);
+        outdata = [fltnum',...
+            blk(1).bound(nb1,nb2).blon,...
+            blk(1).bound(nb1,nb2).blat,...
+            blk(1).bound(nb1,nb2).bdep,...
+            clon, clat, cdep, pc,id_lock,id_slip,...
+            slip_st.*1e-3, slip_dp.*1e-3, slip_ts.*1e-3];
+        file = fullfile(savefolder,['trimec_',num2str(nb1),'_',num2str(nb2),'.txt']);
+        fid  = fopen(file,'wt');
+        fprintf(fid,'#    1        2        3        4       5       6       7       8       9      10       11      12      13   14   15     16      17      18      19\n');
+        fprintf(fid,'#  tri     lon1     lon2     lon3    lat1    lat2    lat3    dep1    dep2    dep3     clon    clat    cdep  P_l id_l slipid slip_st slip_dp slip_ts [m]\n');
+        fprintf(fid,'%6i %8.3f %8.3f %8.3f %7.3f %7.3f %7.3f %7.2f %7.2f %7.2f %8.3f %7.3f %7.2f %4.2f %4i %6i %7.3f %7.3f %7.3f \n',outdata');
+        fclose(fid);
+        mm1m = mm1m +   nf;
+        mm3m = mm3m + 3*nf;        
+      end
+      mm1 = mm1 + nf;
+    end
+  end
+end
+save(fullfile(savefolder,'slip'),'s','-v7.3');
+
+% Save released moment
+combibo = [];
+for eq = event'
+  combibo = [combibo; lock(eq(1)).boundary];
+end
+combibo = unique(combibo,'rows');
+fid = fopen(fullfile(savefolder,'released_moment.txt'),'wt');
+fprintf(fid,'# b1 b2 meanD(m)    S(km^2)     Mo(Nm) Mo_thr(Nm)\n');
+for bo = combibo'
+  nb1 = min(bo);
+  nb2 = max(bo);
+  fprintf(fid,' %2i %2i %8.2e %10.2e %10.2e %10.2e\n',...
+      bo(1),bo(2),...
+      s(1).bound(nb1,nb2).Dmean*1e-3,...
+      s(1).bound(nb1,nb2).S,...
+      s(1).bound(nb1,nb2).Mo,...
+      s(1).bound(nb1,nb2).Mo_cut);
+end
+fprintf(fid,'# Total moment\n');
+fprintf(fid,'       %8.2e %10.2e %10.2e %10.2e\n',...
+    s(1).D_mean*1e-3,s(1).S,s(1).Mo,s(1).Mo_cut);
+fprintf(fid,'# Ruccurence time (yr)\n');
+for eq = event'
+  fprintf(fid,'%15s %5.0f\n',lock(eq(1)).name,max(lock(eq(1)).rt(lock(eq(1)).idl50)));
 end
 fclose(fid);
-end
 
+% Save vectors
+file = fullfile(savefolder,'cal_vector.txt');
+ve = v.coseis(1:3:end);
+vn = v.coseis(2:3:end);
+vu = v.coseis(3:3:end);
+fid = fopen(file,'wt');
+fprintf(fid,'#   site      lon     lat        hei     ve     vn     vu (mm/yr)\n');
+for nob = 1:obs(1).nobs
+  fprintf(fid,'%8s %8.3f %7.3f %10.3f %7.3f %7.3f %7.3f\n',...
+      obs(1).name{nob},obs(1).alon(nob),obs(1).alat(nob),obs(1).ahig(nob),...
+      ve(nob).*1e-3,vn(nob).*1e-3,vu(nob).*1e-3);
+end
+fclose(fid);
+
+end
