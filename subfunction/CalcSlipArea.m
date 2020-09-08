@@ -1,4 +1,4 @@
-function CalcSlipArea(savefolder,blk,obs,G,d,tcha,lock,T,event,threratio,eqname)
+function CalcSlipArea(savefolder,blk,obs,G,d,tcha,lock,T,event,threratio)
 % Load blk, grn, obs, tcha and lock.mat files before running this script.
 % event
 % segment_number1  max_slip1
@@ -17,10 +17,10 @@ for eq = event'
   idl = idl | lock(eq(1)).idl50;
   slipl = slipl + s.slipl50;
 end
-[s] = calc_slip_total(d,G,slipl,idl);
-[s] = calc_seismic_moment(blk,lock,event,threratio,s);
-[v] = calc_surface_velocity(obs,G,s);
-save_result(obs,blk,tcha,lock,s,v,T,event,savefolder,eqname)
+[s]   = calc_slip_total(d,G,slipl,idl);
+[s]   = calc_seismic_moment(blk,lock,event,threratio,s);
+[s,v] = calc_surface_velocity(blk,obs,G,d,s);
+save_result(obs,blk,tcha,lock,s,v,T,event,savefolder)
 end
 
 function [s] = calc_slip_asperity(tcha,G,d,lock,T,eq,rt)
@@ -147,13 +147,31 @@ s(1).S = S;
 s(1).D_mean = D / cutoff_total;
 end
 
-function [v] = calc_surface_velocity(obs,G,s)
-v.coseis = G(1).c_mec * s.slip;
+function [s,v] = calc_surface_velocity(blk,obs,G,d,s)
+s(1).idcutoff = false(size(s.slip,1)/3,1);
+mm1m = 1;
+mm3m = 1;
+for nb1 = 1:blk(1).nblock
+  for nb2 = nb1+1:blk(1).nblock
+    nf = size(blk(1).bound(nb1,nb2).blon,1);
+    if nf ~= 0
+      if blk(1).bound(nb1,nb2).flag2 == 1
+        slip = sqrt(s.slip(mm3m     :mm3m+  nf-1).^2 ...
+                  + s.slip(mm3m+  nf:mm3m+2*nf-1).^2 ...
+                  + s.slip(mm3m+2*nf:mm3m+3*nf-1).^2);
+        s(1).idcutoff(mm1m:mm1m+nf-1) = slip >= s(1).threslip;
+        mm1m = mm1m +   nf;
+        mm3m = mm3m + 3*nf;
+      end
+    end
+  end
+end
+v.coseis        = G(1).c_mec *  s.slip;
+v.coseis_cutoff = G(1).c_mec * (s.slip .* (d(1).maid * s(1).idcutoff));
 v.obs = reshape([obs(1).evec; obs(1).nvec; obs(1).hvec],3*obs(1).nobs,1);
 end
 
-function save_result(obs,blk,tcha,lock,s,v,T,event,folder,eqname)
-savefolder = fullfile(folder,['T_',num2str(T,'%02i')],'locksegments',eqname);
+function save_result(obs,blk,tcha,lock,s,v,T,event,savefolder)
 if exist(savefolder,'dir')~=7; mkdir(savefolder); end
 % Save coseismic slip magnitude
 mm1  = 1;
@@ -227,12 +245,16 @@ file = fullfile(savefolder,'cal_vector.txt');
 ve = v.coseis(1:3:end);
 vn = v.coseis(2:3:end);
 vu = v.coseis(3:3:end);
+ve_cut = v.coseis_cutoff(1:3:end);
+vn_cut = v.coseis_cutoff(2:3:end);
+vu_cut = v.coseis_cutoff(3:3:end);
 fid = fopen(file,'wt');
-fprintf(fid,'#   site      lon     lat        hei     ve     vn     vu (mm/yr)\n');
+fprintf(fid,'#   site      lon     lat        hei     ve     vn     vu  vecut  vncut  vucut (mm/yr)\n');
 for nob = 1:obs(1).nobs
-  fprintf(fid,'%8s %8.3f %7.3f %10.3f %7.3f %7.3f %7.3f\n',...
+  fprintf(fid,'%8s %8.3f %7.3f %10.3f %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f\n',...
       obs(1).name{nob},obs(1).alon(nob),obs(1).alat(nob),obs(1).ahig(nob),...
-      ve(nob).*1e-3,vn(nob).*1e-3,vu(nob).*1e-3);
+      ve(nob).*1e-3,vn(nob).*1e-3,vu(nob).*1e-3,...
+      ve_cut(nob).*1e-3,vn_cut(nob).*1e-3,vu_cut(nob).*1e-3);
 end
 fclose(fid);
 

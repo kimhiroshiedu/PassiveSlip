@@ -1,8 +1,10 @@
 % before using this script, load blk, tcha, grn,
+G(1).tb_kin = full(G(1).tb_kin);
+G(1).tb_mec = full(G(1).tb_mec);
 %% Calculate back-slip on locked and creeping patches.
-mpmean = tcha.avepol(:,:,rep);
-mamean = tcha.aveasp(:,:,rep);
-idmean = tcha.aveaid(:,:,rep);
+mpmean = tcha.avepol(:,:,T);
+mamean = tcha.aveasp(:,:,T);
+idmean = tcha.aveaid(:,:,T);
 
 Hu = Heaviside(G(1).zulim - G(1).zc);
 Hd = Heaviside(G(1).zdlim - G(1).zc);
@@ -21,7 +23,7 @@ bslipl     = bslip;
 bslipl50   = bslip50;
 
 bslip(idc) = -G(1).s(idc,idc) \ (G(1).s(idc,idl) * bslip(idl));
-bslip50(idc50) = -G(1).s(idc50,idc50) \ (G(1).s(idc50,idl50) * bslip(idl50));
+bslip50(idc50) = -G(1).s(idc50,idc50) \ (G(1).s(idc50,idl50) * bslip50(idl50));
 
 %% Make figure showing mesh, coast and block lines, and slip rate
 figure(100); clf(100)

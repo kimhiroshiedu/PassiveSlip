@@ -9,8 +9,7 @@ SaveAsperitySegmentArea(savefolder,blk,obs,tcha,lock,T,s);
 end
 
 %%
-function SaveAsperitySegmentArea(folder,blk,obs,tcha,lock,T,s)
-savefolder = fullfile(folder,['T_',num2str(T,'%02i')],'locksegments');
+function SaveAsperitySegmentArea(savefolder,blk,obs,tcha,lock,T,s)
 if exist(savefolder,'dir')~=7; mkdir(savefolder); end
 alat0 = mean(obs(1).alat,2);
 alon0 = mean(obs(1).alon,2);
@@ -316,4 +315,11 @@ C1   = D./R;
 C2   = D./AN;
 Y    = (PH1-ALAT0)./C1;
 X    = (AL.*CLAT)./C2+(AL.^3.*CLAT.*cos(2.0.*RLAT))./(6.0.*C2.*D.^2);
+end
+
+function y = Heaviside(x)
+% Calculate Heveaside step function
+%   y = Heaviside(x)
+%   y and x are possible to be either scaler or vector.
+y = 1 .* (x >= 0);
 end
