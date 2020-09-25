@@ -211,6 +211,7 @@ for nb1 = 1:blk(1).nblock
     end
   end
 end
+s.event = event;
 save(fullfile(savefolder,'slip'),'s','-v7.3');
 
 % Save released moment
