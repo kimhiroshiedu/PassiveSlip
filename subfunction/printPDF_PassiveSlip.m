@@ -4,8 +4,8 @@ function printPDF_PassiveSlip(folder,blk,G,tcha,udlist,T)
 % Given parameters
 sint   =  1;
 binint =  2;
-nud    = size(tcha.smpasp,1) / 2;
-sid    = tcha.burnin;
+nud    =  size(tcha.smpasp,1) / 2;
+sid    = (size(tcha.smpasp,2) / tcha.nit) * (tcha.burnin + 1);
 prm.sint   = sint;
 prm.binint = binint;
 prm.nud    = nud;
