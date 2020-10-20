@@ -157,6 +157,7 @@ if accflag
   tcha.acctotal = acctotal;
 end
 tcha.burnin = burnin;
+tcha.nit    = nit;
 tcha.smpint = smpint;
 tcha.avepol = single(avepol);
 tcha.aveflt = single(aveflt);
