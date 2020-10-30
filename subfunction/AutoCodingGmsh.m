@@ -2,9 +2,10 @@ function AutoCodingGmsh(model)
 % This script generates Gmsh script for making trimesh
 % Coded by Hiroshi Kimura 2019/11/07
 
-CodingPAC_sw(model)
-CodingPAC(model)
-CodingPHS_Sagami(model)
+% CodingPAC_NEjp(model)
+% CodingPHS_Sagami_NEjp(model)
+CodingPAC_SWjp(model)
+CodingPHS_Sagami_SWjp(model)
 CodingPHS(model)
 end
 
@@ -57,12 +58,11 @@ end
 
 %% Generating for PHS from Sagami to N-Ryukyu
 function CodingPHS(model)
-edges_IMP_OKH = load(['Meshes/model_',model,'/edges_IMP_OKH.txt']);
-edges_IMP_NAN = load(['Meshes/model_',model,'/edges_IMP_NAN.txt']);
-edges_PHS_NAN = load(['Meshes/model_',model,'/edges_PHS_NAN.txt']);
-edges_PHS_ONN  = load(['Meshes/model_',model,'/edges_PHS_ONN.txt']);
-edges_PHS_ONC  = load(['Meshes/model_',model,'/edges_PHS_ONC.txt']);
-edges_PHS_ONS  = load(['Meshes/model_',model,'/edges_PHS_ONS.txt']);
+edges_IMP_NAN = load(['Meshes/model_',model,'/edges_IMP_NAN_rough.txt']);
+edges_PHS_NAN = load(['Meshes/model_',model,'/edges_PHS_NAN_rough.txt']);
+edges_PHS_ONN  = load(['Meshes/model_',model,'/edges_PHS_ONN_rough.txt']);
+edges_PHS_ONC  = load(['Meshes/model_',model,'/edges_PHS_ONC_rough.txt']);
+edges_PHS_ONS  = load(['Meshes/model_',model,'/edges_PHS_ONS_rough.txt']);
 
 fid = fopen(['Meshes/model_',model,'/plate_',model,'_phs.geo'],'wt');
 fprintf(fid,'// interplate_phs.geo\n\n');
@@ -72,46 +72,67 @@ cp  =    1;
 cl  =  501;
 cll = 1001;
 cs  = 2001;
-% IMP \ OK
-scale = 0.15;
-fprintf(fid,'// IMP to OK\n');
-[cp,cl,cs,cll] = Export2gmshfile(edges_IMP_OKH,fid,cp,cl,cs,cll,scale);
-
 % IMP \ NAN
-scale = 0.15;
+scale = 0.21;
 fprintf(fid,'// IMP to NAN\n');
 [cp,cl,cs,cll] = Export2gmshfile(edges_IMP_NAN,fid,cp,cl,cs,cll,scale);
 
 % PHS to NAN
-scale = 0.15;
+scale = 0.21;
 fprintf(fid,'// PHS to NAN\n');
 [cp,cl,cs,cll] = Export2gmshfile(edges_PHS_NAN,fid,cp,cl,cs,cll,scale);
 
 % PHS to ON-North
-scale = 0.15;
+scale = 0.4;
 fprintf(fid,'// PHS to ON-North\n');
 [cp,cl,cs,cll] = Export2gmshfile(edges_PHS_ONN,fid,cp,cl,cs,cll,scale);
 
 % PHS to ON-Center
-scale = 0.15;
+scale = 1.2;
 fprintf(fid,'// PHS to ON-Center\n');
 [cp,cl,cs,cll] = Export2gmshfile(edges_PHS_ONC,fid,cp,cl,cs,cll,scale);
 
 % PHS to ON-South
-scale = 0.15;
+scale = 1.2;
 fprintf(fid,'// PHS to ON-South\n');
 [~,~,~,~] = Export2gmshfile(edges_PHS_ONS,fid,cp,cl,cs,cll,scale);
 
 fclose(fid);
 end
 
-%% Generating for PHS Sagami trough
-function CodingPHS_Sagami(model)
+%% Generating for PHS Sagami trough (for SW Japan model)
+function CodingPHS_Sagami_SWjp(model)
+edges_IMP_OKH = load(['Meshes/model_',model,'/edges_IMP_OKH_rough.txt']);
+edges_IOG_OKH = load(['Meshes/model_',model,'/edges_IOG_OKH_rough.txt']);
+
+fid = fopen(['Meshes/model_',model,'/plate_',model,'_phssagami_swjp.geo'],'wt');
+fprintf(fid,'// interplate_phssagami.geo\n\n');
+fprintf(fid,'radius = 5.0;\npio2 = Pi/2;\n\n');
+
+cp  =    1;
+cl  =  501;
+cll = 1001;
+cs  = 2001;
+% IMP \ OKH
+scale = 0.5;
+fprintf(fid,'// IMP to OKH\n');
+[cp,cl,cs,cll] = Export2gmshfile(edges_IMP_OKH,fid,cp,cl,cs,cll,scale);
+
+% Sagami Trough
+scale = 0.5;
+fprintf(fid,'// Sagami Trough\n');
+[~,~,~,~] = Export2gmshfile(edges_IOG_OKH,fid,cp,cl,cs,cll,scale);
+
+fclose(fid);
+end
+
+%% Generating for PHS Sagami trough (for NE Japan model)
+function CodingPHS_Sagami_NEjp(model)
 edges_IOG_THE = load(['Meshes/model_',model,'/edges_IOG_THE.txt']);
 edges_IMP_THE = load(['Meshes/model_',model,'/edges_IMP_THE.txt']);
 edges_IMP_THW = load(['Meshes/model_',model,'/edges_IMP_THW.txt']);
 
-fid = fopen(['Meshes/model_',model,'/plate_',model,'_phssagami.geo'],'wt');
+fid = fopen(['Meshes/model_',model,'/plate_',model,'_phssagami_nejp.geo'],'wt');
 fprintf(fid,'// interplate_phssagami.geo\n\n');
 fprintf(fid,'radius = 5.0;\npio2 = Pi/2;\n\n');
 
@@ -138,12 +159,12 @@ fclose(fid);
 end
 
 %% Generating for PAC subduction zone
-function CodingPAC(model)
+function CodingPAC_NEjp(model)
 edges_PAC_KUR = load(['Meshes/model_',model,'/edges_PAC_KUR.txt']);
 edges_PAC_THE = load(['Meshes/model_',model,'/edges_PAC_THE.txt']);
 edges_PAC_IOG = load(['Meshes/model_',model,'/edges_PAC_IOG.txt']);
 
-fid = fopen(['Meshes/model_',model,'/plate_',model,'_pac.geo'],'wt');
+fid = fopen(['Meshes/model_',model,'/plate_',model,'_pac_nejp.geo'],'wt');
 fprintf(fid,'// interplate_pac.geo\n\n');
 fprintf(fid,'radius = 5.0;\npio2 = Pi/2;\n\n');
 
@@ -171,11 +192,11 @@ fclose(fid);
 end
 
 %% Generating for PAC subduction zone (for SW Japan model)
-function CodingPAC_sw(model)
-edges_PAC_OKH = load(['Meshes/model_',model,'/edges_PAC_OKH.txt']);
-edges_PAC_IOG = load(['Meshes/model_',model,'/edges_PAC_IOG.txt']);
+function CodingPAC_SWjp(model)
+edges_PAC_OKH = load(['Meshes/model_',model,'/edges_PAC_OKH_rough.txt']);
+edges_PAC_IOG = load(['Meshes/model_',model,'/edges_PAC_IOG_rough.txt']);
 
-fid = fopen(['Meshes/model_',model,'/plate_',model,'_pac_sw.geo'],'wt');
+fid = fopen(['Meshes/model_',model,'/plate_',model,'_pac_swjp.geo'],'wt');
 fprintf(fid,'// interplate_pac.geo\n\n');
 fprintf(fid,'radius = 5.0;\npio2 = Pi/2;\n\n');
 
@@ -185,12 +206,12 @@ cll = 1001;
 cs  = 2001;
 
 % Japan trench
-scale = 0.15;
+scale = 2.0;
 fprintf(fid,'// Kuril-Japan trench\n');
 [cp,cl,cs,cll] = Export2gmshfile(edges_PAC_OKH,fid,cp,cl,cs,cll,scale);
 
 % Izu-Ogasawara trench
-scale = 0.15;
+scale = 2.0;
 fprintf(fid,'// Izu-Ogasawara trench\n');
 [~,~,~,~] = Export2gmshfile(edges_PAC_IOG,fid,cp,cl,cs,cll,scale);
 
