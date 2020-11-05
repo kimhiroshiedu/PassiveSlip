@@ -81,7 +81,7 @@ end
 end
 
 %% Pick edge line of locking segments
-function pick_points_calc_sdrline(clon,clat,cdep,csdr,crel)
+function pick_points
 alon = [];
 alat = [];
 count = 0;
@@ -112,6 +112,10 @@ fid = fopen('patch_output.txt','wt');
 fprintf(fid,'%8.3f %7.3f\n',[alon(:,2),alat(:,2)]');
 fclose(fid);
 
+end
+
+%%
+function calc_sdrline(clon,clat,cdep,csdr,crel)
 % Prepare calc line of SDR and Vplate
 alon2 = linspace2(alon(:,2),100);
 alat2 = linspace2(alat(:,2),100);
@@ -128,8 +132,20 @@ fprintf(fid,'# Lon  Lat  Dep  Leng  SDR  Vpl\n');
 fprintf(fid,'%8.3f %7.3f %6.2f %9.3f %6.2f %6.2f\n', [alon2,alat2,adep2,leng,asdr2,arel2]');
 fclose(fid);
 
-end
+figure(200); clf(200);
+p2 = plot(leng,arel2,"LineStyle","--","Color",'r');
+hold on
+p1 = plot(leng,asdr2,"LineStyle","-","Color",'k',"LineWidth",1.5);
+ax = gca;
+ax.FontName = 'Helvetica';
+ax.FontSize = 14;
+ax.XLabel.String = 'Distance (km)';
+ax.YLabel.String = 'Rate (mm/yr)';
+legend([p1 p2],{'Slip deficit','Plate convergence'})
+ax.PlotBoxAspectRatio = [1.7,1,1];
+print('slip_rate_along_line','-dpdf','-painters')
 
+end
 %% Heaviside step function
 function y = Heaviside(x)
 % Calculate Heveaside step function
