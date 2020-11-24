@@ -1,8 +1,16 @@
-function CalcSlipArea(savefolder,blk,obs,G,d,tcha,lock,T,event,threratio)
+function CalcSlipArea(savefolder,blk,obs,G,d,tcha,lock,T,event,flag,threratio)
 % Load blk, grn, obs, tcha and lock.mat files before running this script.
-% event
+% flag
+% 'i': Interseismic
+% 'c': Coseismic
+% event (case coseismic)
 % segment_number1  max_slip1
 % segment_number2  max_slip2
+%  :                  :
+%  :                  :
+% event (case interseismic)
+% segment_number1  yr
+% segment_number2  yr
 %  :                  :
 %  :                  :
 G(1).tb_kin = full(G(1).tb_kin);
@@ -11,21 +19,20 @@ G(1).tb_mec = full(G(1).tb_mec);
 idl   = zeros(  size(tcha.aveaid,1),1);
 slipl = zeros(3*size(tcha.aveaid,1),1);
 for eq = event'
-  [s] = calc_slip_asperity(tcha,G,d,lock,T,eq,-1);
-  [rt,lock] = est_reccurence_time(blk,lock,s,eq);
-  [s] = calc_slip_asperity(tcha,G,d,lock,T,eq,rt);
+  [s] = calc_slip_asperity(tcha,G,d,lock,T,eq,flag,-1);
+  [rt,lock] = est_reccurence_time(blk,lock,s,eq,flag);
+  [s] = calc_slip_asperity(tcha,G,d,lock,T,eq,flag,rt);
   idl = idl | lock(eq(1)).idl50;
   slipl = slipl + s.slipl50;
 end
 [s]   = calc_slip_total(d,G,slipl,idl);
-[s]   = calc_seismic_moment(blk,lock,event,threratio,s);
+[s]   = calc_seismic_moment(blk,lock,event,flag,threratio,s);
 [s,v] = calc_surface_velocity(blk,obs,G,d,s);
-save_result(obs,blk,tcha,lock,s,v,T,event,savefolder)
+save_result(obs,blk,tcha,lock,s,v,T,event,flag,savefolder)
 end
 
-function [s] = calc_slip_asperity(tcha,G,d,lock,T,eq,rt)
+function [s] = calc_slip_asperity(tcha,G,d,lock,T,eq,flag,rt)
 event = eq(1);
-sslip = eq(2);
 mpmean = tcha.avepol(:,:,T);
 idl50 = logical(d(1).maid *  lock(event).idl50);
 
@@ -38,9 +45,8 @@ s.rel_mec  = rel_mec;
 s.slipl50  = slipl50;
 end
 
-function [rt,lock] = est_reccurence_time(blk,lock,s,eq)
+function [rt,lock] = est_reccurence_time(blk,lock,s,eq,flag)
 event = eq(1);
-sslip = eq(2);
 idl = lock(event).idl50;
 lock(event).rt = [];
 mm3m = 1;
@@ -53,7 +59,11 @@ for nb1 = 1:blk(1).nblock
         slip50_dp = s.slipl50(mm3m+  nf:mm3m+2*nf-1);
         slip50_ts = s.slipl50(mm3m+2*nf:mm3m+3*nf-1);
         bslip50_s  = sqrt(slip50_st.^2 + slip50_dp.^2 + slip50_ts.^2);
-        rt = sslip ./ bslip50_s;
+        if flag == 'c'
+          rt = eq(2) ./ bslip50_s;
+        else
+          rt = eq(2);
+        end
         lock(event).rt = [lock(event).rt; rt];
         mm3m = mm3m + 3*nf;
       end
@@ -74,7 +84,7 @@ s.slipl = slipl;
 s.slip  = slip50;
 end
 
-function [s] = calc_seismic_moment(blk,lock,event,threratio,s)
+function [s] = calc_seismic_moment(blk,lock,event,flag,threratio,s)
 mu = 40; % (GPa)
 uf = 1e12; % unit translation factor
 
@@ -171,9 +181,9 @@ v.coseis_cutoff = G(1).c_mec * (s.slip .* (d(1).maid * s(1).idcutoff));
 v.obs = reshape([obs(1).evec; obs(1).nvec; obs(1).hvec],3*obs(1).nobs,1);
 end
 
-function save_result(obs,blk,tcha,lock,s,v,T,event,savefolder)
+function save_result(obs,blk,tcha,lock,s,v,T,event,flag,savefolder)
 if exist(savefolder,'dir')~=7; mkdir(savefolder); end
-% Save coseismic slip magnitude
+% Save coseismic (interseismic) slip magnitude
 mm1  = 1;
 mm3m = 1;
 mm1m = 1;
@@ -214,13 +224,17 @@ end
 s.event = event;
 save(fullfile(savefolder,'slip'),'s','-v7.3');
 
-% Save released moment
+% Save released (acumulated) moment
 combibo = [];
 for eq = event'
   combibo = [combibo; lock(eq(1)).boundary];
 end
 combibo = unique(combibo,'rows');
-fid = fopen(fullfile(savefolder,'released_moment.txt'),'wt');
+if flag == 'c'
+  fid = fopen(fullfile(savefolder,'released_moment.txt'),'wt');
+else
+  fid = fopen(fullfile(savefolder,'accumulated_moment.txt'),'wt');
+end
 fprintf(fid,'# b1 b2 meanD(m)    S(km^2)     Mo(Nm) Mo_thr(Nm)\n');
 for bo = combibo'
   nb1 = min(bo);

@@ -42,10 +42,15 @@ for nb1 = 1:blk(1).nblock
       nf = size(blk(1).bound(nb1,nb2).blon,1);
       % Backslip rate (locked)
       patch(blk(1).bound(nb1,nb2).blon',blk(1).bound(nb1,nb2).blat',...
-            single(sqrt(bslipl50(mm3:mm3+nf-1,1).^2+bslipl50(mm3+nf:mm3+2*nf-1,1).^2)~=0));
+          single(sqrt(bslipl50(mm3:mm3+nf-1,1).^2+bslipl50(mm3+nf:mm3+2*nf-1,1).^2)~=0));
       % Backslip rate (total)
       %       patch(blk(1).bound(nb1,nb2).blon',blk(1).bound(nb1,nb2).blat',...
       %             sqrt(bslip50(mm3:mm3+nf-1,1).^2+bslip50(mm3+nf:mm3+2*nf-1,1).^2));
+      % Depth
+      %       cdep_idsha = -mean(blk(1).bound(nb1,nb2).bdep,2) >=  0;
+      %       cdep_iddee = -mean(blk(1).bound(nb1,nb2).bdep,2) <= 20;
+      %       patch(blk(1).bound(nb1,nb2).blon',blk(1).bound(nb1,nb2).blat',...
+      %             single(cdep_idsha & cdep_iddee));
       hold on
       clon = [clon; mean(blk(1).bound(nb1,nb2).blon,2)];
       clat = [clat; mean(blk(1).bound(nb1,nb2).blat,2)];
