@@ -106,6 +106,17 @@ Hlim = Hd - Hu;
 idl1 = ((Heaviside(G(1).zd*mamean-G(1).zc) - Heaviside(G(1).zu*mamean-G(1).zc)) > 0) .* Hlim;
 idl = logical(d(1).maid *  idl1);
 idc = logical(d(1).maid * ~idl1);
+% -----
+% load('depid_5km.mat')  % depth threthould (5km)
+% load('depid_6km.mat')  % depth threthould (6km)
+% load('depid_8km.mat')  % depth threthould (8km)
+% load('depid_10km.mat')  % depth threthould (10km)
+% idmean = idmean .* cdep_iddep;  % depth threthould
+% load('id_muroto_lock.mat')  % Given locking
+load('lock_id_1968eq.mat')  % 1968 asperity
+idmean(c_idin) = 1;
+% -----
+idl25 = logical(d(1).maid *  (idmean>=0.25));
 idl25 = logical(d(1).maid *  (idmean>=0.25));
 idl50 = logical(d(1).maid *  (idmean>=0.50));
 idl75 = logical(d(1).maid *  (idmean>=0.75));

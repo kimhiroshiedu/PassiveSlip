@@ -530,6 +530,9 @@ idc = logical(d(1).maid * ~idl1);
 % load('depid_8km.mat')  % depth threthould (8km)
 % load('depid_10km.mat')  % depth threthould (10km)
 % idmean = idmean .* cdep_iddep;  % depth threthould
+% load('id_muroto_lock.mat')  % Given locking
+load('lock_id_1968eq.mat')  % 1968 asperity
+idmean(c_idin) = 1;
 % -----
 idl25 = logical(d(1).maid *  (idmean>=0.25));
 idl50 = logical(d(1).maid *  (idmean>=0.50));
@@ -551,9 +554,9 @@ bslipl50   = bslip50;
 bslipl75   = bslip75;
 
 bslip(idc) = -G(1).s(idc,idc) \ (G(1).s(idc,idl) * bslip(idl));
-bslip25(idc25) = -G(1).s(idc25,idc25) \ (G(1).s(idc25,idl25) * bslip(idl25));
-bslip50(idc50) = -G(1).s(idc50,idc50) \ (G(1).s(idc50,idl50) * bslip(idl50));
-bslip75(idc75) = -G(1).s(idc75,idc75) \ (G(1).s(idc75,idl75) * bslip(idl75));
+bslip25(idc25) = -G(1).s(idc25,idc25) \ (G(1).s(idc25,idl25) * bslip25(idl25));
+bslip50(idc50) = -G(1).s(idc50,idc50) \ (G(1).s(idc50,idl50) * bslip50(idl50));
+bslip75(idc75) = -G(1).s(idc75,idc75) \ (G(1).s(idc75,idl75) * bslip75(idl75));
 s.idl      = idl;
 s.idl25    = idl25;
 s.idl50    = idl50;
