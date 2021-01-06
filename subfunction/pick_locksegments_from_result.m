@@ -117,6 +117,33 @@ fid = fopen('patch_output.txt','wt');
 fprintf(fid,'%8.3f %7.3f\n',[alon(:,2),alat(:,2)]');
 fclose(fid);
 
+
+end
+
+%% Find locked subfaults from inpolygon
+function find_lockedfaults
+qx = alon(:,2);
+qy = alat(:,2);
+b1 = 5; b2 = 7;   % NEjp
+% b1 = 10; b2_1 = 13; b2_2 = 11;   % SWjp
+
+cdep_iddep = [];
+for nb1 = 1:blk(1).nblock
+  for nb2 = nb1+1:blk(1).nblock
+    nf = size(blk(1).bound(nb1,nb2).blon,1);
+    if nf ~= 0
+      if blk(1).bound(nb1,nb2).flag2 == 1
+        if and(and(nb1,b1),and(nb2,b2))  % NEjp
+%         if or(and(and(nb1,b1),and(nb2,b2_1)),and(and(nb1,b1),and(nb2,b2_2)))  % SWjp
+          cdep_iddep_tmp = inpolygon(mean(blk(1).bound(nb1,nb2).blon,2),mean(blk(1).bound(nb1,nb2).blat,2),qx,qy);
+          cdep_iddep = [cdep_iddep; cdep_iddep_tmp];
+        else
+          cdep_iddep = [cdep_iddep; zeros(size(mean(blk(1).bound(nb1,nb2).blon,2)))];
+        end
+      end
+    end
+  end
+end
 end
 
 %%
