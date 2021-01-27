@@ -531,8 +531,12 @@ idc = logical(d(1).maid * ~idl1);
 % load('depid_10km.mat')  % depth threthould (10km)
 % idmean = idmean .* cdep_iddep;  % depth threthould
 % load('id_muroto_lock.mat')  % Given locking
-load('lock_id_1968eq.mat')  % 1968 asperity
-idmean(c_idin) = 1;
+% load('lock_id_1968eq.mat')  % 1968 asperity
+% idmean(c_idin) = 1;
+% load('Result_red/Test_27/Fukushima_30_50km/fukushima_30_50km.mat')   % Given locking
+% load('Result_red/Test_27/Miyagi_20_40km/miyagi_20_40km.mat')   % Given locking
+% load('Result_red/Test_27/NTohoku_0_10km/ntohoku_0_10km.mat')   % Given locking
+% idmean(cdep_iddep) = 1;
 % -----
 idl25 = logical(d(1).maid *  (idmean>=0.25));
 idl50 = logical(d(1).maid *  (idmean>=0.50));
