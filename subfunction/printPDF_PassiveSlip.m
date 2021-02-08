@@ -231,11 +231,11 @@ ax.XColor = 'k';
 ax.XTickLabelRotation = 90;
 % y-axis
 yyaxis left
-ax.YLim = [0,1.1];
+ax.YLim = [0,1.01];
 ax.YColor = 'k';
 ax.YTickLabelRotation = 90;
 yyaxis right
-ax.YLim = [0,1.1*maxpdf];
+ax.YLim = [0,1.01*maxpdf];
 ax.YColor = 'k';
 ax.YLabel.String = 'Probability'; ax.YLabel.Color = 'k';
 ax.YTickLabelRotation = 90;
